@@ -26,7 +26,8 @@
     "test:market-catalog": "node tests/market-catalog.mjs",
     "test:content-moderation": "node tests/content-moderation.mjs",
     "test:product-slug": "node tests/product-slug.mjs",
-    "test:database-migrations": "node tests/database-migrations.mjs"
+    "test:database-migrations": "node tests/database-migrations.mjs",
+    "test:relational-integrity": "node tests/relational-integrity.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

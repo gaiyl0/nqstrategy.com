@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import Database from 'better-sqlite3';
+
+const remove=base=>{for(const suffix of ['', '-wal', '-shm']){try{fs.rmSync(`${base}${suffix}`);}catch{}}};
+const dbPath=path.resolve('.tmp-relational-integrity-test.db');remove(dbPath);process.env.NEXUS_DB_PATH=dbPath;
+const {default:db}=await import('../lib/db.js');
+let assertions=0;const equal=(actual,expected,message)=>{assert.deepEqual(actual,expected,message);assertions+=1;};
+const commentFk=db.pragma('foreign_key_list(comments)').find(row=>row.from==='post_id');
+equal(commentFk?.table,'posts','comments reference posts');equal(commentFk?.on_delete,'CASCADE','post deletion cascades comments');
+const orderFk=db.pragma('foreign_key_list(orders)').find(row=>row.from==='product_id');
+equal(orderFk?.table,'products','orders reference products');equal(orderFk?.on_delete,'RESTRICT','product deletion is restricted by financial history');
+const user=Number(db.prepare("INSERT INTO users(username,email,role,password) VALUES('fk-user','fk@example.com','developer','hash')").run().lastInsertRowid);
+const product=Number(db.prepare("INSERT INTO products(title,slug,author,author_user_id,status) VALUES('FK EA','fk-ea', 'fk-user',?,'active')").run(user).lastInsertRowid);
+const post=Number(db.prepare("INSERT INTO posts(title,content,author,author_user_id,category) VALUES('FK post','body','fk-user',?,'官方公告')").run(user).lastInsertRowid);
+db.prepare("INSERT INTO comments(post_id,author,author_user_id,content) VALUES(?,'fk-user',?,'comment')").run(post,user);
+db.prepare("INSERT INTO orders(username,buyer_user_id,product_id,status) VALUES('fk-user',?,?,'rejected')").run(user,product);
+db.prepare('DELETE FROM posts WHERE id=?').run(post);equal(db.prepare('SELECT COUNT(*) count FROM comments WHERE post_id=?').get(post).count,0,'deleting a post cascades its comments');
+assert.throws(()=>db.prepare('DELETE FROM products WHERE id=?').run(product),/FOREIGN KEY/);assertions+=1;
+equal(db.prepare('SELECT COUNT(*) count FROM products WHERE id=?').get(product).count,1,'order-linked product remains present');
+equal(db.pragma('foreign_key_check').length,0,'migrated database has no foreign key violations');
+db.close();remove(dbPath);
+
+const orphanPath=path.resolve('.tmp-relational-orphan-test.db');remove(orphanPath);
+const orphanDb=new Database(orphanPath);orphanDb.function('audit_maintenance_allowed',()=>0);orphanDb.function('wallet_maintenance_allowed',()=>0);orphanDb.pragma('foreign_keys=ON');
+const {migrations,runMigrations}=await import('../lib/migrations.js');
+runMigrations(orphanDb,{plan:[migrations[0]]});
+orphanDb.prepare("INSERT INTO comments(post_id,author,content) VALUES(999999,'orphan','body')").run();
+assert.throws(()=>runMigrations(orphanDb),/ORPHAN_COMMENTS_FOUND:1/);assertions+=1;
+equal(orphanDb.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,1,'orphan data prevents version 2 from being recorded');
+equal(orphanDb.prepare('SELECT COUNT(*) count FROM comments WHERE post_id=999999').get().count,1,'failed migration does not silently delete orphan content');
+orphanDb.close();remove(orphanPath);
+
+const preservePath=path.resolve('.tmp-relational-preserve-test.db');remove(preservePath);
+const preserveDb=new Database(preservePath);preserveDb.function('audit_maintenance_allowed',()=>0);preserveDb.function('wallet_maintenance_allowed',()=>0);preserveDb.pragma('foreign_keys=ON');
+runMigrations(preserveDb,{plan:[migrations[0]]});
+const legacyUser=Number(preserveDb.prepare("INSERT INTO users(username,email,role,password) VALUES('legacy-fk','legacy-fk@example.com','user','hash')").run().lastInsertRowid);
+const legacyProduct=Number(preserveDb.prepare("INSERT INTO products(title,author,author_user_id,status) VALUES('Legacy FK','legacy-fk',?,'active')").run(legacyUser).lastInsertRowid);
+const legacyPost=Number(preserveDb.prepare("INSERT INTO posts(title,content,author,author_user_id,category) VALUES('Legacy post','body','legacy-fk',?,'官方公告')").run(legacyUser).lastInsertRowid);
+const legacyComment=Number(preserveDb.prepare("INSERT INTO comments(post_id,author,author_user_id,content) VALUES(?,'legacy-fk',?,'preserve-comment')").run(legacyPost,legacyUser).lastInsertRowid);
+const legacyOrder=Number(preserveDb.prepare("INSERT INTO orders(username,buyer_user_id,product_id,price,status,tx_hash) VALUES('legacy-fk',?,?,0,'rejected','preserve-tx')").run(legacyUser,legacyProduct).lastInsertRowid);
+runMigrations(preserveDb);
+equal(preserveDb.prepare('SELECT content FROM comments WHERE id=?').get(legacyComment).content,'preserve-comment','comment identity and content survive table rebuild');
+equal(preserveDb.prepare('SELECT tx_hash FROM orders WHERE id=?').get(legacyOrder).tx_hash,'preserve-tx','order identity and financial fields survive table rebuild');
+equal(preserveDb.pragma('foreign_key_check').length,0,'preserved legacy rows satisfy new foreign keys');
+preserveDb.close();remove(preservePath);
+console.log(`Relational integrity tests passed: ${assertions} assertions`);

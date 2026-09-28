@@ -291,9 +291,9 @@ export async function DELETE(request) {
     if (currentUser.role !== 'admin' && product.author_user_id !== currentUser.id) {
       return NextResponse.json({ success: false, message: '无权删除该策略' }, { status: 403 });
     }
-    const owned = db.prepare("SELECT id FROM orders WHERE product_id = ? AND status = 'completed' LIMIT 1").get(id);
-    if (owned) {
-      return NextResponse.json({ success: false, message: '该策略已有购买记录，只能下架，不能删除' }, { status: 409 });
+    const linkedOrder = db.prepare("SELECT id,status FROM orders WHERE product_id = ? LIMIT 1").get(id);
+    if (linkedOrder) {
+      return NextResponse.json({ success: false, message: '该策略已有订单记录，为保留财务审计只能下架，不能删除' }, { status: 409 });
     }
     const publishedVersion=db.prepare("SELECT id FROM product_versions WHERE product_id=? AND status='published' LIMIT 1").get(id);
     if(publishedVersion)return NextResponse.json({success:false,message:'该策略已有发布版本，为保留版本与下载审计只能下架，不能删除'},{status:409});

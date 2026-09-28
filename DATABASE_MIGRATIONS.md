@@ -24,14 +24,18 @@ npm start
 
 不同版本不会被合并成一个大事务。版本 2 失败时，已成功提交的版本 1 保留，版本 2 的全部结构和数据变化回滚，修复后从版本 2 重试。
 
+SQLite 重建已有表时可能需要迁移模块声明 `requiresForeignKeysOff = true`。运行器只对该连接临时关闭外键执行重建，并在提交历史前运行完整 `PRAGMA foreign_key_check`；发现任何违规会回滚整个版本，`finally` 中恢复外键开关。该能力只用于无法通过普通 `ALTER TABLE` 完成的受测表重建。
+
 ## 校验和与不可变历史
 
-迁移文件包含固定 SHA-256。计算时把文件中的 checksum 声明规范化为 64 个零，因此 checksum 值自身不会形成循环依赖。运行器同时比较：
+迁移文件包含固定 SHA-256。计算时把文件中的 checksum 声明规范化为 64 个零，因此 checksum 值自身不会形成循环依赖。迁移 CLI、开发进程和测试运行器同时比较：
 
 1. 当前文件计算值与文件声明值；
 2. 文件声明值与数据库历史值。
 
 已经应用的迁移文件不得编辑、重排、重命名或删除。发现变化会返回 `MIGRATION_FILE_TAMPERED`、`MIGRATION_CHECKSUM_MISMATCH` 或 `MIGRATION_UNKNOWN_APPLIED_VERSION` 并停止启动。
+
+Next.js 生产服务使用打包进服务器产物的迁移清单，因此启动时不再从工作目录读取迁移源码；它仍会比较清单中的声明值与数据库历史值。部署流水线必须在构建前执行 `npm run db:migrate -- verify`，由 CLI 完成迁移源码的 SHA-256 校验。这样既能发现源码被篡改，也避免生产 bundle 与工作目录源码来自不同发布批次时发生混合校验。
 
 ## 新增迁移
 
