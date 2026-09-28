@@ -29,7 +29,7 @@ feature/p1-012-schema-convergence
 最近功能提交：
 
 ```text
-3747a09 feat: converge user schema constraints
+296d8c2 feat: require current password for profile changes
 ```
 
 数据库迁移状态：
@@ -227,7 +227,7 @@ NQ-P1-014：统一前端 API 客户端和失败提示
 ### 2026-09-28：NQ-P1-013 主动改密二次身份确认
 
 状态：**已完成，等待项目所有者验收**
-提交：承载于 `feat: require current password for profile changes` 提交
+提交：`296d8c2 feat: require current password for profile changes`
 
 原问题：个人资料接口允许持有有效 Session 的请求直接设置新密码，不要求当前密码。Session 被窃取后，攻击者可以借此接管长期凭据。
 
