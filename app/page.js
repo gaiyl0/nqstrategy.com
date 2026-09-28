@@ -1,5 +1,7 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { 
   Activity, Shield, CheckCircle, Upload, Globe, X, Code2, Edit,
@@ -43,11 +45,22 @@ function metricsPayload(metrics) {
   };
 }
 
-export default function App() {
-  const [lang, setLang] = useState('zh'); 
+const LANGUAGE_EVENT = 'nexus-language-change';
+const subscribeLanguage = (callback) => {
+  window.addEventListener('storage', callback);
+  window.addEventListener(LANGUAGE_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(LANGUAGE_EVENT, callback);
+  };
+};
+const getLanguageSnapshot = () => localStorage.getItem('nexus_lang') === 'en' ? 'en' : 'zh';
+const getServerLanguageSnapshot = () => 'zh';
 
-  useEffect(() => { const savedLang = localStorage.getItem('nexus_lang'); if (savedLang) setLang(savedLang); }, []);
-  const toggleLang = () => { const newLang = lang === 'zh' ? 'en' : 'zh'; setLang(newLang); localStorage.setItem('nexus_lang', newLang); };
+export default function App() {
+  const router = useRouter();
+  const lang = useSyncExternalStore(subscribeLanguage, getLanguageSnapshot, getServerLanguageSnapshot);
+  const toggleLang = () => { const newLang = lang === 'zh' ? 'en' : 'zh'; localStorage.setItem('nexus_lang', newLang); window.dispatchEvent(new Event(LANGUAGE_EVENT)); };
   const t = (zh, en) => lang === 'en' ? en : zh;
 
   const tEaType = (zh) => { const dict = { '马丁格尔': 'Martingale', '网格': 'Grid', '套汇': 'Arbitrage', '锁仓': 'Hedging', '超短线': 'Scalping', '新闻': 'News', '趋势': 'Trend', '等级交易': 'Level Trading', '神经网络': 'Neural Net', '多货币': 'Multi-Currency' }; return lang === 'en' ? (dict[zh] || zh) : zh; };
@@ -66,11 +79,14 @@ export default function App() {
 
   const [route, setRouteInternal] = useState('home'); 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const hasMarketState = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'].some(key => params.has(key));
-    const savedRoute = sessionStorage.getItem('nexus_route');
-    if (hasMarketState) setRouteInternal('market');
-    else if (savedRoute) setRouteInternal(savedRoute);
+    const frame = window.requestAnimationFrame(() => {
+      const params = new URLSearchParams(window.location.search);
+      const hasMarketState = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'].some(key => params.has(key));
+      const savedRoute = sessionStorage.getItem('nexus_route');
+      if (hasMarketState) setRouteInternal('market');
+      else if (savedRoute) setRouteInternal(savedRoute);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
   const setRoute = (newRoute) => {
     setRouteInternal(newRoute); sessionStorage.setItem('nexus_route', newRoute);
@@ -82,7 +98,6 @@ export default function App() {
     }
   };
 
-  const [isMounted, setIsMounted] = useState(false);
   const [user, setUser] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
@@ -274,23 +289,37 @@ export default function App() {
     } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('请求异常', 'Request error'))}`); }
   };
 
-  const fetchProducts = () => { apiFetch(`/api/products?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
-  const fetchForumPosts = (cat = '全部', sort = forumSort) => { apiFetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
-  const fetchMyOrders = async () => { if (user) { try { const res = await apiFetch(`/api/orders?t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (error) { showToast(`❌ ${apiErrorMessage(error)}`); } } };
+  const fetchProducts = () => { apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
+  const fetchForumPosts = (cat = '全部', sort = forumSort) => { apiFetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
+  const fetchMyOrders = async () => { if (user) { try { const res = await apiFetch(`/api/orders`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (error) { showToast(`❌ ${apiErrorMessage(error)}`); } } };
   const fetchMyLicenses=async()=>{if(user){try{const response=await apiFetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
   const fetchMySocial=async()=>{if(user){try{const response=await apiFetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
 
   useEffect(() => {
-    setIsMounted(true);
     apiFetch('/api/auth/me', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setUser(data.success ? data.user : null))
       .catch(() => setUser(null));
-    apiFetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
-    fetchForumPosts(); fetchProducts();
+    apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
+    apiFetch(`/api/posts?category=${encodeURIComponent('全部')}&sort=latest`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); });
+    apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); });
   }, []);
 
-  useEffect(() => { if (isMounted && user) { fetchMyOrders();fetchMyLicenses();fetchMySocial(); } }, [isMounted, user?.username]);
+  useEffect(() => {
+    if (!user?.id) return;
+    Promise.all([
+      apiFetch(`/api/orders`, { cache: 'no-store' }).then(response => response.json()),
+      apiFetch('/api/licenses', { cache: 'no-store' }).then(response => response.json()),
+      apiFetch('/api/social', { cache: 'no-store' }).then(response => response.json()),
+    ]).then(([orders, licenses, social]) => {
+      if (orders.success) setMyOrders(orders.orders);
+      if (licenses.success) setMyLicenses(licenses.licenses);
+      if (social.success) setMySocial({ favorites: social.favorites, follows: social.follows, ratings: social.ratings });
+    }).catch(error => {
+      setToastMsg(`❌ ${apiErrorMessage(error)}`);
+      setTimeout(() => setToastMsg(''), 3000);
+    });
+  }, [user?.id]);
 
   const toggleEaType = (type) => { setUploadForm(prev => { const tArr = prev.eaTypes || []; return { ...prev, eaTypes: tArr.includes(type) ? tArr.filter(t => t !== type) : [...tArr, type] }; }); };
 
@@ -400,8 +429,8 @@ export default function App() {
   };
 
   const openPostDetail = async (post) => { 
-    setSelectedPost(post); setForumView('detail'); setComments([]); apiFetch(`/api/posts?viewId=${post.id}&t=${Date.now()}`, { cache: 'no-store' });
-    const res = await apiFetch(`/api/comments?postId=${post.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
+    setSelectedPost(post); setForumView('detail'); setComments([]); apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' });
+    const res = await apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
   };
 
   const submitComment = async () => {
@@ -410,14 +439,14 @@ export default function App() {
     setIsCommenting(true);
     await apiFetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: selectedPost.id, content: commentInput }) });
     showToast(t('回复成功！', 'Replied!')); setCommentInput('');
-    const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
+    const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
     setIsCommenting(false);
   };
 
   const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!window.confirm(t('确定永久删除此贴？', 'Delete this post?'))) return; await apiFetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory); };
-  const handleDeleteComment = async (id) => { if(!window.confirm(t('确定删除评论？', 'Delete comment?'))) return; await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handleDeleteComment = async (id) => { if(!window.confirm(t('确定删除评论？', 'Delete comment?'))) return; await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
   const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await apiFetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory); };
-  const handlePinComment = async (id, is_pinned) => { await apiFetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handlePinComment = async (id, is_pinned) => { await apiFetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
   const handleReport = async (targetType, targetId) => {
     if (!user) return setAuthModal('login');
     const reason = window.prompt(t('举报原因：spam / fraud / abuse / copyright / dangerous / other', 'Reason: spam / fraud / abuse / copyright / dangerous / other'), 'other');
@@ -428,8 +457,6 @@ export default function App() {
     showToast(response.ok && data.success ? (data.report?.replayed ? t('ℹ️ 该举报正在处理中', 'Report already pending') : t('✅ 举报已提交，等待管理员审核', 'Report submitted for review')) : `❌ ${data.message || t('举报失败', 'Report failed')}`);
   };
 
-  if (!isMounted) return null; 
-  
   const myEAs = user ? products.filter(p => p.author_user_id === user.id) : [];
   const myPostCount = user ? forumPosts.filter(p => p.author_user_id === user.id).length : 0;
   const myBadge = user ? getUserTitle(myPostCount, myEAs.length, user.role) : null;
@@ -448,7 +475,7 @@ export default function App() {
             <button onClick={() => setRoute('market')} className={`transition-colors ${route === 'market' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('策略市场', 'EA Market')}</button>
             <button onClick={() => { setRoute('forum'); setForumView('list'); }} className={`transition-colors ${route === 'forum' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('开发者社区', 'Community')}</button>
             <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('profile'); }} className={`transition-colors ${route === 'profile' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('个人中心', 'Profile')}</button>
-            {user?.role === 'admin' && (<button onClick={() => window.location.href = '/admin'} className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20">{t('后台管理', 'Admin Panel')}</button>)}
+            {user?.role === 'admin' && (<button onClick={() => router.push('/admin')} className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 hover:bg-amber-500/20">{t('后台管理', 'Admin Panel')}</button>)}
           </nav>
           <div className="flex gap-4 items-center relative">
             <button onClick={toggleLang} className="flex items-center gap-1.5 text-xs bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors hidden sm:flex">
@@ -457,7 +484,7 @@ export default function App() {
             {user ? (
               <div className="relative">
                 <button onClick={() => setShowUserMenu(!showUserMenu)} className="text-sm font-bold text-zinc-300 bg-zinc-900 px-4 py-1.5 rounded-lg border border-zinc-800 flex items-center gap-2 hover:bg-zinc-800 transition-colors">
-                  {user.avatar_url ? <img src={user.avatar_url} className="w-5 h-5 rounded-full object-cover" /> : <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></div>}{user.username}
+                  {user.avatar_url ? <Image src={user.avatar_url} width={20} height={20} alt={`${user.username} avatar`} className="w-5 h-5 rounded-full object-cover" /> : <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"></div>}{user.username}
                 </button>
                 {showUserMenu && (
                   <div className="absolute right-0 mt-3 w-40 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
@@ -619,7 +646,7 @@ export default function App() {
                       <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed mb-5 pr-32">{post.content}</p>
                       <div className="flex items-center justify-between text-xs text-zinc-500">
                         <div className="flex items-center gap-4">
-                          <span className="flex items-center gap-1.5">{post.avatar_url ? <img src={post.avatar_url} className="w-4 h-4 rounded-full object-cover border border-zinc-700" /> : <UserIcon className="w-3.5 h-3.5" />} {post.author}</span>
+                          <span className="flex items-center gap-1.5">{post.avatar_url ? <Image src={post.avatar_url} width={16} height={16} alt={`${post.author} avatar`} className="w-4 h-4 rounded-full object-cover border border-zinc-700" /> : <UserIcon className="w-3.5 h-3.5" />} {post.author}</span>
                           <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(post.created_at).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> {post.comment_count || 0}</span><span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> {post.views}</span></div>
@@ -648,7 +675,7 @@ export default function App() {
                     <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-6 leading-snug">{selectedPost.title}</h1>
                     <div className="flex items-center gap-4 pb-6 border-b border-zinc-800 mb-6">
                       <div className="w-12 h-12 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center text-xl font-black text-cyan-400 overflow-hidden border border-zinc-700 shadow-inner">
-                        {selectedPost.avatar_url ? <img src={selectedPost.avatar_url} className="w-full h-full object-cover" /> : selectedPost.author.charAt(0).toUpperCase()}
+                        {selectedPost.avatar_url ? <Image src={selectedPost.avatar_url} width={48} height={48} alt={`${selectedPost.author} avatar`} className="w-full h-full object-cover" /> : selectedPost.author.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <div className="font-bold text-white text-base flex items-center flex-wrap gap-2">
@@ -681,7 +708,7 @@ export default function App() {
                           return (
                           <div key={c.id} className={`flex gap-4 pb-6 border-b border-zinc-800/50 last:border-0 last:pb-0 relative group ${c.is_pinned ? 'bg-cyan-900/10 p-4 rounded-xl border border-cyan-500/20' : ''}`}>
                             <div className="w-10 h-10 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center text-cyan-400 font-bold text-sm shadow-inner overflow-hidden border border-zinc-700">
-                              {c.avatar_url ? <img src={c.avatar_url} className="w-full h-full object-cover" /> : c.author.charAt(0).toUpperCase()}
+                              {c.avatar_url ? <Image src={c.avatar_url} width={40} height={40} alt={`${c.author} avatar`} className="w-full h-full object-cover" /> : c.author.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1 w-full overflow-hidden">
                               <div className="flex items-center flex-wrap gap-2 mb-1.5 pr-20">
@@ -732,7 +759,7 @@ export default function App() {
             <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-xl relative">
               <div className="w-28 h-28 shrink-0 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 p-1 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
                 {user.avatar_url ? (
-                  <img src={user.avatar_url} className="w-full h-full rounded-full object-cover border border-zinc-800" />
+                  <Image src={user.avatar_url} width={112} height={112} alt={`${user.username} avatar`} className="w-full h-full rounded-full object-cover border border-zinc-800" />
                 ) : (
                   <div className="w-full h-full bg-zinc-950 rounded-full flex items-center justify-center text-5xl font-black text-cyan-400">{user.username.charAt(0).toUpperCase()}</div>
                 )}
@@ -795,7 +822,7 @@ export default function App() {
                   {myOrders.map(order => (
                     <div key={order.order_id || order.id} className="bg-zinc-950/80 backdrop-blur-md border border-cyan-500/20 rounded-2xl p-5 flex justify-between items-center hover:border-cyan-400 transition-colors shadow-lg shadow-cyan-900/20">
                       <div className="flex items-center gap-4">
-                        {order.logo_url ? <img src={order.logo_url} className="w-12 h-12 rounded-xl object-cover border border-zinc-800" /> : <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800"><Box className="w-5 h-5 text-cyan-500/50" /></div>}
+                        {order.logo_url ? <Image src={order.logo_url} width={48} height={48} alt={`${order.title} logo`} className="w-12 h-12 rounded-xl object-cover border border-zinc-800" /> : <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800"><Box className="w-5 h-5 text-cyan-500/50" /></div>}
                         <div><div className="font-bold text-white text-sm w-36 truncate">{order.title}</div><div className="text-[10px] text-zinc-500 mt-1">{t('购于:', 'Date:')} {new Date(order.purchase_date).toLocaleDateString()}</div>{order.currentVersion&&<div className="mt-1 text-[10px] text-violet-400">v{order.currentVersion.version}</div>}</div>
                       </div>
                       
@@ -817,7 +844,7 @@ export default function App() {
                   {myEAs.map(p => (
                     <div key={p.id} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 flex justify-between items-center hover:border-zinc-700 transition-colors">
                       <div className="flex items-center gap-4">
-                        {p.logo_url ? <img src={p.logo_url} className="w-12 h-12 rounded-xl object-cover border border-zinc-800" /> : <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800"><Box className="w-5 h-5 text-zinc-600" /></div>}
+                        {p.logo_url ? <Image src={p.logo_url} width={48} height={48} alt={`${p.title} logo`} className="w-12 h-12 rounded-xl object-cover border border-zinc-800" /> : <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center border border-zinc-800"><Box className="w-5 h-5 text-zinc-600" /></div>}
                         <div><div className="font-bold text-white text-sm w-32 truncate">{p.title}</div><div className="text-xs font-mono text-cyan-400 mt-1">{p.price === 0 ? 'Free' : `$${p.price}`}</div></div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -850,7 +877,7 @@ export default function App() {
                 <label className="block text-xs font-bold text-zinc-400 mb-2">{t('个人头像 (可选)', 'Avatar (Optional)')}</label>
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 shrink-0 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center overflow-hidden">
-                    {avatarFile ? <img src={URL.createObjectURL(avatarFile)} className="w-full h-full object-cover" /> : (user?.avatar_url ? <img src={user.avatar_url} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-zinc-600" />)}
+                    {avatarFile ? <Image src={URL.createObjectURL(avatarFile)} width={64} height={64} unoptimized alt={t('新头像预览', 'New avatar preview')} className="w-full h-full object-cover" /> : (user?.avatar_url ? <Image src={user.avatar_url} width={64} height={64} alt={`${user.username} avatar`} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-zinc-600" />)}
                   </div>
                   <label className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors w-full text-center">
                     {t('上传新头像', 'Upload New')}

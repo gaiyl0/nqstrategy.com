@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 import { Settings, Wallet, Mail, Save, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Globe, Crown, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag } from 'lucide-react';
@@ -31,10 +32,10 @@ export default function AdminDashboard() {
   const [pwdModal, setPwdModal] = useState({ isOpen: false, userId: null, username: '', newPwd: '' });
   const [balanceModal, setBalanceModal] = useState({ isOpen: false, userId: null, username: '', balance: 0 });
 
-  const fetchUsers = () => apiFetch(`/api/users?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setUserList(data.users); });
-  const fetchProducts = () => apiFetch(`/api/products?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setProductList(data.products); });
-  const fetchOrders = () => apiFetch(`/api/orders?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setOrderList(data.orders); });
-  const fetchWithdrawals = () => apiFetch(`/api/withdraw?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setWithdrawals(data.withdrawals); });
+  const fetchUsers = () => apiFetch(`/api/users`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setUserList(data.users); });
+  const fetchProducts = () => apiFetch(`/api/products?role=admin`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setProductList(data.products); });
+  const fetchOrders = () => apiFetch(`/api/orders?role=admin`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setOrderList(data.orders); });
+  const fetchWithdrawals = () => apiFetch(`/api/withdraw`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setWithdrawals(data.withdrawals); });
   const fetchLicenses=()=>apiFetch('/api/licenses?scope=admin',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setLicenses(data.licenses);});
   const fetchReports=()=>apiFetch('/api/reports?status=pending',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setReports(data.reports);});
 
@@ -48,14 +49,14 @@ export default function AdminDashboard() {
           return;
         }
         setAuthChecked(true);
-        apiFetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSettings(prev => ({ ...prev, ...data })));
+        apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => setSettings(prev => ({ ...prev, ...data })));
         fetchUsers();
       } catch {
         router.replace('/');
       }
     };
     bootstrap();
-  }, []);
+  }, [router]);
 
   useEffect(() => { 
     if (!authChecked) return;
@@ -242,7 +243,7 @@ export default function AdminDashboard() {
                       <tr key={u.id} className="border-b border-zinc-800/40 hover:bg-zinc-800/40 transition-colors group">
                         <td className="p-5">
                           <div className="flex items-center gap-3">
-                            {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" /> : <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-cyan-400 font-black">{u.username.charAt(0).toUpperCase()}</div>}
+                            {u.avatar_url ? <Image src={u.avatar_url} width={40} height={40} alt={`${u.username} avatar`} className="w-10 h-10 rounded-full object-cover" /> : <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-cyan-400 font-black">{u.username.charAt(0).toUpperCase()}</div>}
                             <div><div className="font-bold text-white">{u.username}</div><div className="text-xs text-zinc-500">{u.email}</div></div>
                           </div>
                         </td>

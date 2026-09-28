@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { 
   ChevronRight, Terminal, BarChart3, Users, Box, Award, Crown, ArrowUpRight, 
   Globe, Code2, Cpu, Shield, PlayCircle, HelpCircle, ArrowRight, Zap, Bot, Network 
@@ -244,7 +245,7 @@ export default function HomeView({ setRoute, setForumView, siteSettings, product
               <div key={p.id} className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 flex flex-col justify-between hover:border-cyan-500/50 transition-all group cursor-pointer shadow-lg" onClick={() => setRoute('market')}>
                 <div>
                   <div className="flex items-center gap-4 mb-5">
-                    {p.logo_url ? <img src={p.logo_url} className="w-14 h-14 rounded-2xl object-cover border border-zinc-800" /> : <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center"><Box className="w-6 h-6 text-cyan-400/50" /></div>}
+                    {p.logo_url ? <Image src={p.logo_url} width={56} height={56} alt={`${p.title} logo`} className="w-14 h-14 rounded-2xl object-cover border border-zinc-800" /> : <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center"><Box className="w-6 h-6 text-cyan-400/50" /></div>}
                     <div><h3 className="text-base font-bold text-white truncate w-36 group-hover:text-cyan-400 transition-colors">{p.title}</h3><p className="text-xs text-zinc-500 mt-0.5">by {p.author}</p></div>
                   </div>
                   <div className="flex gap-4 text-xs bg-zinc-900/80 p-4 rounded-2xl border border-zinc-800 mb-2">
