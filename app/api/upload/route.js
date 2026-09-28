@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +25,7 @@ const ERROR_MESSAGES = {
   USER_STORAGE_EXCEEDED: '账户文件总容量已达上限',
 };
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const layers = [{ policy: RATE_LIMITS.uploadIp }];
@@ -112,7 +113,8 @@ export async function POST(request) {
   } catch (error) {
     if (error.message === 'DUPLICATE_CONTENT') return audited(NextResponse.json({ success: false, message: '相同文件已经上传' }, { status: 409 }), 'failure', 'DUPLICATE_CONTENT');
     if (ERROR_MESSAGES[error.message]) return audited(NextResponse.json({ success: false, message: ERROR_MESSAGES[error.message] }, { status: 409 }), 'failure', error.message);
-    console.error('文件上传异常:', error);
     return audited(NextResponse.json({ success: false, message: '文件写入失败，请稍后重试' }, { status: 500 }), 'failure', 'INTERNAL_ERROR');
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/upload' });

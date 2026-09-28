@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword, createSession } from '@/lib/auth';
@@ -5,7 +6,7 @@ import { parseJson, registerSchema } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, hashSecurityValue, RATE_LIMITS, withAudit } from '@/lib/security';
 import { consumeVerificationCode } from '@/lib/verification-codes';
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const context = createSecurityContext(request);
   const ipLimited = enforceRateLimits(context, 'auth.register', [{ policy: RATE_LIMITS.registerIp }]);
   if (ipLimited) return ipLimited;
@@ -94,9 +95,10 @@ export async function POST(request) {
       eventType: 'auth.register', outcome: 'success', reasonCode: 'REGISTERED', userId: Number(result.lastInsertRowid), actorRole: 'user', targetType: 'user', targetId: result.lastInsertRowid,
     });
   } catch (error) {
-    console.error('注册异常:', error);
     return withAudit(context, NextResponse.json({ success: false, message: '服务器开小差了，请稍后重试' }, { status: 500 }), {
       eventType: 'auth.register', outcome: 'failure', reasonCode: 'INTERNAL_ERROR',
     });
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/auth/register' });

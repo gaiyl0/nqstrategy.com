@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
@@ -7,7 +8,7 @@ import { consumeVerificationCode } from '@/lib/verification-codes';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const context = createSecurityContext(request);
   const ipLimited = enforceRateLimits(context, 'auth.password_reset', [{ policy: RATE_LIMITS.loginIp }]);
   if (ipLimited) return ipLimited;
@@ -71,9 +72,10 @@ export async function POST(request) {
       eventType: 'auth.password_reset', outcome: 'success', reasonCode: 'PASSWORD_RESET', userId: user.id, targetType: 'user', targetId: user.id,
     });
   } catch (error) {
-    console.error('重置密码异常:', error);
     return withAudit(context, NextResponse.json({ success: false, message: '服务异常，请稍后重试' }, { status: 500 }), {
       eventType: 'auth.password_reset', outcome: 'failure', reasonCode: 'INTERNAL_ERROR',
     });
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/auth/register/password' });

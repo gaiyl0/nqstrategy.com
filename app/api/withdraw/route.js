@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -43,7 +44,7 @@ function readIdempotencyKey(request) {
   return parsed.success ? parsed.data : null;
 }
 
-export async function GET(request) {
+async function GETHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const limited = enforceRateLimits(context, 'withdrawal.read', [{
@@ -64,12 +65,11 @@ export async function GET(request) {
 
     return audited(NextResponse.json({ success: true, withdrawals }), 'success', 'LISTED', { resultCount: withdrawals.length });
   } catch (error) {
-    console.error('获取提现记录异常:', error);
     return audited(jsonError('服务异常', 500), 'failure', 'INTERNAL_ERROR');
   }
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const identifier = currentUser ? `user:${currentUser.id}` : context.sourceHash;
@@ -129,12 +129,11 @@ export async function POST(request) {
   } catch (error) {
     if (error instanceof WithdrawalError) return audited(jsonError(error.message, error.status), 'failure', 'WITHDRAWAL_REJECTED');
     if (isPendingConstraintError(error)) return audited(jsonError('您已有正在审核中的提现申请，请等待上一笔处理完成', 409), 'failure', 'PENDING_EXISTS');
-    console.error('提交提现异常:', error);
     return audited(jsonError('提现申请失败', 500), 'failure', 'INTERNAL_ERROR');
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const limited = enforceRateLimits(context, 'withdrawal.review', [{
@@ -201,7 +200,10 @@ export async function PATCH(request) {
   } catch (error) {
     if (error instanceof WithdrawalError) return audited(jsonError(error.message, error.status), 'failure', 'WITHDRAWAL_STATE_CONFLICT', id);
     if (isDecisionKeyConflict(error)) return audited(jsonError('该幂等键已用于其他提现审批', 409), 'failure', 'IDEMPOTENCY_CONFLICT', id);
-    console.error('审批提现异常:', error);
     return audited(jsonError('操作失败', 500), 'failure', 'INTERNAL_ERROR', id);
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/withdraw' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/withdraw' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/withdraw' });

@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -7,7 +8,37 @@ import { getAuditHealth, verifyAuditIntegrity } from '@/lib/audit-integrity.mjs'
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request) {
+function publicIntegrity(integrity) {
+  return {
+    valid: Boolean(integrity?.valid),
+    liveRows: Number(integrity?.liveRows || 0),
+    archivedRows: Number(integrity?.archivedRows || 0),
+    archiveBatches: Number(integrity?.archiveBatches || 0),
+    headLogId: integrity?.headLogId ?? null,
+  };
+}
+
+function publicHealth() {
+  const health = getAuditHealth();
+  return {
+    healthy: Boolean(health.healthy),
+    initializedAt: health.initializedAt,
+    lastSuccessAt: health.lastSuccessAt,
+    lastFailureAt: health.lastFailureAt,
+    consecutiveFailures: Number(health.consecutiveFailures || 0),
+  };
+}
+
+function publicMetadata(row) {
+  const metadata = row.metadata_json ? JSON.parse(row.metadata_json) : {};
+  if (row.event_type === 'api.internal_error') {
+    delete metadata.diagnostic;
+    delete metadata.stackDigest;
+  }
+  return metadata;
+}
+
+async function GETHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   if (currentUser?.role !== 'admin') {
@@ -36,8 +67,8 @@ export async function GET(request) {
         success: false,
         code: 'AUDIT_INTEGRITY_FAILURE',
         message: '审计完整性校验失败，请立即检查安全日志',
-        integrity,
-        health: getAuditHealth(),
+        integrity: publicIntegrity(integrity),
+        health: publicHealth(),
       }, { status: 503 }), {
         eventType: 'audit.read', outcome: 'failure', reasonCode: 'INTEGRITY_FAILURE',
       });
@@ -61,7 +92,7 @@ export async function GET(request) {
       LIMIT ?
     `).all(...values, limit).map((row) => ({
       ...row,
-      metadata: row.metadata_json ? JSON.parse(row.metadata_json) : {},
+      metadata: publicMetadata(row),
       metadata_json: undefined,
     }));
 
@@ -69,15 +100,12 @@ export async function GET(request) {
       success: true,
       logs,
       nextBefore: logs.at(-1)?.id || null,
-      integrity,
-      health: getAuditHealth(),
+      integrity: publicIntegrity(integrity),
+      health: publicHealth(),
     }), {
       eventType: 'audit.read', outcome: 'success', reasonCode: 'OK', metadata: { resultCount: logs.length },
     });
-  } catch (error) {
-    console.error('读取审计日志失败:', error);
-    return withAudit(context, NextResponse.json({ success: false, message: '读取审计日志失败' }, { status: 500 }), {
-      eventType: 'audit.read', outcome: 'failure', reasonCode: 'INTERNAL_ERROR',
-    });
-  }
+  } catch (error) { throw error; }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/audit' });

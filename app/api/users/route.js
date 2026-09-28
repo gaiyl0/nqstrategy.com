@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser, hashPassword, createSession, verifyPassword } from '@/lib/auth';
@@ -9,7 +10,7 @@ import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from
 export const dynamic = 'force-dynamic';
 
 // 1. 获取全平台用户列表（必须超管）
-export async function GET() {
+async function GETHandler() {
   try {
     const currentUser = await getSessionUser();
     if (currentUser?.role !== 'admin') {
@@ -29,13 +30,12 @@ export async function GET() {
 
     return NextResponse.json({ success: true, users });
   } catch (error) {
-    console.error('获取用户列表异常:', error);
     return NextResponse.json({ success: false, message: '服务异常' }, { status: 500 });
   }
 }
 
 // 2. 核心拦截：权限变动 / 个人资料修改 / 角色升级
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
@@ -202,13 +202,12 @@ export async function PATCH(request) {
 
     return NextResponse.json({ success: false, message: '未知操作指令' }, { status: 400 });
   } catch (error) {
-    console.error('更新用户信息异常:', error);
     return NextResponse.json({ success: false, message: '操作失败，请重试' }, { status: 500 });
   }
 }
 
 // 3. 删除用户（必须超管）
-export async function DELETE(request) {
+async function DELETEHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (currentUser?.role !== 'admin') {
@@ -259,7 +258,10 @@ export async function DELETE(request) {
     }
     return NextResponse.json({ success: true, message: '账户已匿名化注销，历史资产与原用户 ID 保持绑定' });
   } catch (error) {
-    console.error('删除用户异常:', error);
     return NextResponse.json({ success: false, message: '删除失败' }, { status: 500 });
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/users' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/users' });
+export const DELETE = withApiErrors(DELETEHandler, { route: '/api/users' });

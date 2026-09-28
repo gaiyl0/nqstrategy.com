@@ -1,9 +1,10 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import { getSessionUser, destroySession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+async function GETHandler() {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ success: false, user: null });
@@ -11,7 +12,10 @@ export async function GET() {
   return NextResponse.json({ success: true, user });
 }
 
-export async function POST() {
+async function POSTHandler() {
   await destroySession();
   return NextResponse.json({ success: true });
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/auth/me' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/auth/me' });

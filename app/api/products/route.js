@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -67,7 +68,7 @@ function marketProducts(currentUser,query){
   return {products:result.items.map(candidate=>{const product={...candidate};for(const key of ['metric_drawdown','metric_reviewed','verification_level','metrics','verification'])delete product[key];return publicProductDto(product,currentUser);}),pagination:result.pagination};
 }
 
-export async function GET(request) {
+async function GETHandler(request) {
   try {
     const searchParams=new URL(request.url).searchParams;
     const roleParam = searchParams.get('role');
@@ -96,12 +97,11 @@ export async function GET(request) {
     }
     return NextResponse.json({ success: true, products:publicProducts(currentUser) });
   } catch (error) {
-    console.error('查询策略异常:', error);
     return NextResponse.json({ success: false, message: '服务异常' }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
@@ -164,12 +164,11 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: '回测证据不完整、所有权无效或已被其他策略使用' }, { status: 409 });
     }
     if (['REPORT_METRICS_MODIFIED','REPORT_CURVES_MODIFIED'].includes(error.message)) return NextResponse.json({ success: false, message: '提交的回测数据已偏离 MT5 原始报告，请重新上传并使用自动提取结果' }, { status: 409 });
-    console.error('创建策略异常:', error);
     return NextResponse.json({ success: false, message: '创建策略失败' }, { status: 500 });
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
@@ -271,12 +270,11 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, message: '回测证据不完整、所有权无效或已被其他策略使用' }, { status: 409 });
     }
     if (['REPORT_METRICS_MODIFIED','REPORT_CURVES_MODIFIED'].includes(error.message)) return NextResponse.json({ success: false, message: '提交的回测数据已偏离 MT5 原始报告，请重新上传并使用自动提取结果' }, { status: 409 });
-    console.error('更新策略异常:', error);
     return NextResponse.json({ success: false, message: '更新策略失败' }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+async function DELETEHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) {
@@ -311,7 +309,11 @@ export async function DELETE(request) {
     if (reportFile) try { fs.rmSync(reportPath(reportFile.stored_name), { force: true }); } catch {}
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除策略异常:', error);
     return NextResponse.json({ success: false, message: '删除策略失败' }, { status: 500 });
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/products' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/products' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/products' });
+export const DELETE = withApiErrors(DELETEHandler, { route: '/api/products' });

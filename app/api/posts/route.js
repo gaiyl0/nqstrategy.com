@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -7,7 +8,7 @@ import { createSecurityContext } from '@/lib/security';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(request) {
+async function GETHandler(request) {
   const { searchParams } = new URL(request.url);
   const rawCategory = searchParams.get('category');
   const rawViewId = searchParams.get('viewId');
@@ -48,12 +49,11 @@ export async function GET(request) {
     const posts=category&&category!=='全部'?db.prepare(sql).all(category):db.prepare(sql).all();
     return NextResponse.json({ success: true, posts });
   } catch (error) {
-    console.error('查询帖子异常:', error);
     return NextResponse.json({ success: false, message: '服务异常' }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -65,12 +65,11 @@ export async function POST(request) {
       .run(title, content, currentUser.username, currentUser.id, category);
     return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) }, { status: 201 });
   } catch (error) {
-    console.error('创建帖子异常:', error);
     return NextResponse.json({ success: false, message: '创建帖子失败' }, { status: 500 });
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (currentUser?.role !== 'admin') {
@@ -83,12 +82,11 @@ export async function PATCH(request) {
     if (result.changes !== 1) return NextResponse.json({ success: false, message: '帖子不存在' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('置顶帖子异常:', error);
     return NextResponse.json({ success: false, message: '更新帖子失败' }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+async function DELETEHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -107,7 +105,11 @@ export async function DELETE(request) {
     })();
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除帖子异常:', error);
     return NextResponse.json({ success: false, message: '删除帖子失败' }, { status: 500 });
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/posts' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/posts' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/posts' });
+export const DELETE = withApiErrors(DELETEHandler, { route: '/api/posts' });

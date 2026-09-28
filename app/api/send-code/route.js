@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import nodemailer from 'nodemailer';
@@ -20,7 +21,7 @@ async function waitForResetResponseFloor(startedAt) {
   if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const startedAt = Date.now();
   const context = createSecurityContext(request);
   const ipLimited = enforceRateLimits(context, 'auth.verification_code', [{ policy: RATE_LIMITS.verificationIp }]);
@@ -104,7 +105,6 @@ export async function POST(request) {
       // 只撤销本次发送的记录，避免并发请求误删更新后的验证码。
       revokeIssuedVerificationCode(issuedCode.recordId, issuedCode.digest);
       if (type === 'reset') {
-        console.error('重置验证码投递失败:', error);
         await waitForResetResponseFloor(startedAt);
         return withAudit(context, resetCodeResponse(), {
           eventType: 'auth.verification_code', outcome: 'failure', reasonCode: 'DELIVERY_FAILED', userId: resetUser.id,
@@ -124,9 +124,10 @@ export async function POST(request) {
       eventType: 'auth.verification_code', outcome: 'success', reasonCode: 'CODE_SENT', targetType: 'email', targetId, metadata: { purpose: type },
     });
   } catch (error) {
-    console.error("邮件发送异常:", error);
     return withAudit(context, NextResponse.json({ success: false, message: '邮件通信超时，请检查控制台 SMTP 配置' }, { status: 500 }), {
       eventType: 'auth.verification_code', outcome: 'failure', reasonCode: 'DELIVERY_FAILED',
     });
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/send-code' });

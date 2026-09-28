@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
@@ -20,7 +21,7 @@ function rateLimit(request, user, eventType) {
   return { context, response: enforceRateLimits(context, eventType, layers) };
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const user = await getSessionUser();
   const limited = rateLimit(request, user, 'evidence.upload');
   if (limited.response) return limited.response;
@@ -62,12 +63,11 @@ export async function POST(request) {
     return audited(NextResponse.json({ success: true, evidence: evidenceDto(row, { admin: true }) }, { status: 201 }), 'success', 'UPLOADED', { evidenceType: type.data, extractionStatus: extraction.status });
   } catch (error) {
     if (stored) removeEvidenceFiles({ original_stored_name: stored.originalStoredName, preview_stored_name: stored.previewStoredName });
-    console.error('证据上传异常:', error);
     return audited(NextResponse.json({ success: false, message: '证据上传失败' }, { status: 500 }), 'failure', error.message || 'INTERNAL_ERROR');
   }
 }
 
-export async function GET(request) {
+async function GETHandler(request) {
   try {
     const url = new URL(request.url);
     const productId = validate(idSchema, url.searchParams.get('productId'));
@@ -87,12 +87,11 @@ export async function GET(request) {
     const content = fs.readFileSync(evidencePath(row.preview_stored_name));
     return new Response(content, { headers: { 'content-type': 'image/png', 'content-length': String(content.length), 'cache-control': 'private, no-store', 'content-security-policy': "default-src 'none'; sandbox" } });
   } catch (error) {
-    console.error('读取证据异常:', error);
     return NextResponse.json({ success: false, message: '读取证据失败' }, { status: 500 });
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   const user = await getSessionUser();
   const context = createSecurityContext(request, user);
   const audited = (response, outcome, reasonCode, metadata = {}) => withAudit(context, response, { eventType: 'evidence.review', outcome, reasonCode, metadata });
@@ -120,3 +119,7 @@ export async function PATCH(request) {
   if (result.changes !== 1) return audited(NextResponse.json({ success: false, message: '证据已审核，重复操作未生效' }, { status: 409 }), 'blocked', 'ALREADY_REVIEWED');
   return audited(NextResponse.json({ success: true }), 'success', parsed.data.status.toUpperCase(), { evidenceId: row.id, corrected: Boolean(corrected), reportDerived });
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/evidence' });
+export const GET = withApiErrors(GETHandler, { route: '/api/evidence' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/evidence' });

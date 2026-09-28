@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -6,7 +7,7 @@ import { createCommentSchema, idSchema, parseJson, pinSchema, validate, validati
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(request) {
+async function GETHandler(request) {
   const parsedPostId = validate(idSchema, new URL(request.url).searchParams.get('postId'));
   if (!parsedPostId.success) return validationErrorResponse(parsedPostId.error);
   const postId = parsedPostId.data;
@@ -14,12 +15,11 @@ export async function GET(request) {
     const comments = db.prepare("SELECT c.*, u.role as author_role, u.avatar_url FROM comments c LEFT JOIN users u ON c.author_user_id = u.id WHERE c.post_id = ? AND c.moderation_status='visible' ORDER BY c.is_pinned DESC, c.created_at ASC").all(postId);
     return NextResponse.json({ success: true, comments });
   } catch (error) {
-    console.error('查询评论异常:', error);
     return NextResponse.json({ success: false, message: '服务异常' }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -33,12 +33,11 @@ export async function POST(request) {
       .run(postId, currentUser.username, currentUser.id, content);
     return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) }, { status: 201 });
   } catch (error) {
-    console.error('创建评论异常:', error);
     return NextResponse.json({ success: false, message: '创建评论失败' }, { status: 500 });
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (currentUser?.role !== 'admin') {
@@ -51,12 +50,11 @@ export async function PATCH(request) {
     if (result.changes !== 1) return NextResponse.json({ success: false, message: '评论不存在' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('置顶评论异常:', error);
     return NextResponse.json({ success: false, message: '更新评论失败' }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+async function DELETEHandler(request) {
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -71,7 +69,11 @@ export async function DELETE(request) {
     db.prepare('DELETE FROM comments WHERE id = ?').run(id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除评论异常:', error);
     return NextResponse.json({ success: false, message: '删除评论失败' }, { status: 500 });
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/comments' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/comments' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/comments' });
+export const DELETE = withApiErrors(DELETEHandler, { route: '/api/comments' });

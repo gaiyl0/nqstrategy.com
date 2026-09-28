@@ -1,10 +1,11 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { verifyPasswordOrDummy, hashPassword, createSession, needsPasswordRehash } from '@/lib/auth';
 import { loginSchema, parseJson } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, hashSecurityValue, RATE_LIMITS, withAudit } from '@/lib/security';
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const context = createSecurityContext(request);
   const ipLimited = enforceRateLimits(context, 'auth.login', [
     { policy: RATE_LIMITS.loginIp },
@@ -87,9 +88,10 @@ export async function POST(request) {
       eventType, outcome: 'success', reasonCode: 'AUTHENTICATED', userId: user.id, actorRole: user.role, targetType: 'user', targetId: user.id,
     });
   } catch (error) {
-    console.error('认证服务异常:', error);
     return withAudit(context, NextResponse.json({ success: false, message: '服务异常，请稍后重试' }, { status: 500 }), {
       eventType: 'auth.login', outcome: 'failure', reasonCode: 'INTERNAL_ERROR',
     });
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/auth/login' });

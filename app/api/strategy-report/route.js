@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import fs from 'node:fs';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
@@ -16,7 +17,7 @@ const ERRORS = {
   REPORT_DEAL_HEADER_REQUIRED: '报告缺少可识别的成交表头（Time/Profit），无法安全生成曲线',
 };
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const user = await getSessionUser(); const context = createSecurityContext(request, user);
   const layers = [{ policy: RATE_LIMITS.uploadIp }];
   if (user) layers.push({ policy: RATE_LIMITS.uploadUserShort, identifier: `user:${user.id}` }, { policy: RATE_LIMITS.uploadUserDaily, identifier: `user:${user.id}` });
@@ -51,7 +52,8 @@ export async function POST(request) {
     const result = db.prepare(`INSERT INTO strategy_reports(owner_user_id,original_name,stored_name,content_sha256,size,extracted_json,uploaded_at) VALUES(?,?,?,?,?,?,?)`).run(user.id, originalName, storedName, hash, content.length, JSON.stringify(metrics), Date.now());
     return audited(NextResponse.json({ success: true, report: reportDto(db.prepare('SELECT * FROM strategy_reports WHERE id=?').get(Number(result.lastInsertRowid))) }, { status: 201 }), 'success', 'REPORT_PARSED', { trades: metrics.totalTrades });
   } catch (error) {
-    if (storedName) try { fs.rmSync(reportPath(storedName), { force: true }); } catch {}
-    console.error('MT5 报告上传异常:', error); return audited(NextResponse.json({ success: false, message: 'MT5 报告处理失败' }, { status: 500 }), 'failure', 'INTERNAL_ERROR');
+    if (storedName) try { fs.rmSync(reportPath(storedName), { force: true }); } catch {} return audited(NextResponse.json({ success: false, message: 'MT5 报告处理失败' }, { status: 500 }), 'failure', 'INTERNAL_ERROR');
   }
 }
+
+export const POST = withApiErrors(POSTHandler, { route: '/api/strategy-report' });

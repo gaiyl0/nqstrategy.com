@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -47,7 +48,7 @@ function readIdempotencyKey(request) {
   return parsed.success ? parsed.data : null;
 }
 
-export async function GET(request) {
+async function GETHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const limited = enforceRateLimits(context, 'order.read', [{
@@ -133,12 +134,11 @@ export async function GET(request) {
 
     return audited(NextResponse.json({ success: true, paidCheckoutEnabled: PAID_CHECKOUT_ENABLED, orders: myOrders }), 'success', 'ASSETS_LISTED', { resultCount: myOrders.length });
   } catch (error) {
-    console.error('查询订单异常:', error);
     return audited(jsonError('服务异常', 500), 'failure', 'INTERNAL_ERROR');
   }
 }
 
-export async function POST(request) {
+async function POSTHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const identifier = currentUser ? `user:${currentUser.id}` : context.sourceHash;
@@ -196,12 +196,11 @@ export async function POST(request) {
   } catch (error) {
     if (error instanceof OrderError) return audited(jsonError(error.message, error.status), 'failure', 'ORDER_CONFLICT', productId);
     if (isOrderConflict(error)) return audited(jsonError('该策略已有订单，请勿重复提交', 409), 'failure', 'ORDER_CONFLICT', productId);
-    console.error('创建订单异常:', error);
     return audited(jsonError('订单创建失败', 500), 'failure', 'INTERNAL_ERROR', productId);
   }
 }
 
-export async function PATCH(request) {
+async function PATCHHandler(request) {
   const currentUser = await getSessionUser();
   const context = createSecurityContext(request, currentUser);
   const limited = enforceRateLimits(context, 'order.review', [{
@@ -256,7 +255,10 @@ export async function PATCH(request) {
   } catch (error) {
     if (error instanceof OrderError) return audited(jsonError(error.message, error.status), 'failure', 'ORDER_STATE_CONFLICT', orderId);
     if (isDecisionKeyConflict(error)) return audited(jsonError('该幂等键已用于其他订单审批', 409), 'failure', 'IDEMPOTENCY_CONFLICT', orderId);
-    console.error('审核订单异常:', error);
     return audited(jsonError('审核操作失败', 500), 'failure', 'INTERNAL_ERROR', orderId);
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/orders' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/orders' });
+export const PATCH = withApiErrors(PATCHHandler, { route: '/api/orders' });

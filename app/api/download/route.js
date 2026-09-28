@@ -1,3 +1,4 @@
+import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
@@ -9,7 +10,7 @@ import { findDownloadLicense } from '@/lib/licensing';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request) {
+async function GETHandler(request) {
   try {
     // 1. 服务端强制鉴权：必须登录
     const currentUser = await getSessionUser();
@@ -82,7 +83,8 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error('下载通道异常:', error);
     return new NextResponse('下载服务异常', { status: 500 });
   }
 }
+
+export const GET = withApiErrors(GETHandler, { route: '/api/download' });
