@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-28  
-当前状态：P0、P1、P2、NQ-DOC-001、P3-001 与 P3-002 已完成；P3-003 至 P3-004 待处理
+当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 至 P3-003 已完成；P3-004 待处理
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/p3-002-page-split
+feature/p3-003-image-performance
 ```
 
 最近功能提交：
 
 ```text
-fc94f26 refactor: split app page responsibilities
+2f50cb9 perf: harden image loading and previews
 ```
 
 数据库迁移状态：
@@ -44,7 +44,7 @@ foreign_key_violations=0
 工程验证状态：
 
 - Next.js 16.3.5 生产构建通过；
-- 23 个 `test:*` 脚本全部通过；
+- 24 个 `test:*` 脚本全部通过；
 - 文档链接、状态分类、命令引用和旧文案专项检查共 55 个断言通过；
 - 全仓 ESLint 以退出码 0 完成，0 errors / 0 warnings；
 - Git 仓库已经建立；
@@ -120,12 +120,6 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 ## 明确未完成
 
-### P3-003：图片和加载性能优化
-
-问题：关键页面仍有原生 `<img>` 和不统一的加载行为。
-
-验收标准：适用图片使用 Next.js `Image` 或明确等效方案，尺寸、alt、懒加载、私有图片鉴权和远程域名配置正确，不泄露私有证据 URL。
-
 ### P3-004：CI、远程 Git、备份恢复和部署文档
 
 验收标准：
@@ -165,18 +159,56 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 4. ✅ **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
 5. ✅ **P3-001：修复剩余 ESLint errors**；
 6. ✅ **P3-002：拆分 `app/page.js`**；
-7. **P3-003：图片和加载性能优化**；
+7. ✅ **P3-003：图片和加载性能优化**；
 8. **P3-004：CI、远程 Git、备份恢复和部署文档**；
 9. **真实付费任务组：仅在项目所有者决定启用真实资金时启动**。
 
 ## 当前下一项
 
 ```text
-P3-003：图片和加载性能优化
+P3-004：CI、远程 Git、备份恢复和部署文档
 状态：尚未开始，等待项目所有者确认启动
 ```
 
 ## 更新记录
+
+### 2026-09-28：P3-003 图片和加载性能优化
+
+状态：**已完成，等待项目所有者验收**
+提交：`2f50cb9 perf: harden image loading and previews`
+
+原问题：应用虽然已经没有原生 `<img>`，但市场列表、市场详情和分享页仍对公开产品 Logo 使用 `unoptimized`，无法使用 Next.js 图片优化；分享页和 MT5 证据预览缺少响应式 `sizes`；头像弹窗在渲染期间调用 `URL.createObjectURL`，每次重新渲染都可能创建新的 Blob URL，且没有统一释放；头像与 Logo 文件选择器允许超出服务端实际支持范围的图片类型；证据预览响应缺少同源、禁止嗅探和 Referrer 防护；图片策略没有自动化回归检查。
+
+完成内容：
+
+- 盘点 42 个应用源码文件中的全部图片入口，确认没有遗留原生 `<img>`；
+- 公开产品 Logo 保持内部 `/uploads/...` 来源并启用 Next.js 图片优化，移除市场列表、详情和分享页的无必要 `unoptimized`；
+- 为产品分享页响应式图片补充 `sizes`，移动端按内容宽度、桌面端按 180px 选择资源；
+- 为 MT5 审核预览补充响应式 `sizes`，同时保留 `unoptimized`：Next.js 优化器不会转发访问控制请求头，该接口也明确使用 `private, no-store`，直接加载才能保持权限和缓存边界；
+- 将头像文件选择与预览提取为 `AvatarPicker`，只在文件选择时创建 Blob URL，更换文件和弹窗卸载时调用 `URL.revokeObjectURL`；
+- 头像和产品 Logo 文件选择器收敛为 PNG、JPEG、WebP，与服务端内容验证白名单一致；
+- MT5 证据 GET 只读取去元数据 PNG 预览，不读取原始截图，并增加 `Content-Disposition: inline`、`Cross-Origin-Resource-Policy: same-origin`、`Referrer-Policy: no-referrer` 和 `X-Content-Type-Options: nosniff`；
+- 保持远程图片来源关闭：`next.config.mjs` 没有 `remotePatterns` 或宽泛域名配置，数据库字段也只接受受控内部上传路径；
+- 没有对任何图片设置不必要的首屏预加载；非首屏图片继续使用 Next.js 默认懒加载；
+- 新增 `test:image-policy`，检查原生图片、Blob 生命周期、上传 MIME、公开图片优化、响应式尺寸、私有证据直连、响应头和远程来源策略。
+
+隐私边界：MT5 原始截图继续保存在 `storage/private/evidence`，GET 接口只返回去元数据预览。未通过审核或未绑定到正常产品的预览仍要求所有者或管理员 Session；已审核并上架产品的预览按产品证据披露规则公开。EA 文件和 MT5 HTML 原始报告没有变成图片资源，也没有迁入公开目录。
+
+验收结果：
+
+```text
+应用源码检查：42 个文件
+原生 <img>：0
+公开产品图：Next.js 优化已启用
+头像 Blob URL：替换和卸载时释放
+远程图片来源：关闭
+图片策略自动化测试：通过
+全仓 ESLint：0 errors / 0 warnings
+```
+
+完整验证：原有 23 个 `test:*` 脚本与新增 `test:image-policy` 全部通过，共 24 个；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面和全部动态 API 路由收集通过；`git diff --check` 通过。生产构建使用完成 3/3 迁移的独立临时数据库，构建完成后临时数据库与相关文件已清理。
+
+验收结论：P3-003 达标。图片加载、Blob 生命周期、私有证据访问和远程来源边界均有代码与自动化检查。下一项为 P3-004，本任务没有提前配置远程 Git、CI 或生产备份恢复。
 
 ### 2026-09-28：P3-002 拆分 `app/page.js`
 
