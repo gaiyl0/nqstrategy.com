@@ -1,1 +1,89 @@
 @import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --nq-bg: #070a0f;
+  --nq-bg-elevated: #0b1119;
+  --nq-panel: #101821;
+  --nq-panel-hover: #14212c;
+  --nq-panel-muted: #0c131c;
+  --nq-border: rgba(148, 163, 184, 0.14);
+  --nq-border-strong: rgba(34, 211, 238, 0.32);
+  --nq-text: #e5e7eb;
+  --nq-text-muted: #94a3b8;
+  --nq-text-subtle: #64748b;
+  --nq-primary: #22d3ee;
+  --nq-primary-strong: #0891b2;
+  --nq-violet: #8b5cf6;
+  --nq-success: #10b981;
+  --nq-warning: #f59e0b;
+  --nq-danger: #ef4444;
+  --nq-info: #3b82f6;
+  --nq-radius-sm: 8px;
+  --nq-radius-md: 12px;
+  --nq-radius-lg: 16px;
+  --nq-shadow-panel: 0 18px 45px rgba(0, 0, 0, 0.2);
+  --nq-shadow-dialog: 0 30px 90px rgba(0, 0, 0, 0.55);
+  --nq-focus: 0 0 0 3px rgba(34, 211, 238, 0.18);
+}
+
+* {
+  scrollbar-color: #273444 transparent;
+}
+
+html {
+  background: var(--nq-bg);
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 75% -15%, rgba(8, 145, 178, 0.09), transparent 36rem),
+    var(--nq-bg);
+  color: var(--nq-text);
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--nq-focus);
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.24);
+  color: #fff;
+}
+
+.nq-grid-surface {
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.nq-number {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

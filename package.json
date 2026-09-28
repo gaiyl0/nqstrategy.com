@@ -35,6 +35,7 @@
     "test:frontend-api": "node tests/frontend-api-usage.mjs",
     "test:frontend-structure": "node tests/frontend-structure.mjs",
     "test:image-policy": "node tests/image-policy.mjs",
+    "test:ui-design": "node tests/ui-design-system.mjs",
     "test:release-engineering": "node tests/release-engineering.mjs",
     "test:api-errors": "node tests/api-error-boundary.mjs",
     "test:api-error-audit": "node tests/api-error-audit.mjs",
