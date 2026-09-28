@@ -1,0 +1,18 @@
+$env:NODE_ENV = 'production'
+$env:PORT = '3148'
+$env:NEXUS_DB_PATH = '.tmp-csrf-runtime3/test.db'
+$env:NEXUS_PUBLIC_UPLOAD_ROOT = '.tmp-csrf-runtime3/public'
+$env:NEXUS_STORAGE_ROOT = '.tmp-csrf-runtime3/private'
+$env:JWT_SECRET = 'csrf-test-jwt-secret-0123456789abcdef'
+$env:VERIFICATION_CODE_SECRET = 'csrf-test-code-secret-0123456789abcdef'
+$env:AUDIT_HASH_SECRET = 'csrf-test-hash-secret-0123456789abcdef'
+$env:AUDIT_INTEGRITY_SECRET = (Get-Content -LiteralPath 'storage/secrets/audit-integrity.key' -Raw).Trim()
+$env:AUDIT_RETENTION_DAYS = '180'
+$env:AUDIT_ARCHIVE_DIR = '.tmp-csrf-runtime3/archives'
+$env:TRUSTED_PROXY_MODE = 'forwarded'
+$env:TRUSTED_PROXY_SHARED_SECRET = 'csrf-test-proxy-secret-0123456789abcdef'
+$env:RATE_LIMIT_BACKEND = 'sqlite'
+$env:DEPLOYMENT_TOPOLOGY = 'single-instance'
+$env:APP_ORIGINS = 'https://nexus.test'
+$env:CSRF_AUTOMATION_SECRET = 'csrf-automation-secret-0123456789abcdef'
+npm run start

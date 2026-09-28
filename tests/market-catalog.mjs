@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {queryMarketCatalog} from '../lib/market-catalog.mjs';
+let assertions=0;const equal=(actual,expected,message)=>{assert.deepEqual(actual,expected,message);assertions+=1;};
+const products=Array.from({length:25},(_,index)=>({id:index+1,title:index===0?'Gold Matrix':`EA ${index+1}`,author:index===1?'Alice':'Bob',description:index===2?'neural signal':'system',pairs:index%2?'EURUSD':'XAUUSD',ea_type:index%3?'趋势':'网格',price:index*10,metrics:index===4?null:{maxDrawdownPercent:index},verification:{level:index===5?'live_verified':'report_verified'}}));
+const base={q:'',pair:'',type:'',verification:'',maxDrawdown:null,maxPrice:null,page:1,pageSize:12};
+let result=queryMarketCatalog(products,base);equal(result.items.length,12,'first page is limited');equal(result.pagination.total,25,'total is returned');equal(result.pagination.totalPages,3,'total pages are returned');
+result=queryMarketCatalog(products,{...base,page:99});equal(result.pagination.page,3,'out-of-range page clamps to last');equal(result.items.length,1,'last page contains remainder');
+equal(queryMarketCatalog(products,{...base,q:'gold'}).items.map(item=>item.id),[1],'title search works');
+equal(queryMarketCatalog(products,{...base,q:'alice'}).items.map(item=>item.id),[2],'author search works');
+equal(queryMarketCatalog(products,{...base,q:'neural'}).items.map(item=>item.id),[3],'description search works');
+equal(queryMarketCatalog(products,{...base,q:'xauusd',pageSize:48}).pagination.total,13,'pair text search works');
+equal(queryMarketCatalog(products,{...base,pair:'EURUSD',pageSize:48}).pagination.total,12,'exact pair filter works');
+equal(queryMarketCatalog(products,{...base,type:'网格',pageSize:48}).pagination.total,9,'exact type filter works');
+equal(queryMarketCatalog(products,{...base,verification:'live_verified',pageSize:48}).items.map(item=>item.id),[6],'minimum verification filter works');
+equal(queryMarketCatalog(products,{...base,maxDrawdown:5,pageSize:48}).items.map(item=>item.id),[1,2,3,4,6],'missing metrics do not pass drawdown filter');
+equal(queryMarketCatalog(products,{...base,maxPrice:20,pageSize:48}).items.map(item=>item.id),[1,2,3],'price filter works');
+console.log(`Market catalog tests passed: ${assertions} assertions`);

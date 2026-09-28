@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';import crypto from 'node:crypto';import fs from 'node:fs';import path from 'node:path';import Database from 'better-sqlite3';
+const {TEST_BASE_URL:base,NEXUS_DB_PATH:dbPath,JWT_SECRET:secret,TRUSTED_PROXY_SHARED_SECRET:proxy,NEXUS_STORAGE_ROOT:root}=process.env;assert.ok(base&&dbPath&&secret&&proxy&&root);
+for(let i=0;i<30;i+=1){try{if((await fetch(`${base}/api/products`)).ok)break;}catch{}await new Promise(r=>setTimeout(r,250));}
+const db=new Database(dbPath);const cookie=id=>{const data=Buffer.from(JSON.stringify({id,sv:1,exp:Date.now()+60000})).toString('base64url');return `nexus_token=${data}.${crypto.createHmac('sha256',secret).update(data).digest('base64url')}`;};
+const user=(name,role)=>Number(db.prepare('INSERT INTO users(username,email,password,role) VALUES(?,?,?,?)').run(name,`${name}@test`,'x',role).lastInsertRowid);
+const owner=user('owner','developer'),admin=user('admin','admin'),oldBuyer=user('old','user'),newBuyer=user('new','user');
+const product=Number(db.prepare("INSERT INTO products(title,author,author_user_id,status,price,file_url) VALUES('Version EA','owner',?,'active',0,'/private/eas/v1.ex5')").run(owner).lastInsertRowid);
+fs.mkdirSync(root,{recursive:true});const bytes=name=>Buffer.concat([Buffer.from('EX5\x02','binary'),Buffer.alloc(128,name.charCodeAt(1))]);fs.writeFileSync(path.join(root,'v1.ex5'),bytes('v1'));fs.writeFileSync(path.join(root,'v2.ex5'),bytes('v2'));
+const hash=file=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex');
+const u1=Number(db.prepare("INSERT INTO uploads(owner_user_id,url,kind,original_name,size,stored_name,content_sha256,status,attached_product_id) VALUES(?,'/private/eas/v1.ex5','ea','v1.ex5',132,'v1.ex5',?,'attached',?)").run(owner,hash('v1.ex5'),product).lastInsertRowid);
+db.prepare("INSERT INTO product_versions(product_id,version,release_notes,upload_id,file_url,content_sha256,upgrade_policy,status,is_current,submitted_by_user_id,reviewed_by_user_id,created_at,reviewed_at,released_at) VALUES(?,'1.0.0','Initial',?,'/private/eas/v1.ex5',?,'all_existing','published',1,?,?,?, ?, ?)").run(product,u1,hash('v1.ex5'),owner,admin,Date.now(),Date.now(),Date.now());
+db.prepare("INSERT INTO uploads(owner_user_id,url,kind,original_name,size,stored_name,content_sha256,status,expires_at) VALUES(?,'/private/eas/v2.ex5','ea','v2.ex5',132,'v2.ex5',?,'clean',?)").run(owner,hash('v2.ex5'),Date.now()+60000);
+const headers=id=>({cookie:cookie(id),origin:'https://nexus.test','content-type':'application/json','x-forwarded-for':'203.0.113.90','x-nexus-proxy-secret':proxy});
+let response=await fetch(`${base}/api/versions`,{method:'POST',headers:headers(owner),body:JSON.stringify({productId:product,fileUrl:'/private/eas/v2.ex5',version:'2.0.0',releaseNotes:'Major upgrade',upgradePolicy:'new_purchases_only'})});assert.equal(response.status,201);const submitted=await response.json();
+response=await fetch(`${base}/api/versions`,{method:'PATCH',headers:headers(admin),body:JSON.stringify({id:submitted.version.id,decision:'approve'})});assert.equal(response.status,200);assert.equal((await response.json()).version.isCurrent,true);
+response=await fetch(`${base}/api/versions`,{method:'PATCH',headers:headers(admin),body:JSON.stringify({id:submitted.version.id,decision:'approve'})});assert.equal((await response.json()).replayed,true);
+db.prepare("INSERT INTO orders(username,buyer_user_id,product_id,price,status,tx_hash,payment_verified,created_at) VALUES('old',?, ?,0,'completed','OLD-R',1,datetime('now','-1 day'))").run(oldBuyer,product);db.prepare("INSERT INTO orders(username,buyer_user_id,product_id,price,status,tx_hash,payment_verified,created_at) VALUES('new',?, ?,0,'completed','NEW-R',1,datetime('now','+1 day'))").run(newBuyer,product);
+const v1=db.prepare("SELECT id FROM product_versions WHERE product_id=? AND version='1.0.0'").get(product).id;
+assert.equal((await fetch(`${base}/api/download?productId=${product}&versionId=${submitted.version.id}`,{headers:{cookie:cookie(oldBuyer)}})).status,403);
+assert.equal((await fetch(`${base}/api/download?productId=${product}&versionId=${v1}`,{headers:{cookie:cookie(oldBuyer)}})).status,200);
+assert.equal((await fetch(`${base}/api/download?productId=${product}&versionId=${submitted.version.id}`,{headers:{cookie:cookie(newBuyer)}})).status,200);
+assert.equal(db.prepare('SELECT COUNT(*) count FROM product_version_downloads').get().count,2);console.log(JSON.stringify({success:true,assertions:8}));db.close();

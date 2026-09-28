@@ -1,0 +1,44 @@
+{
+  "name": "nexus-quant",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "audit:verify": "node scripts/audit-maintenance.mjs verify",
+    "audit:archive": "node scripts/audit-maintenance.mjs archive",
+    "upload:cleanup": "node scripts/upload-maintenance.mjs",
+    "ledger:verify": "node scripts/ledger-maintenance.mjs",
+    "test:ledger": "node tests/wallet-ledger.mjs",
+    "test:ledger:http": "node tests/wallet-ledger-http.mjs",
+    "test:strategy-metrics": "node tests/strategy-metrics.mjs",
+    "test:strategy-evidence": "node tests/strategy-evidence.mjs",
+    "test:mt5-report": "node tests/mt5-report.mjs",
+    "test:strategy-verification": "node tests/strategy-verification.mjs",
+    "test:product-versions": "node tests/product-versions.mjs",
+    "test:licensing": "node tests/licensing.mjs",
+    "test:strategy-comparison": "node tests/strategy-comparison.mjs",
+    "test:social": "node tests/social.mjs",
+    "test:market-catalog": "node tests/market-catalog.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "jose": "^6.2.12",
+    "lucide-react": "^1.47.0",
+    "next": "16.3.5",
+    "nodemailer": "^10.0.10",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sharp": "0.35.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tailwindcss": "^4"
+  }
+}
