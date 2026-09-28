@@ -1,5 +1,7 @@
 # Upload security operations
 
+> **Status (2026-09-28):** format validation, normalization, quotas, private EA storage, deduplication, orphan cleanup, and production fail-closed behavior are implemented. The external malware scanner, alerts, cleanup schedule, storage permissions, and restore procedure still require production verification.
+
 Images are accepted only as PNG, JPEG, or WebP. The server decodes the image
 with Sharp, limits it to one frame, 4096 pixels per side and 16,777,216 total
 pixels, then re-encodes it without the original metadata. A matching extension

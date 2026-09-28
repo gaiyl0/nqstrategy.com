@@ -1,5 +1,7 @@
 # CSRF, Origin, and CORS security
 
+> **Status (2026-09-28):** the application boundary is implemented and tested. Production domain allowlists, reverse-proxy header preservation, browser preflights, and automation credentials still require deployment-specific verification.
+
 Every unsafe `/api/*` request (`POST`, `PUT`, `PATCH`, or `DELETE`) passes
 through the root `proxy.js` before its Route Handler. Production requires
 `APP_ORIGINS`, a comma-separated list of exact HTTPS origins without paths,

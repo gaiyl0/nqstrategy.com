@@ -1,5 +1,7 @@
 # Audit integrity and retention
 
+> **Status (2026-09-28):** the append-only HMAC chain, protected writes, verification, signed archive batches, and safe API health view are implemented. Production secrets, external immutable copies, scheduled verification/archive jobs, key rotation, alerting, and restore drills remain deployment evidence requirements.
+
 Nexus Quant stores security events in an append-only HMAC chain. Each live row
 contains the previous row hash and a keyed signature. The signed chain head is
 stored separately, so changing, inserting, or deleting a row is detected. The
