@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 import { Settings, Wallet, Mail, Save, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Globe, Crown, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag } from 'lucide-react';
 
@@ -30,24 +31,24 @@ export default function AdminDashboard() {
   const [pwdModal, setPwdModal] = useState({ isOpen: false, userId: null, username: '', newPwd: '' });
   const [balanceModal, setBalanceModal] = useState({ isOpen: false, userId: null, username: '', balance: 0 });
 
-  const fetchUsers = () => fetch(`/api/users?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setUserList(data.users); });
-  const fetchProducts = () => fetch(`/api/products?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setProductList(data.products); });
-  const fetchOrders = () => fetch(`/api/orders?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setOrderList(data.orders); }); 
-  const fetchWithdrawals = () => fetch(`/api/withdraw?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setWithdrawals(data.withdrawals); });
-  const fetchLicenses=()=>fetch('/api/licenses?scope=admin',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setLicenses(data.licenses);});
-  const fetchReports=()=>fetch('/api/reports?status=pending',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setReports(data.reports);});
+  const fetchUsers = () => apiFetch(`/api/users?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setUserList(data.users); });
+  const fetchProducts = () => apiFetch(`/api/products?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setProductList(data.products); });
+  const fetchOrders = () => apiFetch(`/api/orders?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setOrderList(data.orders); });
+  const fetchWithdrawals = () => apiFetch(`/api/withdraw?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setWithdrawals(data.withdrawals); });
+  const fetchLicenses=()=>apiFetch('/api/licenses?scope=admin',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setLicenses(data.licenses);});
+  const fetchReports=()=>apiFetch('/api/reports?status=pending',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setReports(data.reports);});
 
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        const authResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        const authResponse = await apiFetch('/api/auth/me', { cache: 'no-store' });
         const authData = await authResponse.json();
         if (!authData.success || authData.user?.role !== 'admin') {
           router.replace('/');
           return;
         }
         setAuthChecked(true);
-        fetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSettings(prev => ({ ...prev, ...data })));
+        apiFetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSettings(prev => ({ ...prev, ...data })));
         fetchUsers();
       } catch {
         router.replace('/');
@@ -66,10 +67,32 @@ export default function AdminDashboard() {
   }, [activeTab, authChecked]);
 
   const showStatus = (msg) => { setStatus(msg); setTimeout(() => setStatus(''), 3000); };
-  const handleSave = async () => { setIsSaving(true); await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) }); showStatus('✅ 所有配置已永久保存生效！'); setIsSaving(false); };
+
+  useEffect(() => {
+    const handleApiFailure = (event) => {
+      if (!(event.reason instanceof ApiError)) return;
+      event.preventDefault();
+      setStatus(`❌ ${apiErrorMessage(event.reason)}`);
+      setTimeout(() => setStatus(''), 3000);
+    };
+    window.addEventListener('unhandledrejection', handleApiFailure);
+    return () => window.removeEventListener('unhandledrejection', handleApiFailure);
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await apiFetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+      showStatus('✅ 所有配置已永久保存生效！');
+    } catch (error) {
+      showStatus(`❌ ${apiErrorMessage(error, '配置保存失败')}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleApproveEA = async (id, newStatus) => {
-    const response = await fetch('/api/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: newStatus }) });
+    const response = await apiFetch('/api/products', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: newStatus }) });
     const data = await response.json();
     if (!response.ok || !data.success) return showStatus(`❌ ${data.message || '策略状态更新失败'}`);
     fetchProducts(); showStatus('✅ 策略状态已更新');
@@ -83,7 +106,7 @@ export default function AdminDashboard() {
       if (!entered) return;
       try { correctedExtraction = JSON.parse(entered); } catch { return showStatus('❌ 校正数据必须是合法 JSON'); }
     }
-    const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, status: statusAction, rejectionReason, ...(correctedExtraction ? { correctedExtraction } : {}) }) });
+    const response = await apiFetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id, status: statusAction, rejectionReason, ...(correctedExtraction ? { correctedExtraction } : {}) }) });
     const data = await response.json();
     if (!response.ok || !data.success) return showStatus(`❌ ${data.message || '证据审核失败'}`);
     fetchProducts(); showStatus('✅ 证据审核状态已更新');
@@ -99,30 +122,30 @@ export default function AdminDashboard() {
     if (!examples[level]) return showStatus('❌ 认证等级不合法');
     const entered = window.prompt(`粘贴认证证据 JSON：\n${examples[level]}`); if (!entered) return;
     let evidence; try { evidence=JSON.parse(entered); } catch { return showStatus('❌ 证据必须是合法 JSON'); }
-    const response=await fetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve',productId:product.id,level,evidence})}); const data=await response.json();
+    const response=await apiFetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve',productId:product.id,level,evidence})}); const data=await response.json();
     if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'认证失败'}`); fetchProducts();showStatus('✅ 认证等级已更新');
   };
-  const handleRevokeVerification=async(product)=>{const reason=window.prompt('请输入撤销认证原因（至少 5 个字符）');if(!reason)return;const response=await fetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',productId:product.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'撤销失败'}`);fetchProducts();showStatus('✅ 认证已撤销');};
-  const handleVersionReview=async(version,decision)=>{const needsReason=['reject','retire'].includes(decision);const reason=needsReason?(window.prompt(`请输入版本${decision==='retire'?'下架':'拒绝'}原因（至少 5 个字符）`)||''):'';if(needsReason&&!reason)return;const response=await fetch('/api/versions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:version.id,decision,...(reason?{reason}:{})})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'版本审核失败'}`);fetchProducts();showStatus(data.replayed?'ℹ️ 该版本已经处理':'✅ 版本审核完成');};
-  const handleRevokeLicense=async(license)=>{const reason=window.prompt('请输入授权撤销原因（至少 5 个字符）');if(!reason)return;const response=await fetch('/api/licenses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'授权撤销失败'}`);fetchLicenses();showStatus(data.replayed?'ℹ️ 授权已撤销':'✅ 授权已撤销，现有令牌失效');};
-  const handleReportResolution=async(report,decision)=>{const note=window.prompt(decision==='confirm'?'请输入违规确认依据（至少 5 个字符）':'请输入驳回说明（至少 5 个字符）');if(!note)return;const response=await fetch('/api/reports',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:report.id,decision,note})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'举报处理失败'}`);fetchReports();showStatus(data.result?.replayed?'ℹ️ 该举报已处理':'✅ 举报处理完成');};
-  const handleDeleteEA = async (id, title) => { if (!window.confirm(`确定彻底删除策略 [${title}] 吗？`)) return; const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' }); const data = await res.json(); if (data.success) { showStatus('🗑️ 已彻底删除'); fetchProducts(); } };
+  const handleRevokeVerification=async(product)=>{const reason=window.prompt('请输入撤销认证原因（至少 5 个字符）');if(!reason)return;const response=await apiFetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',productId:product.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'撤销失败'}`);fetchProducts();showStatus('✅ 认证已撤销');};
+  const handleVersionReview=async(version,decision)=>{const needsReason=['reject','retire'].includes(decision);const reason=needsReason?(window.prompt(`请输入版本${decision==='retire'?'下架':'拒绝'}原因（至少 5 个字符）`)||''):'';if(needsReason&&!reason)return;const response=await apiFetch('/api/versions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:version.id,decision,...(reason?{reason}:{})})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'版本审核失败'}`);fetchProducts();showStatus(data.replayed?'ℹ️ 该版本已经处理':'✅ 版本审核完成');};
+  const handleRevokeLicense=async(license)=>{const reason=window.prompt('请输入授权撤销原因（至少 5 个字符）');if(!reason)return;const response=await apiFetch('/api/licenses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'授权撤销失败'}`);fetchLicenses();showStatus(data.replayed?'ℹ️ 授权已撤销':'✅ 授权已撤销，现有令牌失效');};
+  const handleReportResolution=async(report,decision)=>{const note=window.prompt(decision==='confirm'?'请输入违规确认依据（至少 5 个字符）':'请输入驳回说明（至少 5 个字符）');if(!note)return;const response=await apiFetch('/api/reports',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:report.id,decision,note})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'举报处理失败'}`);fetchReports();showStatus(data.result?.replayed?'ℹ️ 该举报已处理':'✅ 举报处理完成');};
+  const handleDeleteEA = async (id, title) => { if (!window.confirm(`确定彻底删除策略 [${title}] 吗？`)) return; const res = await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' }); const data = await res.json(); if (data.success) { showStatus('🗑️ 已彻底删除'); fetchProducts(); } };
 
-  const submitResetPwd = async () => { if (!pwdModal.newPwd) return showStatus('❌ 密码不能为空'); await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pwdModal.userId, newPassword: pwdModal.newPwd }) }); setPwdModal({ isOpen: false, userId: null, username: '', newPwd: '' }); showStatus('✅ 密码重置成功！'); };
+  const submitResetPwd = async () => { if (!pwdModal.newPwd) return showStatus('❌ 密码不能为空'); await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pwdModal.userId, newPassword: pwdModal.newPwd }) }); setPwdModal({ isOpen: false, userId: null, username: '', newPwd: '' }); showStatus('✅ 密码重置成功！'); };
   
   const submitUpdateBalance = async () => {
-    const response = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `admin-balance:${balanceModal.userId}:${crypto.randomUUID()}` }, body: JSON.stringify({ id: balanceModal.userId, manualBalance: Number(balanceModal.balance) }) });
+    const response = await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `admin-balance:${balanceModal.userId}:${crypto.randomUUID()}` }, body: JSON.stringify({ id: balanceModal.userId, manualBalance: Number(balanceModal.balance) }) });
     const data = await response.json();
     if (!response.ok || !data.success) return showStatus(`❌ ${data.message || '余额修改失败'}`);
     setBalanceModal({ isOpen: false }); fetchUsers(); showStatus(data.replayed ? 'ℹ️ 余额操作已处理' : '💰 余额修改成功并已记录账本！');
   };
 
-  const handleChangeRole = async (id, newRole) => { if (!window.confirm(`确定调整此用户权限吗？`)) return; await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newRole }) }); fetchUsers(); showStatus('👑 用户权限已更新'); };
-  const handleDeleteUser = async (id, username) => { if (!window.confirm(`确定永久删除用户 [${username}] 吗？`)) return; await fetch(`/api/users?id=${id}`, { method: 'DELETE' }); fetchUsers(); showStatus('🗑️ 用户已删除'); };
+  const handleChangeRole = async (id, newRole) => { if (!window.confirm(`确定调整此用户权限吗？`)) return; await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newRole }) }); fetchUsers(); showStatus('👑 用户权限已更新'); };
+  const handleDeleteUser = async (id, username) => { if (!window.confirm(`确定永久删除用户 [${username}] 吗？`)) return; await apiFetch(`/api/users?id=${id}`, { method: 'DELETE' }); fetchUsers(); showStatus('🗑️ 用户已删除'); };
 
   const handleWithdrawAction = async (id, statusAction) => {
     if (!window.confirm(`确定要 ${statusAction === 'completed' ? '批准打款' : '驳回并退回余额'} 吗？`)) return;
-    const response = await fetch('/api/withdraw', {
+    const response = await apiFetch('/api/withdraw', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `withdraw:${id}:${statusAction}:v1` },
       body: JSON.stringify({ id, status: statusAction }),
@@ -146,7 +169,7 @@ export default function AdminDashboard() {
   const handleOrderAction = async (orderId, action) => {
     if (!window.confirm('确定驳回此无效订单吗？')) return;
     try {
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `order:${orderId}:${action}:v1` },
         body: JSON.stringify({ orderId, action })

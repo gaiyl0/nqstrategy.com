@@ -6,6 +6,7 @@ import { FadeInView } from './HomeView';
 import StrategyMetrics from './StrategyMetrics';
 import StrategyComparison from './StrategyComparison';
 import { COMPARISON_MAX, COMPARISON_MIN, parseComparisonState, selectComparison, serializeComparisonState } from '@/lib/strategy-comparison.mjs';
+import { apiFetch } from '@/lib/api-client';
 
 export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handleStartTrial, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
   const [view, setViewInternal] = useState('list'); 
@@ -43,7 +44,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
     window.history.replaceState(null, '', nextUrl);
   }, [compareIds, filters, searchQuery, page, urlReady]);
 
-  useEffect(()=>{if(!urlReady)return;const controller=new AbortController();const params=new URLSearchParams({market:'1',page:String(page),pageSize:'12'});if(searchQuery)params.set('q',searchQuery);for(const [key,value] of Object.entries(filters))if(value!==null&&value!=='')params.set(key,String(value));/* eslint-disable react-hooks/set-state-in-effect */setCatalogStatus('loading');fetch(`/api/products?${params}`,{cache:'no-store',signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'加载失败');setCatalogProducts(data.products);setPagination(data.pagination);if(data.pagination.page!==page)setPage(data.pagination.page);setCatalogStatus('ready');}).catch(error=>{if(error.name!=='AbortError')setCatalogStatus('error');});return()=>controller.abort();},[filters,searchQuery,page,urlReady]);
+  useEffect(()=>{if(!urlReady)return;const controller=new AbortController();const params=new URLSearchParams({market:'1',page:String(page),pageSize:'12'});if(searchQuery)params.set('q',searchQuery);for(const [key,value] of Object.entries(filters))if(value!==null&&value!=='')params.set(key,String(value));/* eslint-disable react-hooks/set-state-in-effect */setCatalogStatus('loading');apiFetch(`/api/products?${params}`,{cache:'no-store',signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'加载失败');setCatalogProducts(data.products);setPagination(data.pagination);if(data.pagination.page!==page)setPage(data.pagination.page);setCatalogStatus('ready');}).catch(error=>{if(error.name!=='AbortError')setCatalogStatus('error');});return()=>controller.abort();},[filters,searchQuery,page,urlReady]);
 
   const setView = (v) => {
     setViewInternal(v);

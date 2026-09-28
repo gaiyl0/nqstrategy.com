@@ -30,7 +30,9 @@
     "test:database-migrations": "node tests/database-migrations.mjs",
     "test:relational-integrity": "node tests/relational-integrity.mjs",
     "test:schema-convergence": "node tests/schema-convergence.mjs",
-    "test:profile-password": "node tests/profile-password-http.mjs"
+    "test:profile-password": "node tests/profile-password-http.mjs",
+    "test:api-client": "node tests/api-client.mjs",
+    "test:frontend-api": "node tests/frontend-api-usage.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

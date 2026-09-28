@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { 
   Activity, Shield, CheckCircle, Upload, Globe, X, Code2, Edit,
   Image as ImageIcon, FileCode, LogOut, User as UserIcon, MessageSquare, Eye, 
@@ -99,12 +100,12 @@ export default function App() {
     if(!resetForm.email || !resetForm.email.includes('@')) return showToast(t('请输入有效的注册邮箱', 'Enter valid email'));
     setIsSendingResetCode(true);
     try {
-      const res = await fetch('/api/send-code', { method: 'POST', body: JSON.stringify({ toEmail: resetForm.email, type: 'reset' }) });
+      const res = await apiFetch('/api/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toEmail: resetForm.email, type: 'reset' }) });
       const data = await res.json();
       if(data.success) { showToast(t('如果该邮箱绑定了账户，重置验证码将发送到该邮箱', 'If an account exists, a reset code will be sent')); }
       else { showToast('❌ ' + data.message); }
-    } catch (e) { showToast(t('发送失败', 'Send failed')); }
-    setIsSendingResetCode(false);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('发送失败', 'Send failed'))}`); }
+    finally { setIsSendingResetCode(false); }
   };
 
   const submitResetPassword = async () => {
@@ -113,7 +114,7 @@ export default function App() {
     }
     setIsResetSubmitting(true);
     try {
-      const res = await fetch('/api/auth/register/password', {
+      const res = await apiFetch('/api/auth/register/password', {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(resetForm) 
@@ -127,11 +128,9 @@ export default function App() {
       } else {
         showToast('❌ ' + (data.message || '重置失败'));
       }
-    } catch (e) {
-      console.error("重置异常:", e);
-      showToast(t('❌ 请求失败，请检查网络或重试', 'Request failed'));
-    }
-    setIsResetSubmitting(false);
+    } catch (error) {
+      showToast(`❌ ${apiErrorMessage(error, t('请求失败，请检查网络或重试', 'Request failed'))}`);
+    } finally { setIsResetSubmitting(false); }
   };
 
   const [profileModal, setProfileModal] = useState(false);
@@ -177,7 +176,7 @@ export default function App() {
 
   const updateUserSession = (newUserData) => { setUser(current => ({ ...current, ...newUserData })); };
   const handleLogout = async () => {
-    try { await fetch('/api/auth/me', { method: 'POST' }); } catch (e) {}
+    try { await apiFetch('/api/auth/me', { method: 'POST' }); } catch (e) {}
     setUser(null);
     setShowUserMenu(false);
     setRoute('home');
@@ -185,13 +184,24 @@ export default function App() {
   };
   const showToast = (msg) => { setToastMsg(msg); setTimeout(() => setToastMsg(''), 3000); };
 
-  const handleFileUpload = async (file) => { const formData = new FormData(); formData.append('file', file); const res = await fetch('/api/upload', { method: 'POST', body: formData }); const data = await res.json(); if (!res.ok || !data.success) throw new Error(data.message || '文件上传失败'); return data.url; };
+  useEffect(() => {
+    const handleApiFailure = (event) => {
+      if (!(event.reason instanceof ApiError)) return;
+      event.preventDefault();
+      setToastMsg(`❌ ${apiErrorMessage(event.reason)}`);
+      setTimeout(() => setToastMsg(''), 3000);
+    };
+    window.addEventListener('unhandledrejection', handleApiFailure);
+    return () => window.removeEventListener('unhandledrejection', handleApiFailure);
+  }, []);
+
+  const handleFileUpload = async (file) => { const formData = new FormData(); formData.append('file', file); const res = await apiFetch('/api/upload', { method: 'POST', body: formData }); const data = await res.json(); if (!res.ok || !data.success) throw new Error(data.message || '文件上传失败'); return data.url; };
   const handleReportUpload = async (file) => {
     if (!file) return;
     setIsParsingReport(true);
     try {
       const formData = new FormData(); formData.append('file', file);
-      const response = await fetch('/api/strategy-report', { method: 'POST', body: formData }); const data = await response.json();
+      const response = await apiFetch('/api/strategy-report', { method: 'POST', body: formData }); const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || 'MT5 报告解析失败');
       const m = data.report.metrics;
       setUploadForm(prev => ({ ...prev, reportId: data.report.id, metrics: {
@@ -209,74 +219,74 @@ export default function App() {
     if(!authForm.email || !authForm.email.includes('@')) return showToast(t('请输入有效的邮箱地址', 'Invalid email address'));
     setIsSendingCode(true);
     try {
-      const res = await fetch('/api/send-code', { method: 'POST', body: JSON.stringify({ toEmail: authForm.email }) });
+      const res = await apiFetch('/api/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toEmail: authForm.email }) });
       const data = await res.json();
       if(data.success) { setSentCode(true); showToast(t('验证码已发送', 'Verification code sent')); } else showToast(data.message);
-    } catch (e) { showToast(t('发送异常', 'Send error')); }
-    setIsSendingCode(false);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('发送异常', 'Send error'))}`); }
+    finally { setIsSendingCode(false); }
   };
 
   const submitRegister = async () => {
     if (!authForm.username || !authForm.email || !authForm.password || !authForm.code) return showToast(t('请填写完整信息', 'Please fill all fields'));
     setIsAuthSubmitting(true);
     try {
-      const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authForm) });
+      const res = await apiFetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authForm) });
       const data = await res.json();
       if (data.success) { updateUserSession(data.user); setAuthModal(null); showToast(t('🎉 注册成功！', '🎉 Registered successfully!')); setAuthForm({ username: '', email: '', password: '', code: '' }); } else showToast(data.message);
-    } catch (e) { showToast(t('请求失败', 'Request failed')); }
-    setIsAuthSubmitting(false);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('请求失败', 'Request failed'))}`); }
+    finally { setIsAuthSubmitting(false); }
   };
 
   const submitLogin = async () => {
     if (!authForm.email || !authForm.password) return showToast(t('请输入账号密码', 'Enter credentials'));
     setIsAuthSubmitting(true);
     try {
-      const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account: authForm.email, password: authForm.password }) });
+      const res = await apiFetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account: authForm.email, password: authForm.password }) });
       const data = await res.json();
       if (data.success) { updateUserSession(data.user); setAuthModal(null); showToast(t(`欢迎回来，${data.user.username}`, `Welcome back, ${data.user.username}`)); } else showToast(data.message);
-    } catch (e) {}
-    setIsAuthSubmitting(false);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('登录失败', 'Login failed'))}`); }
+    finally { setIsAuthSubmitting(false); }
   };
 
   const submitProfileUpdate = async () => {
     if(!profileForm.newUsername.trim()) return showToast(t('用户名不能为空', 'Username required'));
     setIsProfileUpdating(true);
-    let avatar_url = user.avatar_url;
-    if (avatarFile) avatar_url = await handleFileUpload(avatarFile);
     try {
-      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password, ...(profileForm.password?{currentPassword:profileForm.currentPassword}:{}) }) });
+      let avatar_url = user.avatar_url;
+      if (avatarFile) avatar_url = await handleFileUpload(avatarFile);
+      const res = await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password, ...(profileForm.password?{currentPassword:profileForm.currentPassword}:{}) }) });
       const data = await res.json();
       if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(); fetchMyOrders(); } else showToast('❌ ' + data.message);
-    } catch (e) {}
-    setIsProfileUpdating(false);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('资料更新失败', 'Profile update failed'))}`); }
+    finally { setIsProfileUpdating(false); }
   };
 
   const submitWithdrawal = async () => {
     if (!withdrawAddress) return showToast(t('请输入有效的收款地址', 'Please enter a valid crypto address'));
     try {
-      const res = await fetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: withdrawAddress }) });
+      const res = await apiFetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: withdrawAddress }) });
       const data = await res.json();
       if (data.success) {
          showToast(t('✅ 提现申请已提交，等待审核打款！', '✅ Withdrawal submitted, pending approval!'));
          updateUserSession({ balance: 0 }); 
          setWithdrawModal(false); setWithdrawAddress('');
       } else { showToast('❌ ' + data.message); }
-    } catch (e) { showToast(t('请求异常', 'Request error')); }
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('请求异常', 'Request error'))}`); }
   };
 
-  const fetchProducts = () => { fetch(`/api/products?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
-  const fetchForumPosts = (cat = '全部', sort = forumSort) => { fetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
-  const fetchMyOrders = async () => { if (user) { try { const res = await fetch(`/api/orders?t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (e) {} } };
-  const fetchMyLicenses=async()=>{if(user){try{const response=await fetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch{}}};
-  const fetchMySocial=async()=>{if(user){try{const response=await fetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch{}}};
+  const fetchProducts = () => { apiFetch(`/api/products?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
+  const fetchForumPosts = (cat = '全部', sort = forumSort) => { apiFetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
+  const fetchMyOrders = async () => { if (user) { try { const res = await apiFetch(`/api/orders?t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (error) { showToast(`❌ ${apiErrorMessage(error)}`); } } };
+  const fetchMyLicenses=async()=>{if(user){try{const response=await apiFetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
+  const fetchMySocial=async()=>{if(user){try{const response=await apiFetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
 
   useEffect(() => {
     setIsMounted(true);
-    fetch('/api/auth/me', { cache: 'no-store' })
+    apiFetch('/api/auth/me', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setUser(data.success ? data.user : null))
       .catch(() => setUser(null));
-    fetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
+    apiFetch(`/api/settings?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
     fetchForumPosts(); fetchProducts();
   }, []);
 
@@ -317,14 +327,14 @@ export default function App() {
       for (const [evidenceType, file] of Object.entries(evidenceFiles)) {
         if (!file) continue;
         const formData = new FormData(); formData.append('file', file); formData.append('evidenceType', evidenceType);
-        const evidenceResponse = await fetch('/api/evidence', { method: 'POST', body: formData });
+        const evidenceResponse = await apiFetch('/api/evidence', { method: 'POST', body: formData });
         const evidenceData = await evidenceResponse.json();
         if (!evidenceResponse.ok || !evidenceData.success) throw new Error(evidenceData.message || '回测证据上传失败');
         const previous = (uploadForm.id && (uploadForm.evidenceIds || []).find(id => (products.find(p=>p.id===uploadForm.id)?.evidence || []).find(item=>item.id===id)?.type === evidenceType));
         if (previous) evidenceIds.splice(evidenceIds.indexOf(previous), 1);
         evidenceIds.push(evidenceData.evidence.id);
       }
-      const res = await fetch('/api/products', { method: uploadForm.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...uploadForm, evidenceIds, metrics: metricsPayload(uploadForm.metrics), logo_url, file_url, price: uploadForm.price || 0 }) });
+      const res = await apiFetch('/api/products', { method: uploadForm.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...uploadForm, evidenceIds, metrics: metricsPayload(uploadForm.metrics), logo_url, file_url, price: uploadForm.price || 0 }) });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || '策略保存失败');
       showToast(uploadForm.id ? t('🎉 EA 修改成功！已重新进入审核队列。', '🎉 EA Updated! In review.') : t('🎉 EA 发布成功！已进入审核队列。', '🎉 EA Published! In review.'));
@@ -343,7 +353,7 @@ export default function App() {
     if (!user) return setAuthModal('login');
     if (product.price === 0) {
       try {
-        const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product.id }) });
+        const res = await apiFetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product.id }) });
         const data = await res.json();
         if (data.success) { showToast(t('🎉 免费获取成功！已放入您的资产库。', '🎉 Got it for free! Added to your assets.')); await fetchMyOrders(); setRoute('profile'); } else showToast('❌ ' + (data.message || 'Error'));
       } catch (e) { showToast(t('❌ 后端无响应', 'Backend error')); }
@@ -351,22 +361,22 @@ export default function App() {
       showToast(t('付费购买暂未开放，请勿向页面展示的钱包地址转账', 'Paid checkout is unavailable. Do not send funds to displayed wallet addresses.'));
     }
   };
-  const handleStartTrial=async(product)=>{if(!user)return setAuthModal('login');try{const response=await fetch('/api/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start_trial',productId:product.id})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'试用申请失败');showToast(data.replayed?t('ℹ️ 已存在该产品的试用记录','Trial already exists'):t('✅ 试用已开始，请到个人中心绑定账号与设备','Trial started. Bind account and device in Profile'));await fetchMyLicenses();setRoute('profile');}catch(error){showToast('❌ '+error.message);}};
-  const handleSocialAction=async(body)=>{if(!user){setAuthModal('login');return null;}try{const response=await fetch('/api/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'操作失败');showToast(t('✅ 操作已保存','✅ Saved'));await Promise.all([fetchProducts(),fetchMySocial()]);return data;}catch(error){showToast('❌ '+error.message);return null;}};
-  const handleLicenseBind=async(license,bindingType)=>{const value=window.prompt(bindingType==='trading_account'?t('输入 MT4/MT5 数字账号','Enter numeric MT4/MT5 account'):t('输入由 EA 客户端生成的设备指纹（至少 16 字符）','Enter device fingerprint generated by the EA client (16+ chars)'));if(!value)return;const response=await fetch('/api/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bind',licenseId:license.id,bindingType,value})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'绑定失败'));showToast(data.replayed?t('ℹ️ 绑定未变化','Binding unchanged'):t('✅ 绑定已更新，旧令牌已失效','Binding updated; old tokens invalidated'));fetchMyLicenses();};
-  const handleLicenseToken=async(license)=>{const tradingAccount=window.prompt(t('输入已绑定的 MT4/MT5 账号','Enter the bound MT4/MT5 account'));if(!tradingAccount)return;const deviceFingerprint=window.prompt(t('输入已绑定的设备指纹','Enter the bound device fingerprint'));if(!deviceFingerprint)return;const response=await fetch('/api/licenses/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,tradingAccount,deviceFingerprint})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'令牌签发失败'));try{await navigator.clipboard.writeText(data.token);showToast(t('✅ 15 分钟授权令牌已复制','15-minute authorization token copied'));}catch{window.prompt(t('复制授权令牌','Copy authorization token'),data.token);}};
+  const handleStartTrial=async(product)=>{if(!user)return setAuthModal('login');try{const response=await apiFetch('/api/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start_trial',productId:product.id})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'试用申请失败');showToast(data.replayed?t('ℹ️ 已存在该产品的试用记录','Trial already exists'):t('✅ 试用已开始，请到个人中心绑定账号与设备','Trial started. Bind account and device in Profile'));await fetchMyLicenses();setRoute('profile');}catch(error){showToast('❌ '+error.message);}};
+  const handleSocialAction=async(body)=>{if(!user){setAuthModal('login');return null;}try{const response=await apiFetch('/api/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'操作失败');showToast(t('✅ 操作已保存','✅ Saved'));await Promise.all([fetchProducts(),fetchMySocial()]);return data;}catch(error){showToast('❌ '+error.message);return null;}};
+  const handleLicenseBind=async(license,bindingType)=>{const value=window.prompt(bindingType==='trading_account'?t('输入 MT4/MT5 数字账号','Enter numeric MT4/MT5 account'):t('输入由 EA 客户端生成的设备指纹（至少 16 字符）','Enter device fingerprint generated by the EA client (16+ chars)'));if(!value)return;const response=await apiFetch('/api/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bind',licenseId:license.id,bindingType,value})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'绑定失败'));showToast(data.replayed?t('ℹ️ 绑定未变化','Binding unchanged'):t('✅ 绑定已更新，旧令牌已失效','Binding updated; old tokens invalidated'));fetchMyLicenses();};
+  const handleLicenseToken=async(license)=>{const tradingAccount=window.prompt(t('输入已绑定的 MT4/MT5 账号','Enter the bound MT4/MT5 account'));if(!tradingAccount)return;const deviceFingerprint=window.prompt(t('输入已绑定的设备指纹','Enter the bound device fingerprint'));if(!deviceFingerprint)return;const response=await apiFetch('/api/licenses/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,tradingAccount,deviceFingerprint})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'令牌签发失败'));try{await navigator.clipboard.writeText(data.token);showToast(t('✅ 15 分钟授权令牌已复制','15-minute authorization token copied'));}catch{window.prompt(t('复制授权令牌','Copy authorization token'),data.token);}};
 
   const submitVersion=async()=>{
     if(!versionModal||!versionFile||!versionForm.version||versionForm.releaseNotes.trim().length<3)return showToast(t('请填写版本号、更新日志并选择程序文件','Enter a version, release notes, and program file'));
     setIsVersionSubmitting(true);
-    try{const fileUrl=await handleFileUpload(versionFile);const response=await fetch('/api/versions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:versionModal.id,fileUrl,...versionForm})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'版本提交失败');showToast(t('✅ 新版本已提交管理员审核','✅ Version submitted for review'));setVersionModal(null);setVersionFile(null);setVersionForm({version:'',releaseNotes:'',upgradePolicy:'all_existing'});fetchProducts();}catch(error){showToast('❌ '+error.message);}finally{setIsVersionSubmitting(false);}
+    try{const fileUrl=await handleFileUpload(versionFile);const response=await apiFetch('/api/versions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:versionModal.id,fileUrl,...versionForm})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'版本提交失败');showToast(t('✅ 新版本已提交管理员审核','✅ Version submitted for review'));setVersionModal(null);setVersionFile(null);setVersionForm({version:'',releaseNotes:'',upgradePolicy:'all_existing'});fetchProducts();}catch(error){showToast('❌ '+error.message);}finally{setIsVersionSubmitting(false);}
   };
 
   const handleSecureDownload = async (productId, title, versionId = null) => {
     if (!user) return showToast(t('❌ 身份已过期', 'Session expired'));
     showToast(t('🔒 正在发起防盗版鉴权...', '🔒 Authenticating...'));
     try {
-      const res = await fetch(`/api/download?productId=${productId}${versionId?`&versionId=${versionId}`:''}`);
+      const res = await apiFetch(`/api/download?productId=${productId}${versionId?`&versionId=${versionId}`:''}`);
       if (!res.ok) { const text = await res.text(); showToast(`❌ ${t('拦截', 'Blocked')}: ${text}`); return; }
       const disposition = res.headers.get('Content-Disposition');
       let ext = '.ex5'; 
@@ -380,40 +390,40 @@ export default function App() {
 
   const handleDeleteMyEA = async (id, title) => {
     if (!window.confirm(t(`确定删除策略 [${title}] 吗？`, `Delete EA [${title}]?`))) return;
-    try { await fetch(`/api/products?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 删除成功', '✅ Deleted')); fetchProducts(); await fetchMyOrders(); } catch (e) {}
+    try { await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 删除成功', '✅ Deleted')); fetchProducts(); await fetchMyOrders(); } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('删除失败', 'Delete failed'))}`); }
   };
 
   const submitPost = async () => {
     if(!newPost.title || !newPost.content) return showToast(t('标题和内容不能为空', 'Required'));
-    await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, category: newPost.category || categories[1] }) });
+    await apiFetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, category: newPost.category || categories[1] }) });
     showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory); setNewPost({ title: '', category: categories[1], content: '' });
   };
 
   const openPostDetail = async (post) => { 
-    setSelectedPost(post); setForumView('detail'); setComments([]); fetch(`/api/posts?viewId=${post.id}&t=${Date.now()}`, { cache: 'no-store' });
-    const res = await fetch(`/api/comments?postId=${post.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
+    setSelectedPost(post); setForumView('detail'); setComments([]); apiFetch(`/api/posts?viewId=${post.id}&t=${Date.now()}`, { cache: 'no-store' });
+    const res = await apiFetch(`/api/comments?postId=${post.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
   };
 
   const submitComment = async () => {
     if (!user) return setAuthModal('login');
     if (!commentInput.trim()) return;
     setIsCommenting(true);
-    await fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: selectedPost.id, content: commentInput }) });
+    await apiFetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: selectedPost.id, content: commentInput }) });
     showToast(t('回复成功！', 'Replied!')); setCommentInput('');
-    const res = await fetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
+    const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
     setIsCommenting(false);
   };
 
-  const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!window.confirm(t('确定永久删除此贴？', 'Delete this post?'))) return; await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory); };
-  const handleDeleteComment = async (id) => { if(!window.confirm(t('确定删除评论？', 'Delete comment?'))) return; await fetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await fetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
-  const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await fetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory); };
-  const handlePinComment = async (id, is_pinned) => { await fetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await fetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!window.confirm(t('确定永久删除此贴？', 'Delete this post?'))) return; await apiFetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory); };
+  const handleDeleteComment = async (id) => { if(!window.confirm(t('确定删除评论？', 'Delete comment?'))) return; await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await apiFetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory); };
+  const handlePinComment = async (id, is_pinned) => { await apiFetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
   const handleReport = async (targetType, targetId) => {
     if (!user) return setAuthModal('login');
     const reason = window.prompt(t('举报原因：spam / fraud / abuse / copyright / dangerous / other', 'Reason: spam / fraud / abuse / copyright / dangerous / other'), 'other');
     if (!reason) return;
     const details = window.prompt(t('请补充举报说明（可选，最多 1000 字）', 'Optional details, up to 1000 characters'), '') ?? '';
-    const response = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetType, targetId, reason: reason.trim().toLowerCase(), details }) });
+    const response = await apiFetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetType, targetId, reason: reason.trim().toLowerCase(), details }) });
     const data = await response.json();
     showToast(response.ok && data.success ? (data.report?.replayed ? t('ℹ️ 该举报正在处理中', 'Report already pending') : t('✅ 举报已提交，等待管理员审核', 'Report submitted for review')) : `❌ ${data.message || t('举报失败', 'Report failed')}`);
   };
