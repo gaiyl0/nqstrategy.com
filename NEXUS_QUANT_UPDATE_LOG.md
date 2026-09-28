@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
-最后更新：2026-09-28  
-当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 至 P3-003 已完成；P3-004 本地工程完成，远程仓库与生产现场项待执行
+最后更新：2026-09-29
+当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 至 P3-003 已完成；P3-004 已连接远程 Git 并推送功能分支，分支保护与生产现场项待执行
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -29,7 +29,7 @@ feature/p3-004-release-engineering
 最近功能提交：
 
 ```text
-d236891 feat: add release engineering and recovery tooling
+11d3ace fix: restore extracted view callbacks
 ```
 
 数据库迁移状态：
@@ -48,6 +48,7 @@ foreign_key_violations=0
 - 文档链接、状态分类、命令引用和旧文案专项检查共 55 个断言通过；
 - 全仓 ESLint 以退出码 0 完成，0 errors / 0 warnings；
 - Git 仓库已经建立；
+- 远程仓库 `https://github.com/gaiyl0/eashop.git` 已连接，`feature/p3-004-release-engineering` 已推送；
 - SQLite 当前只允许单实例部署；
 - 真实付费入口保持关闭。
 
@@ -122,11 +123,10 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 ### P3-004：CI、远程 Git、备份恢复和部署文档（进行中）
 
-已完成本地工程：GitHub Actions 工作流、统一测试入口、健康检查、一致性备份/恢复工具、部署/监控/恢复手册、真实支付教程和一次本机隔离恢复演练。
+已完成：GitHub Actions 工作流、统一测试入口、健康检查、一致性备份/恢复工具、部署/监控/恢复手册、真实支付教程、本机隔离恢复演练，以及远程仓库连接和功能分支首次推送。
 
 仍需外部与生产现场完成：
 
-- 当前 `git remote -v` 为空，且本机没有可用 GitHub CLI；需要项目所有者提供或创建远程仓库后执行首次推送；
 - 在远程仓库把 Actions `verify` 设置为 `main` 的 required status check，并启用 PR、审批、禁止强推和禁止删除；
 - 在目标服务器配置 systemd、Nginx、HTTPS、防火墙、监控和告警；
 - 配置加密异地备份、对象锁/版本控制、保留策略和定时任务；
@@ -163,17 +163,50 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 5. ✅ **P3-001：修复剩余 ESLint errors**；
 6. ✅ **P3-002：拆分 `app/page.js`**；
 7. ✅ **P3-003：图片和加载性能优化**；
-8. 🟡 **P3-004：本地工程完成，远程仓库与生产现场项待执行**；
+8. 🟡 **P3-004：远程 Git 和功能分支已完成，分支保护与生产现场项待执行**；
 9. **真实付费任务组：仅在项目所有者决定启用真实资金时启动**。
 
 ## 当前下一项
 
 ```text
-P3-004：完成远程仓库、分支保护和生产现场验收
-状态：本地工程已完成；等待远程仓库 URL/账户侧配置与目标服务器现场执行
+P3-004：完成 `main` 分支保护和生产现场验收
+状态：远程 Git 已连接，功能分支已推送；待 GitHub 账户侧保护规则与目标服务器现场执行
 ```
 
 ## 更新记录
+
+### 2026-09-29：页面白屏回归修复与远程 Git 接入
+
+状态：**代码修复和远程分支推送已完成**
+
+功能提交：`11d3ace fix: restore extracted view callbacks`
+
+远程合并提交：`d5256a7 Merge remote-tracking branch 'origin/main' into feature/p3-004-release-engineering`
+
+原问题与根因：P3-002 拆分页面后，`ProfileView` 的父组件仍传入不存在的 `handleDownload`，子组件却直接调用未声明的 `handleSecureDownload`、`handleLicenseBind`、`handleLicenseToken` 和 `showToast`，导致首页渲染时发生 `ReferenceError` 并白屏。同类检查又发现 `ForumView` 缺失 `products`、置顶和举报回调，以及首页残留的 `setToastMsg` 调用；这些会在进入论坛详情或初始资产请求失败时引发新的运行时错误。
+
+完成内容：
+
+- `ProfileView` 改为显式接收并使用实际的安全下载、许可证绑定、令牌签发和 Toast 回调；删除虚假的 `handleDownload` 别名；
+- `ForumView` 显式接收产品列表、帖子/评论置顶与举报回调，父组件同步传入；
+- 初始资产加载失败改为调用 `useToast()` 提供的 `showToast`；
+- ESLint 新增 JavaScript `no-undef` 强制规则和明确的浏览器/Node 全局变量集，后续未声明识别符直接阻断验证；
+- 结构回归增加 Profile 和 Forum 必需属性、旧别名和旧 Toast setter 不得回归的断言；
+- 清理损坏的 `.next` 可再生缓存后重启，首页实测 HTTP 200、响应 52,659 字节，`/api/health` 实测 HTTP 200 且状态为 `ready`；
+- 连接 `origin=https://github.com/gaiyl0/eashop.git`，读取到远程 `main` 仅有一个 README 初始提交；不改写远程历史，先推送功能分支，再把远程初始提交合入功能分支，保留项目完整 README，使两条历史具有共同祖先并可创建 PR。
+
+验收结果：
+
+```text
+首页：HTTP 200，不含 Runtime ReferenceError/handleDownload is not defined
+健康接口：HTTP 200，status=ready
+全部测试：25/25 test scripts passed
+ESLint：0 errors / 0 warnings
+Next.js 16.3.5 生产构建：通过，8/8 静态页生成，全部动态路由收集通过
+Git 远程：origin 已配置，feature/p3-004-release-engineering 已推送并跟踪远程
+```
+
+未完成项：GitHub `main` 的 Pull Request/required check/审批/禁止强推与删除保护规则尚未在账户侧配置；目标服务器部署、监控、异地备份与生产恢复演练仍待执行。P3-004 因此保持“进行中”。
 
 ### 2026-09-28：P3-004 本地发布工程、恢复演练与支付教程
 
@@ -197,7 +230,7 @@ P3-004：完成远程仓库、分支保护和生产现场验收
 
 完整验证：25 个 `test:*` 脚本全部通过；文档测试扩展到 15 个文件、78 个断言；API 审计 25 个路由、132 个断言；全仓 ESLint 0 errors / 0 warnings；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面和全部动态 API 路由收集通过；`git diff --check` 通过。
 
-未完成原因与下一步：当前仓库没有远程 URL，本机也没有 GitHub CLI，无法代表项目所有者创建账户资源或设置 GitHub 分支保护。目标服务器同样尚未提供，因此不能伪造 systemd、Nginx、HTTPS、监控、异地加密备份和生产恢复证据。提供远程仓库 URL 后可继续首次推送和账户侧清单；取得目标服务器后按运维手册完成现场验收。P3-004 在这些证据完成前保持“进行中”。
+未完成原因与下一步：远程 URL 已于 2026-09-29 配置，功能分支已推送；详见上方最新记录。还需在 GitHub 账户侧设置 `main` 分支保护。目标服务器尚未提供，因此不能伪造 systemd、Nginx、HTTPS、监控、异地加密备份和生产恢复证据。P3-004 在这些证据完成前保持“进行中”。
 
 ### 2026-09-28：P3-003 图片和加载性能优化
 
