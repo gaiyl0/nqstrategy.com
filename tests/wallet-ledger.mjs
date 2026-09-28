@@ -17,7 +17,7 @@ try {
     VALUES (?, ?, ?, 'test-hash', ?)
   `);
   const adminId = Number(insertUser.run('admin', 'admin@example.test', 'admin', 0).lastInsertRowid);
-  const userId = Number(insertUser.run('trader', 'trader@example.test', 'user', 500).lastInsertRowid);
+  const userId = Number(withWalletMaintenance(() => insertUser.run('trader', 'trader@example.test', 'user', 500)).lastInsertRowid);
 
   const {
     applyWalletDelta,
