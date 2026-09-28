@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-29
-当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 至 P3-003 已完成；P3-004 已连接远程 Git 并推送功能分支，分支保护与生产现场项待执行
+当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 至 P3-003 已完成；P3-004 已连接远程 Git，生产现场项待执行；全站 UI 改造已启动，UI-DESIGN-001 已完成
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/p3-004-release-engineering
+feature/ui-redesign
 ```
 
 最近功能提交：
 
 ```text
-11d3ace fix: restore extracted view callbacks
+e63e32c feat: add Nexus Quant UI foundation
 ```
 
 数据库迁移状态：
@@ -51,6 +51,21 @@ foreign_key_violations=0
 - 远程仓库 `https://github.com/gaiyl0/eashop.git` 已连接，`feature/p3-004-release-engineering` 已推送；
 - SQLite 当前只允许单实例部署；
 - 真实付费入口保持关闭。
+
+## 全站 UI 改造（进行中）
+
+| ID | 内容 | 状态 |
+|---|---|---|
+| UI-DESIGN-001 | 设计令牌与基础组件 | ✅ 已完成 |
+| UI-DESIGN-002 | 替换原生 `alert` / `confirm` / `prompt` 与统一反馈 | 🟡 下一项 |
+| UI-DESIGN-003 | 重构首页 | ⏳ 待执行 |
+| UI-DESIGN-004 | 重构策略市场 | ⏳ 待执行 |
+| UI-DESIGN-005 | 重构个人中心 | ⏳ 待执行 |
+| UI-DESIGN-006 | 重构开发者社区 | ⏳ 待执行 |
+| UI-DESIGN-007 | 重构后台管理与增加运营视图 | ⏳ 待执行 |
+| UI-DESIGN-008 | 中英文、桌面/平板/手机、可访问性与视觉验收 | ⏳ 待执行 |
+
+数据展示约束：首页策略图表只读取站内已解析并通过审核的 MT5 报告/证据；没有合格产品时显示空状态。顶部行情属于独立数据源任务，未接入有授权的实时/延迟行情前不显示虚构价格；未建立持续实盘同步时不标记“实盘运行中”。
 
 ## P0：已完成
 
@@ -169,11 +184,42 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-P3-004：完成 `main` 分支保护和生产现场验收
-状态：远程 Git 已连接，功能分支已推送；待 GitHub 账户侧保护规则与目标服务器现场执行
+UI-DESIGN-002：替换原生 alert / confirm / prompt 并统一反馈交互
+状态：UI-DESIGN-001 已完成；等待项目所有者确认后开始
 ```
 
 ## 更新记录
+
+### 2026-09-29：UI-DESIGN-001 设计令牌与基础组件
+
+状态：**已完成，等待项目所有者验收**
+
+提交：`e63e32c feat: add Nexus Quant UI foundation`
+
+原问题：页面大量直接组合 Tailwind 颜色、边框、圆角和阴影，没有全站设计令牌；按钮、表单、状态标签、空状态、对话框和抽屉缺少统一实现，后续分页改造容易再次出现风格分裂。
+
+完成内容：
+
+- 在 `app/globals.css` 建立背景、面板、边框、文字、品牌色、语义色、圆角、阴影和焦点环设计令牌；
+- 增加全局深色背景、可选网格表面、表格数字排版、键盘焦点和 `prefers-reduced-motion` 无障碍策略；
+- 新增 `Button`、`Panel`、`Badge`、`Field`、`Tabs`、`EmptyState`、`Skeleton` 和 `Notice` 基础组件；
+- 新增可共用 `Dialog` 与 `Drawer`，实现遮罩、Escape 关闭、背景滚动锁定、初始焦点、Tab 焦点循环和关闭后焦点恢复；
+- 表单组件统一 label、必填状态、辅助说明、字段错误和 `aria-describedby`/`aria-invalid`；
+- 新增 `test:ui-design`，防止设计令牌、核心组件、Dialog 语义、Escape 交互和减少动画策略回归。
+
+验收结果：
+
+```text
+UI 设计系统专项测试：通过
+完整回归：26/26 test scripts passed
+ESLint：0 errors / 0 warnings
+Next.js 16.3.5 生产构建：通过
+静态页生成：8/8
+```
+
+测试中数据库并发迁移用例曾在两个进程同时设置 SQLite pragma 时瞬时返回一次 `SQLITE_BUSY`；单独复跑通过，随后完整 26 套回归通过，未修改数据库代码。
+
+下一项问题与验收标准：UI-DESIGN-002 将清点并替换用户端和管理端的原生 `alert`、`confirm` 和 `prompt`。验收要求为项目源码不再使用这三类原生白色弹框；危险操作包含影响说明和明确二次确认；输入弹窗具备 label、校验、加载和错误状态；键盘焦点、Escape 关闭与读屏语义通过自动检查。
 
 ### 2026-09-29：页面白屏回归修复与远程 Git 接入
 
