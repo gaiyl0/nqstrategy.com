@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-28  
-当前状态：P0 安全封堵完成；P1 已完成至 NQ-P1-014；P2 计划功能完成；P3 尚待处理
+当前状态：P0 安全封堵完成；P1 已完成至 NQ-P1-015；P2 计划功能完成；P3 尚待处理
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/p1-014-api-client
+feature/p1-015-api-errors
 ```
 
 最近功能提交：
 
 ```text
-104f25a feat: unify frontend api error handling
+a7701df feat: contain api exception details
 ```
 
 数据库迁移状态：
@@ -44,8 +44,8 @@ foreign_key_violations=0
 工程验证状态：
 
 - Next.js 16.3.5 生产构建通过；
-- 19 个 `test:*` 脚本全部通过；
-- 新增 API 客户端与前端接入测试共 36 个断言通过；
+- 21 个 `test:*` 脚本全部通过；
+- API 错误边界与全路由审计专项测试共 150 个断言通过；
 - 全仓 ESLint 剩余 4 个既有 errors 和 26 个 warnings，列入 P3-001；
 - Git 仓库已经建立；
 - SQLite 当前只允许单实例部署；
@@ -88,6 +88,7 @@ P0 的“完成”不代表真实支付系统已经完成。NQ-P0-008 的完成�
 | NQ-P1-012 | 用户表 Schema 收敛 | 邮箱、密码、角色、布尔值、余额、会话和大小写不敏感唯一性约束统一；实际用户逐字段保留 |
 | NQ-P1-013 | 主动改密二次身份确认 | 修改密码必须验证当前密码；双层限流、签名审计、条件更新和会话版本撤销已通过真实 HTTP 回归 |
 | NQ-P1-014 | 统一前端 API 客户端和失败提示 | 非 2xx、`success:false`、网络及响应格式错误统一阻止成功流程；管理失败、下载、multipart 和取消请求边界通过回归 |
+| NQ-P1-015 | 全 API 错误泄漏审计 | 24 个路由、51 个 HTTP 方法统一异常边界；未知错误只返回通用 500 与请求 ID，脱敏诊断仅进入签名审计 |
 
 ### P1 已完成但需要部署现场验收
 
@@ -118,18 +119,6 @@ P0 的“完成”不代表真实支付系统已经完成。NQ-P0-008 的完成�
 P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、分享爬虫、移动设备和大数据量性能，但当前没有已知未通过的 P2 核心代码验收项。
 
 ## 明确未完成
-
-### NQ-P1-015：全 API 错误泄漏审计
-
-问题：products/posts/comments 已使用受控错误响应，但其余 Route Handler 尚未形成全项目证明，可能存在把 SQL、路径、堆栈或第三方错误正文返回客户端的分支。
-
-验收标准：
-
-- 枚举全部 API 路由和异常出口；
-- 预期业务错误返回稳定 4xx 代码与安全文案；
-- 未知异常只返回通用 500 和请求关联 ID；
-- 详细错误只进入服务端签名审计，不记录密码、验证码、令牌或 Secret；
-- 加入错误注入测试，证明 SQL、文件路径和堆栈不出现在响应中。
 
 ### NQ-DOC-001：收敛状态和上线文档
 
@@ -195,7 +184,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 1. ✅ **NQ-P1-013：主动改密要求当前密码或二次验证**；
 2. ✅ **NQ-P1-014：统一前端 API 客户端和失败提示**；
-3. **NQ-P1-015：全 API 错误泄漏审计**；
+3. ✅ **NQ-P1-015：全 API 错误泄漏审计**；
 4. **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
 5. **P3-001：修复剩余 ESLint errors**；
 6. **P3-002：拆分 `app/page.js`**；
@@ -206,11 +195,57 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-NQ-P1-015：全 API 错误泄漏审计
+NQ-DOC-001：收敛状态和上线文档中的过时内容
 状态：尚未开始，等待项目所有者确认启动
 ```
 
 ## 更新记录
+
+### 2026-09-28：NQ-P1-015 全 API 错误泄漏审计
+
+状态：**已完成，等待项目所有者验收**
+提交：`a7701df feat: contain api exception details`
+
+原问题：既有路由多数已经使用受控业务错误文案，但错误防护依赖各处理函数内部的局部 `try/catch`。鉴权、限流、输入解析之前的异常可能绕过局部保护；不同 Route Handler 的未知 500 没有统一响应结构和请求关联 ID；管理员审计 API 还会原样返回完整性与健康对象，失败时可能暴露内部错误文本，新加入的异常诊断也可能随审计列表返回浏览器。
+
+接口与风险清单：
+
+- 认证与账号：`/api/auth/login`、`/api/auth/me`、`/api/auth/register`、`/api/auth/register/password`、`/api/send-code`、`/api/users`；
+- 交易与资产：`/api/orders`、`/api/withdraw`、`/api/download`、`/api/licenses`、`/api/licenses/token`、`/api/licenses/verify`；
+- 产品与证据：`/api/products`、`/api/upload`、`/api/strategy-report`、`/api/evidence`、`/api/versions`、`/api/verifications`；
+- 社区：`/api/posts`、`/api/comments`、`/api/social`、`/api/reports`；
+- 管理与配置：`/api/settings`、`/api/audit`。
+
+共计 24 个 Route Handler 文件、51 个 GET/POST/PATCH/DELETE 方法，全部纳入静态清单和统一边界。风险类型覆盖 SQL/约束错误、文件绝对路径、上传与第三方服务异常、堆栈、密码/验证码/令牌/Secret、未经处理的非 Error 抛出值和无效 Route Handler 返回值。
+
+完成内容：
+
+- 新增 `lib/api-errors.js`，提供所有 Route Handler 共用的 `withApiErrors()` 最外层异常边界；
+- 24 个 API 路由的 51 个 HTTP 方法全部由私有 Handler 改为包装后导出，鉴权、限流、解析、数据库和业务逻辑任意位置的未捕获异常都会被安全边界接管；
+- 未知异常统一返回 HTTP 500、`success:false`、稳定代码 `INTERNAL_ERROR`、通用文案“服务暂时异常，请稍后重试”和 UUID 请求 ID；
+- 请求 ID同时进入 JSON、`X-Request-ID` 响应头和服务端签名审计；所有成功及业务错误响应在缺少关联 ID 时也由边界补齐；
+- 未知异常响应设置 `Cache-Control: no-store`，避免错误内容被缓存；
+- 异常名称、稳定错误类型、脱敏诊断和堆栈 SHA-256 摘要写入 `api.internal_error` HMAC 签名审计记录，不把原始堆栈写入响应；
+- 诊断脱敏会移除密码、令牌、Secret、验证码值、Windows/Unix 绝对路径和 SQL 字符串字面量；
+- 移除 Route Handler 中包含原始异常对象的 `console.error`，避免未签名日志保存路径、SQL、堆栈或敏感值；控制台只保留请求 ID、方法和路由用于关联；
+- 修正举报处理：仅映射明确的 `REPORT_NOT_FOUND` 与 `TARGET_NOT_FOUND` 为安全 404，未知异常交给统一 500 边界，不再误报为业务冲突；
+- 修复新发现的 `/api/audit` 泄漏点：完整性和健康信息改为公开安全视图，不返回内部错误、链头哈希、密钥标识或 `lastError`；`api.internal_error` 记录通过管理 API读取时也会删除诊断文本和堆栈摘要；
+- 将 `lib/security.js` 的 ESM 导入补齐扩展名，支持独立运行错误注入回归，同时保持 Next.js 构建兼容；
+- 新增 `tests/api-error-boundary.mjs` 和 `tests/api-error-audit.mjs`，登记 `test:api-errors` 与 `test:api-error-audit`。
+
+错误注入与静态审计：
+
+```text
+API error boundary: 22 assertions passed
+API route error audit: 24 routes, 128 assertions passed
+合计：150 assertions passed
+```
+
+专项测试证明 SQL 文本、Windows 路径、密码值、令牌值和堆栈不进入响应；响应请求 ID 与审计请求 ID一致；审计诊断完成脱敏；内部异常记录进入追加写保护的 HMAC 签名链；篡改检查保持有效；所有路由均无裸导出 Handler、无原始异常响应、无包含异常对象的 `console.error`；审计管理 API 不返回内部诊断。
+
+完整验证：21 个 `test:*` 脚本全部通过；任务修改范围定向 ESLint 退出码 0；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面及全部动态 API 路由收集通过。全仓 ESLint 仍为 4 个既有 errors 和 26 个 warnings，继续由 P3-001 处理。
+
+验收结论：预期业务错误继续使用稳定 4xx 与安全文案；所有未知异常由统一边界返回通用 500 和请求 ID；SQL、路径、堆栈及敏感凭据不会出现在响应或未签名控制台日志；脱敏诊断只保存在服务器签名审计链，并且管理员 API 也不回传诊断详情。下一项为 NQ-DOC-001。
 
 ### 2026-09-28：NQ-P1-014 统一前端 API 客户端和失败提示
 
