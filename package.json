@@ -2,6 +2,7 @@
   "name": "nexus-quant",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,6 +11,7 @@
     "audit:verify": "node scripts/audit-maintenance.mjs verify",
     "audit:archive": "node scripts/audit-maintenance.mjs archive",
     "upload:cleanup": "node scripts/upload-maintenance.mjs",
+    "db:migrate": "node scripts/db-migrate.mjs",
     "ledger:verify": "node scripts/ledger-maintenance.mjs",
     "test:ledger": "node tests/wallet-ledger.mjs",
     "test:ledger:http": "node tests/wallet-ledger-http.mjs",
@@ -23,7 +25,8 @@
     "test:social": "node tests/social.mjs",
     "test:market-catalog": "node tests/market-catalog.mjs",
     "test:content-moderation": "node tests/content-moderation.mjs",
-    "test:product-slug": "node tests/product-slug.mjs"
+    "test:product-slug": "node tests/product-slug.mjs",
+    "test:database-migrations": "node tests/database-migrations.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
