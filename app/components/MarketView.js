@@ -1,25 +1,30 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Box, Download, FolderDown, ArrowLeft, CheckCircle2, TrendingUp, ShieldAlert, Cpu, ChevronRight, Filter, Columns3, Heart, Star, UserPlus, ExternalLink } from 'lucide-react';
-import { FadeInView } from './HomeView'; 
+import { Box, Download, FolderDown, ArrowLeft, ArrowRight, CheckCircle2, TrendingUp, ShieldAlert, Cpu, ChevronRight, Filter, Columns3, Heart, Star, UserPlus, ExternalLink } from 'lucide-react';
+import { FadeInView } from './HomeView';
 import StrategyMetrics from './StrategyMetrics';
 import StrategyComparison from './StrategyComparison';
 import { COMPARISON_MAX, COMPARISON_MIN, parseComparisonState, selectComparison, serializeComparisonState } from '@/lib/strategy-comparison.mjs';
 import { apiFetch } from '@/lib/api-client';
-import { useInteraction } from './ui/UiKit';
+import { Badge, Button, EmptyState, Panel, Skeleton, useInteraction } from './ui/UiKit';
+
+const metricNumber = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—';
+const curvePath = points => { if (!Array.isArray(points) || points.length < 2) return ''; const values = points.map(point => Number(point.value)).filter(Number.isFinite); if (values.length < 2) return ''; const min = Math.min(...values); const range = Math.max(...values) - min || 1; return values.map((value, index) => `${index ? 'L' : 'M'} ${(index / (values.length - 1) * 300).toFixed(1)} ${(72 - ((value - min) / range * 60) - 6).toFixed(1)}`).join(' '); };
+const verificationLabel = (level, t) => ({ live_verified:t('实盘验证','Live verified'), platform_rerun:t('平台复跑','Platform rerun'), reproducible_backtest:t('可复现回测','Reproducible'), report_verified:t('MT5 报告已验证','MT5 report verified'), screenshot_reviewed:t('截图已审核','Screenshots reviewed'), unverified:t('未认证','Unverified') }[level || 'unverified']);
 
 export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handleStartTrial, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
   const { requestInput } = useInteraction();
-  const [view, setViewInternal] = useState('list'); 
+  const [view, setViewInternal] = useState('list');
   const [selectedEA, setSelectedEAInternal] = useState(null);
-  
+
   const [filters, setFilters] = useState({ pair: '', type: '', verification: '', maxDrawdown: null, maxPrice: null });
   const [searchQuery,setSearchQuery]=useState('');
   const [page,setPage]=useState(1);
   const [catalogProducts,setCatalogProducts]=useState(products);
   const [pagination,setPagination]=useState({page:1,pageSize:12,total:products.length,totalPages:1});
   const [catalogStatus,setCatalogStatus]=useState('idle');
+  const [retryKey,setRetryKey]=useState(0);
   const [compareIds, setCompareIds] = useState([]);
   const [showComparison, setShowComparison] = useState(false);
   const [urlReady, setUrlReady] = useState(false);
@@ -46,7 +51,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
     window.history.replaceState(null, '', nextUrl);
   }, [compareIds, filters, searchQuery, page, urlReady]);
 
-  useEffect(()=>{if(!urlReady)return;const controller=new AbortController();const params=new URLSearchParams({market:'1',page:String(page),pageSize:'12'});if(searchQuery)params.set('q',searchQuery);for(const [key,value] of Object.entries(filters))if(value!==null&&value!=='')params.set(key,String(value));/* eslint-disable react-hooks/set-state-in-effect */setCatalogStatus('loading');apiFetch(`/api/products?${params}`,{cache:'no-store',signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'加载失败');setCatalogProducts(data.products);setPagination(data.pagination);if(data.pagination.page!==page)setPage(data.pagination.page);setCatalogStatus('ready');}).catch(error=>{if(error.name!=='AbortError')setCatalogStatus('error');});return()=>controller.abort();},[filters,searchQuery,page,urlReady]);
+  useEffect(()=>{if(!urlReady)return;const controller=new AbortController();const params=new URLSearchParams({market:'1',page:String(page),pageSize:'12'});if(searchQuery)params.set('q',searchQuery);for(const [key,value] of Object.entries(filters))if(value!==null&&value!=='')params.set(key,String(value));/* eslint-disable react-hooks/set-state-in-effect */setCatalogStatus('loading');apiFetch(`/api/products?${params}`,{cache:'no-store',signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'加载失败');setCatalogProducts(data.products);setPagination(data.pagination);if(data.pagination.page!==page)setPage(data.pagination.page);setCatalogStatus('ready');}).catch(error=>{if(error.name!=='AbortError')setCatalogStatus('error');});return()=>controller.abort();},[filters,searchQuery,page,urlReady,retryKey]);
 
   const setView = (v) => {
     setViewInternal(v);
@@ -71,29 +76,28 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
 
   if (view === 'list') {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-in fade-in duration-300">
+      <div className="nq-grid-surface mx-auto min-h-screen max-w-[1480px] px-4 py-10 sm:px-6 lg:px-8 animate-in fade-in duration-300">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h2 className="text-3xl font-extrabold text-white flex items-center gap-3"><Box className="w-8 h-8 text-cyan-400" /> {t('EA 策略市场', 'EA Strategy Market')}</h2>
-            <p className="text-zinc-500 mt-2 text-sm">{t('发现、回测并部署全球顶级开发者的高性能算法', 'Discover, backtest, and deploy high-performance algorithms from top developers')}</p>
+            <div className="mb-2 flex items-center gap-2"><Badge variant="primary">{t('认证与风险透明','Verified and risk-aware')}</Badge><span className="text-xs text-slate-600 nq-number">{pagination.total} {t('项策略','strategies')}</span></div>
+            <h2 className="text-3xl font-extrabold text-white flex items-center gap-3"><Box className="w-8 h-8 text-cyan-400" /> {t('策略市场', 'Strategy Market')}</h2>
+            <p className="text-slate-500 mt-2 text-sm">{t('按 MT5 报告、认证等级和风险指标筛选策略。', 'Discover strategies through MT5 reports, verification levels and risk metrics.')}</p>
           </div>
-          <button onClick={() => { if (!user) return setAuthModal('login'); setRoute('upload'); }} className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold flex items-center gap-2 text-sm shadow-[0_0_15px_rgba(8,145,178,0.4)] transition-all shrink-0">
-             {t('发布我的策略', 'Publish My EA')}
-          </button>
+          <Button variant="primary" size="lg" onClick={() => { if (!user) return setAuthModal('login'); setRoute('upload'); }}>{t('发布我的策略', 'Publish my strategy')}<ArrowRight className="h-4 w-4" /></Button>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 md:grid-cols-6">
+        <Panel className="mb-5 grid grid-cols-2 gap-3 p-4 md:grid-cols-6">
           <input value={searchQuery} onChange={event=>{setSearchQuery(event.target.value.slice(0,100));setPage(1);}} placeholder={t('搜索名称、作者、品种、类型','Search name, author, pair, type')} aria-label={t('搜索策略','Search strategies')} className="col-span-2 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300 md:col-span-2" />
           <select value={filters.pair} onChange={event => updateFilter('pair', event.target.value)} aria-label={t('交易品种筛选', 'Pair filter')} className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300"><option value="">{t('全部品种', 'All pairs')}</option>{pairs.map(pair => <option key={pair} value={pair}>{pair}</option>)}</select>
           <select value={filters.verification} onChange={event => updateFilter('verification', event.target.value)} aria-label={t('最低认证筛选', 'Minimum verification filter')} className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300"><option value="">{t('全部认证', 'All verification')}</option><option value="report_verified">{t('至少报告验证', 'Report verified+')}</option><option value="platform_rerun">{t('至少平台复跑', 'Platform rerun+')}</option><option value="live_verified">{t('仅实盘验证', 'Live verified')}</option></select>
           <input type="number" min="0" max="100" value={filters.maxDrawdown ?? ''} onChange={event => updateFilter('maxDrawdown', event.target.value === '' ? null : Number(event.target.value))} placeholder={t('最大回撤上限 %', 'Max DD %')} aria-label={t('最大回撤上限', 'Maximum drawdown')} className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300" />
           <input type="number" min="0" value={filters.maxPrice ?? ''} onChange={event => updateFilter('maxPrice', event.target.value === '' ? null : Number(event.target.value))} placeholder={t('最高价格 USD', 'Max price USD')} aria-label={t('最高价格', 'Maximum price')} className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-300" />
           <button onClick={() => { setSearchQuery('');setPage(1);setFilters({ pair: '', type: '', verification: '', maxDrawdown: null, maxPrice: null }); setCompareIds([]); setShowComparison(false); }} className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold text-zinc-400 hover:text-white">{t('重置筛选', 'Reset filters')}</button>
-        </div>
+        </Panel>
 
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-5 mb-8 border-b border-zinc-800/80">
           <div className="flex items-center gap-1.5 text-zinc-500 mr-2 shrink-0">
-            <Filter className="w-4 h-4" /> 
+            <Filter className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-widest">{t('分类过滤:', 'Filters:')}</span>
           </div>
           {filterOptions.map(option => (
@@ -102,7 +106,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
               onClick={() => updateFilter('type', option === '全部' ? '' : option)}
               className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
                 filters.type === (option === '全部' ? '' : option)
-                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]' 
+                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
                   : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:text-zinc-300'
               }`}
             >
@@ -115,20 +119,22 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
 
         {showComparison && comparedProducts.length >= COMPARISON_MIN && <div className="mb-8"><StrategyComparison products={comparedProducts} onRemove={toggleComparison} onClose={() => setShowComparison(false)} t={t} /></div>}
 
-        {catalogStatus==='loading'&&<div className="mb-6 text-center text-xs text-cyan-400">{t('正在查询策略…','Searching strategies…')}</div>}
-        {catalogStatus==='error'?<div className="text-center py-20 text-red-400 bg-red-500/5 rounded-3xl border border-red-500/20">{t('市场查询失败，请重试','Market query failed. Please retry.')}</div>:filteredProducts.length === 0 ? <div className="text-center py-32 text-zinc-500 bg-zinc-900/30 rounded-3xl border border-zinc-800 border-dashed">{t('没有符合当前搜索与筛选条件的策略', 'No strategies match the current search and filters.')}</div> : 
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
+        {catalogStatus==='loading'&&<div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[1,2,3].map(item=><Panel key={item} className="space-y-4 p-5"><Skeleton className="h-12 w-3/4"/><Skeleton className="h-20 w-full"/><Skeleton className="h-10 w-full"/></Panel>)}</div>}
+        {catalogStatus==='error'?<EmptyState icon={ShieldAlert} title={t('市场查询失败','Market query failed')} description={t('请检查网络后重试，当前筛选条件已保留。','Retry after checking the connection; your current filters are preserved.')} action={<Button onClick={()=>setRetryKey(value=>value+1)}>{t('重试','Retry')}</Button>}/>:filteredProducts.length === 0 ? <EmptyState icon={Filter} title={t('没有匹配的策略','No matching strategies')} description={t('调整搜索、认证等级、回撤或价格条件。','Adjust search, verification, drawdown or price filters.')} action={<Button onClick={()=>{setSearchQuery('');setPage(1);setFilters({pair:'',type:'',verification:'',maxDrawdown:null,maxPrice:null});}}>{t('清除筛选','Clear filters')}</Button>}/> :
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filteredProducts.map(p => {
               const isPurchased = myOrders.some(order => order.product_id === p.id);
+              const hasReviewedMetrics = Boolean(p.metrics?.reviewedAt && p.report);
+              const equityPath = hasReviewedMetrics ? curvePath(p.metrics.equityCurve) : '';
               return (
               <FadeInView key={p.id} delay={50}>
-                <div onClick={() => openDetail(p)} className="bg-zinc-900/60 border border-zinc-800 rounded-3xl p-5 flex flex-col justify-between hover:border-cyan-500/50 transition-all group h-full relative overflow-hidden cursor-pointer shadow-lg hover:shadow-cyan-900/20">
+                <div onClick={() => openDetail(p)} className="group relative flex h-full cursor-pointer flex-col justify-between overflow-hidden rounded-xl border border-slate-700/45 bg-slate-900/65 p-5 shadow-[0_18px_50px_rgba(2,8,23,.22)] transition-all hover:-translate-y-0.5 hover:border-cyan-500/45 hover:shadow-[0_22px_60px_rgba(8,145,178,.12)]">
                   {isPurchased && <div className="absolute top-0 right-0 bg-cyan-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-lg z-10">{t('已入库', 'Owned')}</div>}
                   <button onClick={event => { event.stopPropagation(); toggleComparison(p.id); }} disabled={!compareIds.includes(p.id) && compareIds.length >= COMPARISON_MAX} className={`absolute left-4 top-4 z-10 rounded-lg border px-2.5 py-1 text-[10px] font-black ${compareIds.includes(p.id) ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 bg-zinc-950/90 text-zinc-400'} disabled:opacity-30`}>{compareIds.includes(p.id) ? t('已选择', 'Selected') : t('加入对比', 'Compare')}</button>
                   <div>
-                    <div className="flex items-center gap-4 mb-5 mt-7">
+                    <div className="mb-3 mt-7 flex items-start gap-4">
                       {p.logo_url ? <Image src={p.logo_url} alt={p.title} width={56} height={56} className="w-14 h-14 rounded-2xl object-cover bg-zinc-950 border border-zinc-800" /> : <div className="w-14 h-14 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center"><Cpu className="w-6 h-6 text-cyan-400/50" /></div>}
-                      <div><h3 className="text-base font-bold text-white truncate w-36 group-hover:text-cyan-400 transition-colors">{p.title}</h3><p className="text-xs text-zinc-500 mt-0.5">by {p.author}</p></div>
+                      <div className="min-w-0 flex-1"><h3 className="truncate text-base font-bold text-white transition-colors group-hover:text-cyan-300">{p.title}</h3><p className="mt-0.5 truncate text-xs text-slate-500">by {p.author}</p><div className="mt-2"><Badge variant={p.verification?.level==='unverified'||!p.verification?.level?'neutral':'success'}>{verificationLabel(p.verification?.level,t)}</Badge></div></div>
                     </div>
                     {p.ea_type && (
                       <div className="flex flex-wrap gap-1.5 mb-4">
@@ -137,14 +143,18 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-4 text-xs bg-zinc-950/80 p-3.5 rounded-2xl border border-zinc-800 mb-5">
-                      <div><span className="text-zinc-500 block mb-1">{t('胜率', 'Win Rate')}</span><span className="text-emerald-400 font-bold text-sm">{p.win_rate}</span></div><div className="w-px bg-zinc-800"></div>
-                      <div><span className="text-zinc-500 block mb-1">{t('回撤', 'Drawdown')}</span><span className="text-red-400 font-bold text-sm">{p.drawdown}</span></div>
+                    <div className="mb-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/75">
+                      {equityPath ? <div className="px-3 pt-3"><div className="mb-1 flex items-center justify-between text-[10px]"><span className="font-bold uppercase tracking-wider text-slate-500">{t('已审核净值曲线','Reviewed equity curve')}</span><span className="text-emerald-400">{metricNumber(p.metrics.netProfit)} USD</span></div><svg viewBox="0 0 300 72" className="h-[72px] w-full" role="img" aria-label={t('已审核净值曲线','Reviewed equity curve')}><defs><linearGradient id={`curve-${p.id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#22d3ee" stopOpacity=".32"/><stop offset="1" stopColor="#22d3ee" stopOpacity="0"/></linearGradient></defs><path d={`${equityPath} L 300 72 L 0 72 Z`} fill={`url(#curve-${p.id})`}/><path d={equityPath} fill="none" stroke="#22d3ee" strokeWidth="2" vectorEffect="non-scaling-stroke"/></svg></div> : <div className="flex h-[102px] items-center justify-center px-4 text-center text-xs text-slate-600">{t('暂无可公开的已审核净值曲线','No reviewed equity curve available')}</div>}
+                    </div>
+                    <div className="mb-5 grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg border border-slate-800 bg-slate-950/55 p-2.5"><span className="mb-1 block text-[10px] text-slate-500">Profit Factor</span><span className="font-bold text-slate-100 nq-number">{hasReviewedMetrics?metricNumber(p.metrics.profitFactor):'—'}</span></div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-950/55 p-2.5"><span className="mb-1 block text-[10px] text-slate-500">Sharpe</span><span className="font-bold text-slate-100 nq-number">{hasReviewedMetrics?metricNumber(p.metrics.sharpeRatio):'—'}</span></div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-950/55 p-2.5"><span className="mb-1 block text-[10px] text-slate-500">{t('最大回撤','Max DD')}</span><span className="font-bold text-rose-300 nq-number">{hasReviewedMetrics?`${metricNumber(p.metrics.maxDrawdownPercent)}%`:'—'}</span></div>
                     </div>
                     <div className="mb-4 flex items-center justify-between text-[10px] text-zinc-500"><span className="flex items-center gap-1"><Star className="h-3 w-3 text-amber-400" />{p.social?.ratingAverage ?? '—'} ({p.social?.ratingCount || 0})</span><span><Heart className="mr-1 inline h-3 w-3" />{p.social?.favoriteCount || 0}</span></div>
                   </div>
                   <div className="flex justify-between items-center pt-5 border-t border-zinc-800">
-                    <span className="text-2xl font-black text-white">{p.price === 0 ? <span className="text-emerald-400 text-lg">{t('免费', 'Free')}</span> : `$${p.price}`}</span>
+                    <span><span className="block text-2xl font-black text-white">{p.price === 0 ? <span className="text-emerald-400 text-lg">{t('免费', 'Free')}</span> : `$${p.price}`}</span>{p.price>0&&<span className="mt-1 block text-[10px] text-amber-300/80">{t('付费暂未开放','Paid checkout unavailable')}</span>}</span>
                     <span className="text-xs font-bold text-zinc-500 group-hover:text-cyan-400 flex items-center gap-1">{t('查看详情', 'Details')} <ChevronRight className="w-3 h-3" /></span>
                   </div>
                 </div>
@@ -168,13 +178,13 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
-              {selectedEA.logo_url ? 
+              {selectedEA.logo_url ?
                 <Image src={selectedEA.logo_url} alt={selectedEA.title} width={128} height={128} className="w-32 h-32 mx-auto rounded-3xl object-cover border-4 border-zinc-950 shadow-xl mb-6" /> :
                 <div className="w-32 h-32 mx-auto rounded-3xl bg-zinc-950 border-4 border-zinc-900 flex items-center justify-center shadow-xl mb-6"><Cpu className="w-12 h-12 text-zinc-600" /></div>
               }
               <h2 className="text-3xl font-black text-white mb-2">{selectedEA.price === 0 ? t('免费', 'Free') : `$${selectedEA.price}`}</h2>
               <div className="text-xs text-zinc-500 mb-6">{t('永久授权 · 包含无限制更新', 'Lifetime License · Unlimited Updates')}</div>
-              
+
               {isPurchased ? (
                 <button onClick={() => setRoute('profile')} className="w-full py-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-black flex items-center justify-center gap-2 transition-all">
                   <FolderDown className="w-5 h-5" /> {t('已入库，前往下载', 'Owned, Go to Download')}

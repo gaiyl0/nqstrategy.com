@@ -5,6 +5,7 @@ import path from 'node:path';
 const root = process.cwd();
 const css = fs.readFileSync(path.join(root, 'app', 'globals.css'), 'utf8');
 const kit = fs.readFileSync(path.join(root, 'app', 'components', 'ui', 'UiKit.js'), 'utf8');
+const market = fs.readFileSync(path.join(root, 'app', 'components', 'MarketView.js'), 'utf8');
 
 for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--nq-success', '--nq-warning', '--nq-danger', '--nq-radius-md', '--nq-shadow-dialog', '--nq-focus']) {
   assert.match(css, new RegExp(token), `missing design token ${token}`);
@@ -19,6 +20,12 @@ assert.match(kit, /aria-modal="true"/);
 assert.match(kit, /event\.key === 'Escape'/);
 assert.match(kit, /document\.body\.style\.overflow = 'hidden'/);
 assert.match(css, /prefers-reduced-motion/);
+
+assert.match(market, /p\.metrics\?\.reviewedAt && p\.report/, 'market curves must require reviewed server metrics and an MT5 report');
+assert.match(market, /No reviewed equity curve available/, 'market must expose a truthful empty curve state');
+assert.match(market, /Paid checkout unavailable/, 'market must keep paid checkout visibly unavailable');
+assert.match(market, /setRetryKey\(value=>value\+1\)/, 'market error retry must issue a new request');
+assert.doesNotMatch(market, /Math\.random/, 'market must not generate synthetic chart data');
 
 for (const directory of ['app', 'lib']) {
   const files = [];
@@ -36,4 +43,4 @@ for (const directory of ['app', 'lib']) {
   }
 }
 
-console.log('UI design system tests passed: tokens, primitives, focus management and reduced-motion policy');
+console.log('UI design system tests passed: tokens, primitives, focus management, truthful market data and reduced-motion policy');
