@@ -11,6 +11,7 @@
     "audit:verify": "node scripts/audit-maintenance.mjs verify",
     "audit:archive": "node scripts/audit-maintenance.mjs archive",
     "upload:cleanup": "node scripts/upload-maintenance.mjs",
+    "log:sync": "node scripts/sync-update-log.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
     "ledger:verify": "node scripts/ledger-maintenance.mjs",
     "test:ledger": "node tests/wallet-ledger.mjs",

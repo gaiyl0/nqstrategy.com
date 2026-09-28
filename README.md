@@ -1,6 +1,6 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-> **正式上线前必读：** 当前付费能力已主动关闭，真实支付核验尚未接入。发布前必须完成并签署 [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md)。P0-001 至 P0-006 的最新复核见 [reports/NQ-P0-001-006-REAUDIT.md](reports/NQ-P0-001-006-REAUDIT.md)。
+> **正式上线前必读：** 当前付费能力已主动关闭，真实支付核验尚未接入。项目进度与修复顺序以 [NEXUS_QUANT_UPDATE_LOG.md](NEXUS_QUANT_UPDATE_LOG.md) 为唯一来源；发布前必须完成并签署 [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md)。
 
 ## Getting Started
 
