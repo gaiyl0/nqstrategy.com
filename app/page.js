@@ -159,6 +159,7 @@ export default function App() {
   const [isVersionSubmitting,setIsVersionSubmitting]=useState(false);
 
   const [forumPosts, setForumPosts] = useState([]);
+  const [forumSort, setForumSort] = useState('latest');
   const [activeCategory, setActiveCategory] = useState('全部');
   const [forumView, setForumView] = useState('list'); 
   const [selectedPost, setSelectedPost] = useState(null);
@@ -264,7 +265,7 @@ export default function App() {
   };
 
   const fetchProducts = () => { fetch(`/api/products?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
-  const fetchForumPosts = (cat = '全部') => { fetch(`/api/posts?category=${cat}&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
+  const fetchForumPosts = (cat = '全部', sort = forumSort) => { fetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
   const fetchMyOrders = async () => { if (user) { try { const res = await fetch(`/api/orders?t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (e) {} } };
   const fetchMyLicenses=async()=>{if(user){try{const response=await fetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch{}}};
   const fetchMySocial=async()=>{if(user){try{const response=await fetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch{}}};
@@ -407,6 +408,15 @@ export default function App() {
   const handleDeleteComment = async (id) => { if(!window.confirm(t('确定删除评论？', 'Delete comment?'))) return; await fetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await fetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
   const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await fetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory); };
   const handlePinComment = async (id, is_pinned) => { await fetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await fetch(`/api/comments?postId=${selectedPost.id}&t=${Date.now()}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handleReport = async (targetType, targetId) => {
+    if (!user) return setAuthModal('login');
+    const reason = window.prompt(t('举报原因：spam / fraud / abuse / copyright / dangerous / other', 'Reason: spam / fraud / abuse / copyright / dangerous / other'), 'other');
+    if (!reason) return;
+    const details = window.prompt(t('请补充举报说明（可选，最多 1000 字）', 'Optional details, up to 1000 characters'), '') ?? '';
+    const response = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetType, targetId, reason: reason.trim().toLowerCase(), details }) });
+    const data = await response.json();
+    showToast(response.ok && data.success ? (data.report?.replayed ? t('ℹ️ 该举报正在处理中', 'Report already pending') : t('✅ 举报已提交，等待管理员审核', 'Report submitted for review')) : `❌ ${data.message || t('举报失败', 'Report failed')}`);
+  };
 
   if (!isMounted) return null; 
   
@@ -454,7 +464,7 @@ export default function App() {
 
       <main className="relative z-10 w-full flex-grow">
         {route === 'home' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
-        {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
+        {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
 
         {/* 上传发布 */}
         {route === 'upload' && (
@@ -570,7 +580,7 @@ export default function App() {
             <div className="w-64 shrink-0 hidden md:flex flex-col gap-2 border-r border-zinc-800/80 pr-6">
               <div className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-2 pl-3">{t('版块导航', 'Categories')}</div>
               {categories.map(cat => (
-                <button key={cat} onClick={() => { setActiveCategory(cat); setForumView('list'); }} className={`text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3 ${activeCategory === cat && forumView === 'list' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300'}`}>
+                <button key={cat} onClick={() => { setActiveCategory(cat); setForumView('list'); fetchForumPosts(cat,forumSort); }} className={`text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3 ${activeCategory === cat && forumView === 'list' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300'}`}>
                   <Hash className={`w-4 h-4 ${activeCategory === cat && forumView === 'list' ? 'text-cyan-400' : 'text-zinc-600'}`} /> {tCat(cat)}
                 </button>
               ))}
@@ -582,7 +592,7 @@ export default function App() {
             <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-20">
               {forumView === 'list' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-white flex items-center gap-2">{tCat(activeCategory)}</h2></div>
+                  <div className="mb-6"><div className="flex flex-wrap justify-between items-center gap-3"><h2 className="text-2xl font-bold text-white flex items-center gap-2">{tCat(activeCategory)}</h2><div className="flex gap-2">{[['latest',t('最新','Latest')],['hot',t('热门','Hot')],['discussed',t('讨论最多','Most discussed')]].map(([value,label])=><button key={value} onClick={()=>{setForumSort(value);fetchForumPosts(activeCategory,value);}} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${forumSort===value?'border-cyan-500/40 bg-cyan-500/10 text-cyan-300':'border-zinc-800 text-zinc-500'}`}>{label}</button>)}</div></div>{forumSort==='hot'&&<p className="mt-2 text-right text-[10px] text-zinc-600">{t('热度按去重浏览、有效评论、置顶权重和发布时间衰减计算。','Hot score uses deduplicated views, visible comments, pin weight, and time decay.')}</p>}</div>
                   {forumPosts.map(post => (
                     <div key={post.id} onClick={() => openPostDetail(post)} className={`relative border p-6 rounded-3xl transition-all cursor-pointer group shadow-lg ${post.is_pinned ? 'bg-cyan-900/10 border-cyan-500/30' : 'bg-zinc-900/40 border-zinc-800 hover:border-cyan-500/30'}`}>
                       {user?.role === 'admin' && (
@@ -602,7 +612,7 @@ export default function App() {
                           <span className="flex items-center gap-1.5">{post.avatar_url ? <img src={post.avatar_url} className="w-4 h-4 rounded-full object-cover border border-zinc-700" /> : <UserIcon className="w-3.5 h-3.5" />} {post.author}</span>
                           <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(post.created_at).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> {post.views}</span></div>
+                        <div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> {post.comment_count || 0}</span><span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> {post.views}</span></div>
                       </div>
                     </div>
                   ))}
@@ -646,6 +656,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="prose prose-invert max-w-none text-zinc-300 leading-loose whitespace-pre-wrap text-sm md:text-base">{selectedPost.content}</div>
+                    {user && user.id !== selectedPost.author_user_id && <button onClick={()=>handleReport('post',selectedPost.id)} className="mt-6 text-xs font-bold text-amber-400 hover:text-amber-300">⚑ {t('举报此帖','Report post')}</button>}
                   </div>
                   <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 shadow-xl">
                     <h3 className="font-bold text-white mb-8 flex items-center gap-2 text-lg"><MessageSquare className="w-5 h-5 text-cyan-400" /> {t('参与讨论', 'Discussions')} ({comments.length})</h3>
@@ -671,6 +682,7 @@ export default function App() {
                                 <span className="text-xs text-zinc-600 ml-auto hidden sm:block">{new Date(c.created_at).toLocaleString()}</span>
                               </div>
                               <div className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">{c.content}</div>
+                              {user && user.id !== c.author_user_id && <button onClick={()=>handleReport('comment',c.id)} className="mt-2 text-[11px] font-bold text-amber-500 hover:text-amber-300">⚑ {t('举报评论','Report comment')}</button>}
                             </div>
                             
                             {user?.role === 'admin' && (

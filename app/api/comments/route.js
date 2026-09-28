@@ -11,7 +11,7 @@ export async function GET(request) {
   if (!parsedPostId.success) return validationErrorResponse(parsedPostId.error);
   const postId = parsedPostId.data;
   try {
-    const comments = db.prepare('SELECT c.*, u.role as author_role, u.avatar_url FROM comments c LEFT JOIN users u ON c.author_user_id = u.id WHERE c.post_id = ? ORDER BY c.is_pinned DESC, c.created_at ASC').all(postId);
+    const comments = db.prepare("SELECT c.*, u.role as author_role, u.avatar_url FROM comments c LEFT JOIN users u ON c.author_user_id = u.id WHERE c.post_id = ? AND c.moderation_status='visible' ORDER BY c.is_pinned DESC, c.created_at ASC").all(postId);
     return NextResponse.json({ success: true, comments });
   } catch (error) {
     console.error('查询评论异常:', error);

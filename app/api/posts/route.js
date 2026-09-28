@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
-import { categorySchema, createPostSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
+import { categorySchema, createPostSchema, forumSortSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
+import { createSecurityContext } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -10,6 +11,9 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const rawCategory = searchParams.get('category');
   const rawViewId = searchParams.get('viewId');
+  const parsedSort=validate(forumSortSchema,searchParams.get('sort')||'latest');
+  if(!parsedSort.success)return validationErrorResponse(parsedSort.error);
+  const sort=parsedSort.data;
   let category = rawCategory;
   let viewId = null;
   if (rawCategory && rawCategory !== '全部') {
@@ -25,14 +29,23 @@ export async function GET(request) {
 
   try {
     if (viewId) {
-      db.prepare('UPDATE posts SET views = views + 1 WHERE id = ?').run(viewId);
-      const post = db.prepare('SELECT p.*, u.role as author_role, u.avatar_url FROM posts p LEFT JOIN users u ON p.author_user_id = u.id WHERE p.id = ?').get(viewId);
+      const currentUser = await getSessionUser();
+      const context = createSecurityContext(request, currentUser);
+      const viewerKey = currentUser ? `user:${currentUser.id}` : `source:${context.sourceHash}`;
+      const windowStart = Math.floor(Date.now() / 21600000) * 21600000;
+      const inserted = db.prepare('INSERT OR IGNORE INTO post_view_events(post_id,viewer_key,window_start,created_at) SELECT id,?,?,? FROM posts WHERE id=? AND moderation_status=\'visible\'').run(viewerKey, windowStart, Date.now(), viewId);
+      if (inserted.changes === 1) db.prepare("UPDATE posts SET views = views + 1 WHERE id = ?").run(viewId);
+      const post = db.prepare("SELECT p.*, u.role as author_role, u.avatar_url FROM posts p LEFT JOIN users u ON p.author_user_id = u.id WHERE p.id = ? AND p.moderation_status='visible'").get(viewId);
+      if(!post)return NextResponse.json({success:false,message:'帖子不存在或已被隐藏'},{status:404});
       return NextResponse.json({ success: true, post });
     }
-
-    const posts = category && category !== '全部'
-      ? db.prepare('SELECT p.*, u.role as author_role, u.avatar_url FROM posts p LEFT JOIN users u ON p.author_user_id = u.id WHERE p.category = ? ORDER BY p.is_pinned DESC, p.created_at DESC').all(category)
-      : db.prepare('SELECT p.*, u.role as author_role, u.avatar_url FROM posts p LEFT JOIN users u ON p.author_user_id = u.id ORDER BY p.is_pinned DESC, p.created_at DESC').all();
+    const order={latest:'p.is_pinned DESC,p.created_at DESC',discussed:'p.is_pinned DESC,comment_count DESC,p.created_at DESC',hot:'p.is_pinned DESC,hot_score DESC,p.created_at DESC'}[sort];
+    const sql=`SELECT p.*,u.role author_role,u.avatar_url,COUNT(c.id) comment_count,
+      ROUND((p.views+COUNT(c.id)*5+p.is_pinned*100)/(MAX(2,(julianday('now')-julianday(p.created_at))*24+2)),4) hot_score
+      FROM posts p LEFT JOIN users u ON p.author_user_id=u.id LEFT JOIN comments c ON c.post_id=p.id AND c.moderation_status='visible'
+      WHERE p.moderation_status='visible' ${category&&category!=='全部'?'AND p.category=?':''}
+      GROUP BY p.id ORDER BY ${order}`;
+    const posts=category&&category!=='全部'?db.prepare(sql).all(category):db.prepare(sql).all();
     return NextResponse.json({ success: true, posts });
   } catch (error) {
     console.error('查询帖子异常:', error);

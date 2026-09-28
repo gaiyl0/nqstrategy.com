@@ -7,7 +7,7 @@ import StrategyMetrics from './StrategyMetrics';
 import StrategyComparison from './StrategyComparison';
 import { COMPARISON_MAX, COMPARISON_MIN, parseComparisonState, selectComparison, serializeComparisonState } from '@/lib/strategy-comparison.mjs';
 
-export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handleStartTrial, handleSocialAction, setRoute, setAuthModal, t, tEaType }) {
+export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handleStartTrial, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
   const [view, setViewInternal] = useState('list'); 
   const [selectedEA, setSelectedEAInternal] = useState(null);
   
@@ -188,6 +188,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
                 </button>
               )}
               {!isPurchased&&Boolean(selectedEA.trial_enabled)&&<button onClick={()=>handleStartTrial(selectedEA)} className="mt-3 w-full rounded-xl border border-violet-500/30 bg-violet-500/10 py-3 text-sm font-black text-violet-300">{t(`免费试用 ${selectedEA.trial_days} 天`,`Try free for ${selectedEA.trial_days} days`)}</button>}
+              {user && user.id !== selectedEA.author_user_id && <button onClick={()=>handleReport('product',selectedEA.id)} className="mt-3 w-full rounded-xl border border-amber-500/20 py-2 text-xs font-bold text-amber-400">⚑ {t('举报此策略','Report strategy')}</button>}
               <div className="mt-3 grid grid-cols-2 gap-2"><button onClick={()=>socialAction({action:'favorite',productId:selectedEA.id,enabled:!selectedEA.social?.viewer?.favorite},social=>({favoriteCount:Math.max(0,(social.favoriteCount||0)+(social.viewer?.favorite?-1:1)),viewer:{...social.viewer,favorite:!social.viewer?.favorite}}))} className={`rounded-xl border py-2 text-xs font-bold ${selectedEA.social?.viewer?.favorite?'border-rose-500/40 bg-rose-500/10 text-rose-300':'border-zinc-700 text-zinc-400'}`}><Heart className="mr-1 inline h-4 w-4" />{selectedEA.social?.viewer?.favorite?t('已收藏','Favorited'):t('收藏','Favorite')}</button><button disabled={selectedEA.author_user_id===user?.id} onClick={()=>socialAction({action:'follow',developerUserId:selectedEA.author_user_id,enabled:!selectedEA.social?.viewer?.followingAuthor},social=>({followerCount:Math.max(0,(social.followerCount||0)+(social.viewer?.followingAuthor?-1:1)),viewer:{...social.viewer,followingAuthor:!social.viewer?.followingAuthor}}))} className="rounded-xl border border-zinc-700 py-2 text-xs font-bold text-zinc-400 disabled:opacity-30"><UserPlus className="mr-1 inline h-4 w-4" />{selectedEA.social?.viewer?.followingAuthor?t('已关注','Following'):t('关注作者','Follow')}</button></div>
             </div>
 

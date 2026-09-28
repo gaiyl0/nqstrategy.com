@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Wallet, Mail, Save, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Globe, Crown, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins } from 'lucide-react';
+import { Settings, Wallet, Mail, Save, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Globe, Crown, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag } from 'lucide-react';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [orderList, setOrderList] = useState([]); 
   const [withdrawals, setWithdrawals] = useState([]);
   const [licenses,setLicenses]=useState([]);
+  const [reports,setReports]=useState([]);
   
   const [pwdModal, setPwdModal] = useState({ isOpen: false, userId: null, username: '', newPwd: '' });
   const [balanceModal, setBalanceModal] = useState({ isOpen: false, userId: null, username: '', balance: 0 });
@@ -34,6 +35,7 @@ export default function AdminDashboard() {
   const fetchOrders = () => fetch(`/api/orders?role=admin&t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setOrderList(data.orders); }); 
   const fetchWithdrawals = () => fetch(`/api/withdraw?t=${Date.now()}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setWithdrawals(data.withdrawals); });
   const fetchLicenses=()=>fetch('/api/licenses?scope=admin',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setLicenses(data.licenses);});
+  const fetchReports=()=>fetch('/api/reports?status=pending',{cache:'no-store'}).then(response=>response.json()).then(data=>{if(data.success)setReports(data.reports);});
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -60,6 +62,7 @@ export default function AdminDashboard() {
     if (activeTab === 'orders') fetchOrders(); 
     if (activeTab === 'withdrawals') fetchWithdrawals(); 
     if (activeTab === 'licenses') fetchLicenses();
+    if (activeTab === 'reports') fetchReports();
   }, [activeTab, authChecked]);
 
   const showStatus = (msg) => { setStatus(msg); setTimeout(() => setStatus(''), 3000); };
@@ -102,6 +105,7 @@ export default function AdminDashboard() {
   const handleRevokeVerification=async(product)=>{const reason=window.prompt('请输入撤销认证原因（至少 5 个字符）');if(!reason)return;const response=await fetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',productId:product.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'撤销失败'}`);fetchProducts();showStatus('✅ 认证已撤销');};
   const handleVersionReview=async(version,decision)=>{const needsReason=['reject','retire'].includes(decision);const reason=needsReason?(window.prompt(`请输入版本${decision==='retire'?'下架':'拒绝'}原因（至少 5 个字符）`)||''):'';if(needsReason&&!reason)return;const response=await fetch('/api/versions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:version.id,decision,...(reason?{reason}:{})})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'版本审核失败'}`);fetchProducts();showStatus(data.replayed?'ℹ️ 该版本已经处理':'✅ 版本审核完成');};
   const handleRevokeLicense=async(license)=>{const reason=window.prompt('请输入授权撤销原因（至少 5 个字符）');if(!reason)return;const response=await fetch('/api/licenses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'授权撤销失败'}`);fetchLicenses();showStatus(data.replayed?'ℹ️ 授权已撤销':'✅ 授权已撤销，现有令牌失效');};
+  const handleReportResolution=async(report,decision)=>{const note=window.prompt(decision==='confirm'?'请输入违规确认依据（至少 5 个字符）':'请输入驳回说明（至少 5 个字符）');if(!note)return;const response=await fetch('/api/reports',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:report.id,decision,note})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'举报处理失败'}`);fetchReports();showStatus(data.result?.replayed?'ℹ️ 该举报已处理':'✅ 举报处理完成');};
   const handleDeleteEA = async (id, title) => { if (!window.confirm(`确定彻底删除策略 [${title}] 吗？`)) return; const res = await fetch(`/api/products?id=${id}`, { method: 'DELETE' }); const data = await res.json(); if (data.success) { showStatus('🗑️ 已彻底删除'); fetchProducts(); } };
 
   const submitResetPwd = async () => { if (!pwdModal.newPwd) return showStatus('❌ 密码不能为空'); await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pwdModal.userId, newPassword: pwdModal.newPwd }) }); setPwdModal({ isOpen: false, userId: null, username: '', newPwd: '' }); showStatus('✅ 密码重置成功！'); };
@@ -172,6 +176,7 @@ export default function AdminDashboard() {
               <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'orders' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><BadgeDollarSign size={16} /> 财务订单</button>
               <button onClick={() => setActiveTab('withdrawals')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'withdrawals' ? 'bg-purple-900/40 text-purple-400 border border-purple-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><HandCoins size={16} /> 提现审批</button>
               <button onClick={() => setActiveTab('licenses')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'licenses' ? 'bg-violet-900/40 text-violet-300 border border-violet-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><Key size={16} /> 授权管理</button>
+              <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'reports' ? 'bg-amber-900/40 text-amber-300 border border-amber-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><Flag size={16} /> 内容举报</button>
             </div>
           </div>
           {activeTab === 'settings' && <button onClick={handleSave} disabled={isSaving} className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all">{isSaving ? '保存中...' : '保存所有配置'}</button>}
@@ -283,6 +288,7 @@ export default function AdminDashboard() {
           </div>
         )}
         {activeTab==='licenses'&&<div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50"><table className="w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">授权</th><th className="p-4">产品</th><th className="p-4">状态/到期</th><th className="p-4">绑定</th><th className="p-4 text-right">操作</th></tr></thead><tbody>{licenses.map(license=><tr key={license.id} className="border-b border-zinc-800/50"><td className="p-4">#{license.id} · {license.type}<div className="text-[10px] text-zinc-600">user_id {license.userId}</div></td><td className="p-4 text-white">{license.productTitle}</td><td className="p-4"><span className={license.status==='active'?'text-emerald-400':'text-red-400'}>{license.status}</span><div className="text-[10px] text-zinc-600">{license.expiresAt?new Date(license.expiresAt).toLocaleString():'永久'}</div></td><td className="p-4 text-[10px] text-zinc-500">{license.bindings.map(binding=>`${binding.type}:${binding.mask}`).join(' · ')||'未绑定'}</td><td className="p-4 text-right">{license.status==='active'&&<button onClick={()=>handleRevokeLicense(license)} className="rounded bg-red-900/50 px-3 py-2 text-xs text-red-300">撤销</button>}</td></tr>)}</tbody></table></div>}
+        {activeTab==='reports'&&<div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50"><div className="border-b border-zinc-800 p-5 text-xs text-zinc-500">确认违规会隐藏对应策略、帖子或评论；前台举报不会直接删除内容。</div><table className="w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">目标</th><th className="p-4">原因</th><th className="p-4">身份</th><th className="p-4">提交时间</th><th className="p-4 text-right">处置</th></tr></thead><tbody>{reports.length===0?<tr><td colSpan="5" className="p-10 text-center text-zinc-500">暂无待处理举报</td></tr>:reports.map(report=><tr key={report.id} className="border-b border-zinc-800/50"><td className="p-4"><span className="font-bold uppercase text-amber-300">{report.targetType} #{report.targetId}</span><div className="mt-1 max-w-sm truncate text-zinc-400">{report.targetLabel}</div></td><td className="p-4"><span className="font-bold text-white">{report.reason}</span><div className="mt-1 max-w-sm whitespace-pre-wrap text-xs text-zinc-500">{report.details||'无补充说明'}</div></td><td className="p-4 text-xs text-zinc-500">举报 user_id {report.reporterUserId}<br/>作者 user_id {report.targetOwnerUserId}</td><td className="p-4 text-xs text-zinc-500">{new Date(report.createdAt).toLocaleString()}</td><td className="p-4 text-right space-x-2"><button onClick={()=>handleReportResolution(report,'dismiss')} className="rounded bg-zinc-800 px-3 py-2 text-xs text-zinc-300">驳回</button><button onClick={()=>handleReportResolution(report,'confirm')} className="rounded bg-red-900/60 px-3 py-2 text-xs font-bold text-red-300">确认违规并隐藏</button></td></tr>)}</tbody></table></div>}
 
         {/* 财务订单：付费结算在可信支付核验接入前保持关闭 */}
         {activeTab === 'orders' && (

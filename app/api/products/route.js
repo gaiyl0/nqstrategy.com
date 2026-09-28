@@ -49,7 +49,7 @@ function publicProducts(currentUser = null) {
     SELECT id, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
            pairs, ea_type, trial_enabled, trial_days, status, created_at
     FROM products
-    WHERE status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''}
+    WHERE moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
     ORDER BY created_at DESC
   `).all(...(includeOwned ? [currentUser.id] : []));
   return products.map(product=>publicProductDto(product,currentUser));
@@ -61,7 +61,7 @@ function marketProducts(currentUser,query){
     m.max_drawdown_percent metric_drawdown,m.reviewed_at metric_reviewed,
     CASE WHEN v.status='active' AND (v.expires_at IS NULL OR v.expires_at>?) THEN v.level ELSE 'unverified' END verification_level
     FROM products p LEFT JOIN strategy_metrics m ON m.product_id=p.id LEFT JOIN strategy_verifications v ON v.product_id=p.id
-    WHERE p.status='active' ORDER BY p.created_at DESC`).all(now).map(product=>({...product,metrics:product.metric_reviewed?{maxDrawdownPercent:product.metric_drawdown,reviewedAt:product.metric_reviewed}:null,verification:{level:product.verification_level}}));
+    WHERE p.status='active' AND p.moderation_status='visible' ORDER BY p.created_at DESC`).all(now).map(product=>({...product,metrics:product.metric_reviewed?{maxDrawdownPercent:product.metric_drawdown,reviewedAt:product.metric_reviewed}:null,verification:{level:product.verification_level}}));
   const result=queryMarketCatalog(candidates,query);
   return {products:result.items.map(candidate=>{const product={...candidate};for(const key of ['metric_drawdown','metric_reviewed','verification_level','metrics','verification'])delete product[key];return publicProductDto(product,currentUser);}),pagination:result.pagination};
 }
