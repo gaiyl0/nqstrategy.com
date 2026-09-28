@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXUS_DB_PATH: ${{ github.workspace }}/.tmp-ci.db
+      JWT_SECRET: ci-jwt-secret-0123456789abcdef0123456789
+      AUDIT_INTEGRITY_SECRET: ci-audit-secret-0123456789abcdef012345
+      AUDIT_RETENTION_DAYS: '180'
+      LEDGER_INTEGRITY_SECRET: ci-ledger-secret-0123456789abcdef01234
+      LICENSE_SIGNING_SECRET: ci-license-signing-0123456789abcdef01
+      LICENSE_BINDING_SECRET: ci-license-binding-0123456789abcdef01
+      TRUSTED_PROXY_MODE: nginx
+      TRUSTED_PROXY_SHARED_SECRET: ci-proxy-secret-0123456789abcdef012345
+      RATE_LIMIT_BACKEND: sqlite
+      DEPLOYMENT_TOPOLOGY: single-instance
+      APP_ORIGINS: https://ci.nexus.invalid
+      NEXT_PUBLIC_SITE_URL: https://ci.nexus.invalid
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Prepare migrated CI database
+        run: NODE_ENV=development npm run db:migrate -- up
+      - run: npm run lint
+      - run: npm run test:all
+      - name: Verify migrations and database integrity
+        run: NODE_ENV=development npm run db:migrate -- verify
+      - run: npm run build

@@ -35,9 +35,15 @@
     "test:frontend-api": "node tests/frontend-api-usage.mjs",
     "test:frontend-structure": "node tests/frontend-structure.mjs",
     "test:image-policy": "node tests/image-policy.mjs",
+    "test:release-engineering": "node tests/release-engineering.mjs",
     "test:api-errors": "node tests/api-error-boundary.mjs",
     "test:api-error-audit": "node tests/api-error-audit.mjs",
-    "test:docs": "node tests/documentation-convergence.mjs"
+    "test:docs": "node tests/documentation-convergence.mjs",
+    "test:all": "node scripts/run-tests.mjs",
+    "backup:create": "node scripts/backup-maintenance.mjs create",
+    "backup:verify": "node scripts/backup-maintenance.mjs verify",
+    "backup:restore": "node scripts/backup-maintenance.mjs restore",
+    "backup:drill": "node scripts/backup-maintenance.mjs drill"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

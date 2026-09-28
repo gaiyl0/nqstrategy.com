@@ -79,6 +79,10 @@ npm run ledger:verify
 | [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md) | 迁移、校验和、备份前置与并发锁已实现 | 生产副本迁移和回滚演练待完成 |
 | [WALLET_LEDGER.md](WALLET_LEDGER.md) | 管理调账和提现账本已实现 | 真实支付、佣金、退款和链重组流水未实现 |
 | [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) | 发布证据总入口 | 尚未签署正式上线结论 |
+| [GIT_CI.md](GIT_CI.md) | CI 和远程仓库操作 | 代码已完成，远程仓库与规则待账户侧配置 |
+| [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) | 单实例部署、健康检查和监控 | 目标服务器待现场执行 |
+| [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md) | 一致性备份和恢复 | 本机演练通过，异地加密和生产演练待执行 |
+| [REAL_PAYMENT_INTEGRATION.md](REAL_PAYMENT_INTEGRATION.md) | 真实支付实施教程 | 教程已完成，支付代码未启动 |
 
 ## 发布原则
 
