@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-28  
-当前状态：P0 安全封堵完成；P1 已完成至 NQ-P1-015；P2 计划功能完成；P3 尚待处理
+当前状态：P0、P1、P2 与 NQ-DOC-001 已完成；P3 尚待处理
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/p1-015-api-errors
+feature/doc-001-status-convergence
 ```
 
 最近功能提交：
 
 ```text
-a7701df feat: contain api exception details
+23f3531 docs: converge release status and runbooks
 ```
 
 数据库迁移状态：
@@ -44,8 +44,8 @@ foreign_key_violations=0
 工程验证状态：
 
 - Next.js 16.3.5 生产构建通过；
-- 21 个 `test:*` 脚本全部通过；
-- API 错误边界与全路由审计专项测试共 150 个断言通过；
+- 22 个 `test:*` 脚本全部通过；
+- 文档链接、状态分类、命令引用和旧文案专项检查共 55 个断言通过；
 - 全仓 ESLint 剩余 4 个既有 errors 和 26 个 warnings，列入 P3-001；
 - Git 仓库已经建立；
 - SQLite 当前只允许单实例部署；
@@ -120,17 +120,6 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 ## 明确未完成
 
-### NQ-DOC-001：收敛状态和上线文档
-
-问题：`GO_LIVE_CHECKLIST.md` 等文档仍有部分旧的未勾选项或历史描述，需要与当前代码重新对照。旧更新日志已经由本文件替代。
-
-验收标准：
-
-- 逐条用当前代码和测试复核上线清单；
-- 已完成、代码完成但部署未确认、未完成三类明确分开；
-- 不把历史报告当作通过证明；
-- README、上线清单和专题安全文档之间无冲突或失效链接。
-
 ### P3-001：修复剩余 ESLint errors
 
 当前全仓 ESLint 有 4 个 errors 和 26 个 warnings；errors 集中在 `app/page.js` 的 effect 内同步 `setState`，warnings 主要涉及原生图片、alt 和 Hook 依赖。
@@ -185,7 +174,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 1. ✅ **NQ-P1-013：主动改密要求当前密码或二次验证**；
 2. ✅ **NQ-P1-014：统一前端 API 客户端和失败提示**；
 3. ✅ **NQ-P1-015：全 API 错误泄漏审计**；
-4. **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
+4. ✅ **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
 5. **P3-001：修复剩余 ESLint errors**；
 6. **P3-002：拆分 `app/page.js`**；
 7. **P3-003：图片和加载性能优化**；
@@ -195,11 +184,45 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-NQ-DOC-001：收敛状态和上线文档中的过时内容
+P3-001：修复剩余 ESLint errors
 状态：尚未开始，等待项目所有者确认启动
 ```
 
 ## 更新记录
+
+### 2026-09-28：NQ-DOC-001 状态和上线文档收敛
+
+状态：**已完成，等待项目所有者验收**
+提交：`23f3531 docs: converge release status and runbooks`
+
+原问题：README 仍保留 create-next-app 的 Vercel 推荐，与当前只支持“受信代理 + 单实例 Next.js + 本地 SQLite”的部署边界冲突；上线清单仍把已经完成的限流、验证码、CSRF 和上传安全列为待办，并记录旧的 11 个 ESLint errors；各安全专题文档没有明确区分代码完成与生产现场验收，容易把本机测试误当作已经上线。
+
+完成内容：
+
+- 重写 README，删除模板化 Vercel/Serverless 推荐，明确当前技术栈、单实例 SQLite、受信反向代理、私有资产和真实付费关闭边界；
+- README 增加 P0/P1/P2/P3/真实支付状态表、本地开发、迁移、验证命令和安全运维文档索引；
+- 重构 `GO_LIVE_CHECKLIST.md`，明确分为“已完成代码基线”“代码完成但生产未确认”“仍未完成工程项”“免费模式上线条件”“真实支付硬性阻断”五类；
+- 把 Session、密码、RBAC、稳定 user_id、订单/提现幂等、Zod、限流审计、验证码、CSRF、上传安全、迁移、账本、API 错误隔离和前端 API 客户端标记为当前代码已完成；
+- 把生产 Secret、管理员重置、HTTPS/代理/防火墙、Origin、恶意文件扫描、SMTP、OCR、EA 客户端、定时任务、不可变归档、备份恢复、生产迁移、浏览器和性能列为现场未确认；
+- 把当前 ESLint、页面拆分、图片性能、CI、远程 Git、部署与恢复文档保留为 P3 未完成项；
+- 免费模式与真实支付分别设置签字条件；免费模式仍不得展示付款入口或允许管理员绕过支付，真实支付仍要求 Payment Intent、可信核验、账本、异常流程、对账与生产签字；
+- 为 `DEPLOYMENT_SECURITY.md`、`CSRF_SECURITY.md`、`UPLOAD_SECURITY.md`、`AUDIT_INTEGRITY.md`、`DATABASE_MIGRATIONS.md` 和 `WALLET_LEDGER.md` 增加日期化状态说明，逐份分开代码状态与生产证据状态；
+- 保留 `NEXUS_QUANT_UPDATE_LOG.md` 为唯一任务进度来源，专题文档只承担操作规范和现场验收；
+- 新增 `tests/documentation-convergence.mjs` 与 `test:docs`，防止本地链接、npm 命令、状态分类、Vercel 冲突、旧 11 errors 文案和已完成安全任务再次回归。
+
+文档专项验证：
+
+```text
+11 Markdown files checked
+55 assertions passed
+broken local links: 0
+missing npm scripts: 0
+outdated completed-security TODO phrases: 0
+```
+
+完整验证：22 个 `test:*` 脚本全部通过；文档测试文件定向 ESLint 退出码 0；`git diff --check` 通过；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面和全部动态 API 路由收集通过。全仓 ESLint 的 4 个既有 errors 和 26 个 warnings 没有因文档任务变化，下一项 P3-001 专门处理。
+
+验收结论：README、上线清单与六份专题安全文档已经使用同一状态口径；已完成代码、部署未确认和未完成项清楚分离；失效链接和命令引用已加入自动检查；免费部署与真实资金上线的条件不再混淆。下一项为 P3-001。
 
 ### 2026-09-28：NQ-P1-015 全 API 错误泄漏审计
 
