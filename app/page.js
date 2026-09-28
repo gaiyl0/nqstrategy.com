@@ -274,11 +274,8 @@ export default function App() {
       if (orders.success) setMyOrders(orders.orders);
       if (licenses.success) setMyLicenses(licenses.licenses);
       if (social.success) setMySocial({ favorites: social.favorites, follows: social.follows, ratings: social.ratings });
-    }).catch(error => {
-      setToastMsg(`❌ ${apiErrorMessage(error)}`);
-      setTimeout(() => setToastMsg(''), 3000);
-    });
-  }, [user?.id]);
+    }).catch(error => showToast(`❌ ${apiErrorMessage(error)}`));
+  }, [user?.id, showToast]);
 
   const toggleEaType = (type) => { setUploadForm(prev => { const tArr = prev.eaTypes || []; return { ...prev, eaTypes: tArr.includes(type) ? tArr.filter(t => t !== type) : [...tArr, type] }; }); };
 
@@ -429,8 +426,8 @@ export default function App() {
         {route === 'home' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
-        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, openPostDetail, getUserTitle, handleDeletePost, selectedPost, setRoute, comments, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }} />}
-        {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleDownload, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
+        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }} />}
+        {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
       </main>
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />

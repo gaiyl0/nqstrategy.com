@@ -28,4 +28,19 @@ assert.doesNotMatch(page, /MT5 HTML 原始回测报告/, 'upload form rendering 
 assert.doesNotMatch(page, /发表新主题/, 'forum rendering belongs in ForumView');
 assert.doesNotMatch(page, /余额提现申请/, 'modal rendering belongs in AppOverlays');
 
+
+const profileView = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
+for (const callback of ['handleSecureDownload', 'handleLicenseBind', 'handleLicenseToken', 'showToast']) {
+  assert.match(profileView, new RegExp(`function ProfileView\\([^)]*${callback}`), `ProfileView must declare ${callback}`);
+  assert.match(page, new RegExp(`<ProfileView[^\n]*${callback}`), `app/page.js must pass ${callback} to ProfileView`);
+}
+assert.doesNotMatch(page, /\bhandleDownload\b/, 'undefined handleDownload alias must not return');
+
+const forumView = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
+for (const dependency of ['products', 'handlePinPost', 'handlePinComment', 'handleReport']) {
+  assert.match(forumView, new RegExp(`function ForumView\\([^)]*${dependency}`), `ForumView must declare ${dependency}`);
+  assert.match(page, new RegExp(`<ForumView[^\n]*${dependency}`), `app/page.js must pass ${dependency} to ForumView`);
+}
+assert.doesNotMatch(page, /\bsetToastMsg\b/, 'page orchestration must use the toast hook API');
+
 console.log(`Frontend structure tests passed: app/page.js ${lineCount} lines, ${components.length} extracted component boundaries`);

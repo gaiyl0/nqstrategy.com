@@ -2,7 +2,7 @@ import Image from 'next/image';
 import { ArrowLeft, Clock, Eye, Hash, MessageSquare, Trash2, User as UserIcon } from 'lucide-react';
 import { FadeInView } from './HomeView';
 
-export default function ForumView({ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, openPostDetail, getUserTitle, handleDeletePost, selectedPost, setRoute, comments, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }) {
+export default function ForumView({ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }) {
   return (
 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-100px)] flex gap-8 animate-in fade-in duration-300">
   <div className="w-64 shrink-0 hidden md:flex flex-col gap-2 border-r border-zinc-800/80 pr-6">

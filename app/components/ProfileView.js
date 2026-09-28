@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { Box, CheckCircle, Download, Edit, FolderDown, Settings, Trash2, Upload, Wallet } from 'lucide-react';
 
-export default function ProfileView({ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleDownload, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }) {
+export default function ProfileView({ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }) {
   return (
 <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 animate-in fade-in duration-300">
   <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-8 shadow-xl relative">
