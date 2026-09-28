@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-import { getSessionUser, hashPassword, createSession } from '@/lib/auth';
+import { getSessionUser, hashPassword, createSession, verifyPassword } from '@/lib/auth';
 import crypto from 'crypto';
 import { idempotencyKeySchema, idSchema, parseJson, userPatchSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { setWalletBalance } from '@/lib/wallet-ledger.mjs';
+import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,19 +140,35 @@ export async function PATCH(request) {
 
       const changePassword = Boolean(body.password);
       let hashed = null;
+      let credential = null;
+      let passwordContext = null;
       if (changePassword) {
+        passwordContext = createSecurityContext(request,currentUser);
+        const limited=enforceRateLimits(passwordContext,'auth.profile_password_change',[
+          {policy:RATE_LIMITS.profilePasswordIp},
+          {policy:RATE_LIMITS.profilePasswordUser,identifier:String(currentUser.id)},
+        ]);
+        if(limited)return limited;
+        credential=db.prepare('SELECT password,session_version FROM users WHERE id=? AND deleted_at IS NULL').get(currentUser.id);
+        if(!credential||!await verifyPassword(body.currentPassword,credential.password)){
+          return withAudit(passwordContext,NextResponse.json({success:false,message:'当前密码验证失败'},{status:401}),{
+            eventType:'auth.profile_password_change',outcome:'failure',reasonCode:'CURRENT_PASSWORD_INVALID',
+            userId:currentUser.id,targetType:'user',targetId:currentUser.id,
+          });
+        }
         hashed = await hashPassword(body.password);
       }
 
-      db.transaction(() => {
+      try{db.transaction(() => {
         if (changePassword) {
-          db.prepare(`
+          const updated=db.prepare(`
             UPDATE users
             SET username = ?, avatar_url = ?, password = ?, password_reset_required = 0,
                 session_version = session_version + 1
-            WHERE id = ?
+            WHERE id = ? AND password = ? AND session_version = ? AND deleted_at IS NULL
           `)
-            .run(newUname, newAvatar, hashed, currentUser.id);
+            .run(newUname, newAvatar, hashed, currentUser.id,credential.password,credential.session_version);
+          if(updated.changes!==1)throw new Error('PROFILE_PASSWORD_STATE_CONFLICT');
         } else {
           db.prepare('UPDATE users SET username = ?, avatar_url = ? WHERE id = ?')
             .run(newUname, newAvatar, currentUser.id);
@@ -162,13 +179,25 @@ export async function PATCH(request) {
         db.prepare('UPDATE posts SET author = ? WHERE author_user_id = ?').run(newUname, currentUser.id);
         db.prepare('UPDATE comments SET author = ? WHERE author_user_id = ?').run(newUname, currentUser.id);
         db.prepare('UPDATE withdrawals SET username = ? WHERE user_id = ?').run(newUname, currentUser.id);
-      })();
+      })();}catch(error){
+        if(error.message==='PROFILE_PASSWORD_STATE_CONFLICT'){
+          return withAudit(passwordContext,NextResponse.json({success:false,message:'账户状态已变化，请重新登录后再试'},{status:409}),{
+            eventType:'auth.profile_password_change',outcome:'failure',reasonCode:'ACCOUNT_STATE_CONFLICT',
+            userId:currentUser.id,targetType:'user',targetId:currentUser.id,
+          });
+        }
+        throw error;
+      }
 
       const refreshedUser = db.prepare(
         'SELECT id, username, email, role, balance, avatar_url, email_verified, join_date, session_version FROM users WHERE id = ? AND deleted_at IS NULL'
       ).get(currentUser.id);
       await createSession(refreshedUser);
-      return NextResponse.json({ success: true, user: refreshedUser });
+      const response=NextResponse.json({ success: true, user: refreshedUser });
+      return changePassword?withAudit(passwordContext,response,{
+        eventType:'auth.profile_password_change',outcome:'success',reasonCode:'PASSWORD_CHANGED',
+        userId:currentUser.id,targetType:'user',targetId:currentUser.id,
+      }):response;
     }
 
     return NextResponse.json({ success: false, message: '未知操作指令' }, { status: 400 });
@@ -207,7 +236,7 @@ export async function DELETE(request) {
       const deletedEmail = `deleted-${id}-${anonymizationNonce}@deleted.invalid`;
       db.prepare(`
         UPDATE users
-        SET username = ?, email = ?, role = 'deleted', password = ?, avatar_url = NULL,
+        SET username = ?, email = ?, role = 'banned', password = ?, avatar_url = NULL,
             email_verified = 0, password_reset_required = 1,
             session_version = session_version + 1, deleted_at = CURRENT_TIMESTAMP
         WHERE id = ? AND deleted_at IS NULL

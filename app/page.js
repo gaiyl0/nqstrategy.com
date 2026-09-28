@@ -135,7 +135,7 @@ export default function App() {
   };
 
   const [profileModal, setProfileModal] = useState(false);
-  const [profileForm, setProfileForm] = useState({ newUsername: '', password: '' });
+  const [profileForm, setProfileForm] = useState({ newUsername: '', password: '', currentPassword: '' });
   const [avatarFile, setAvatarFile] = useState(null);
   const [isProfileUpdating, setIsProfileUpdating] = useState(false);
   
@@ -244,9 +244,9 @@ export default function App() {
     let avatar_url = user.avatar_url;
     if (avatarFile) avatar_url = await handleFileUpload(avatarFile);
     try {
-      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password }) });
+      const res = await fetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password, ...(profileForm.password?{currentPassword:profileForm.currentPassword}:{}) }) });
       const data = await res.json();
-      if (data.success) { updateUserSession(data.user); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(); fetchMyOrders(); } else showToast('❌ ' + data.message);
+      if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(); fetchMyOrders(); } else showToast('❌ ' + data.message);
     } catch (e) {}
     setIsProfileUpdating(false);
   };
@@ -736,7 +736,7 @@ export default function App() {
                       <span className="px-4 py-1.5 rounded-xl text-xs font-bold border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5"/> {t('账户安全: 已实名认证', 'Security: Verified')}</span>
                     </div>
                   </div>
-                  <button onClick={() => { setProfileForm({ newUsername: user.username, password: '' }); setProfileModal(true); }} className="px-6 py-2.5 bg-zinc-800 hover:bg-cyan-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg border border-zinc-700 hover:border-cyan-500/50">
+                  <button onClick={() => { setProfileForm({ newUsername: user.username, password: '', currentPassword: '' }); setProfileModal(true); }} className="px-6 py-2.5 bg-zinc-800 hover:bg-cyan-600 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg border border-zinc-700 hover:border-cyan-500/50">
                     <Settings className="w-4 h-4" /> {t('编辑资料', 'Edit Profile')}
                   </button>
                 </div>
@@ -833,7 +833,7 @@ export default function App() {
       {profileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in-95">
           <div className="bg-zinc-900 border border-zinc-800 rounded-3xl max-w-sm w-full p-8 relative shadow-2xl">
-            <button onClick={() => { setProfileModal(false); setAvatarFile(null); }} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><X className="w-5 h-5" /></button>
+            <button onClick={() => { setProfileModal(false); setAvatarFile(null); setProfileForm({newUsername:user.username,password:'',currentPassword:''}); }} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><X className="w-5 h-5" /></button>
             <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Settings className="w-5 h-5 text-cyan-400"/> {t('编辑个人资料', 'Edit Profile')}</h3>
             <div className="space-y-5">
               <div>
@@ -853,8 +853,12 @@ export default function App() {
                 <input type="text" value={profileForm.newUsername} onChange={e => setProfileForm({...profileForm, newUsername: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" />
               </div>
               <div>
+                <label className="block text-xs font-bold text-zinc-400 mb-2">{t('当前密码（修改密码时必填）', 'Current Password (required to change password)')}</label>
+                <input type="password" autoComplete="current-password" value={profileForm.currentPassword} onChange={e => setProfileForm({...profileForm, currentPassword: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" placeholder="******" />
+              </div>
+              <div>
                 <label className="block text-xs font-bold text-zinc-400 mb-2">{t('修改安全密码 (留空则不修改)', 'New Password (leave blank to keep)')}</label>
-                <input type="password" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" placeholder="******" />
+                <input type="password" autoComplete="new-password" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" placeholder="******" />
               </div>
               <button onClick={submitProfileUpdate} disabled={isProfileUpdating} className="w-full py-4 mt-2 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-xl text-sm shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all">
                 {isProfileUpdating ? t('正在保存...', 'Saving...') : t('保存所有修改', 'Save Changes')}

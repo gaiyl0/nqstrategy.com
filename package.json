@@ -29,7 +29,8 @@
     "test:product-slug": "node tests/product-slug.mjs",
     "test:database-migrations": "node tests/database-migrations.mjs",
     "test:relational-integrity": "node tests/relational-integrity.mjs",
-    "test:schema-convergence": "node tests/schema-convergence.mjs"
+    "test:schema-convergence": "node tests/schema-convergence.mjs",
+    "test:profile-password": "node tests/profile-password-http.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
