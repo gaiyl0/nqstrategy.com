@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Box, Download, FolderDown, ArrowLeft, CheckCircle2, TrendingUp, ShieldAlert, Cpu, ChevronRight, Filter, Columns3, Heart, Star, UserPlus } from 'lucide-react';
+import { Box, Download, FolderDown, ArrowLeft, CheckCircle2, TrendingUp, ShieldAlert, Cpu, ChevronRight, Filter, Columns3, Heart, Star, UserPlus, ExternalLink } from 'lucide-react';
 import { FadeInView } from './HomeView'; 
 import StrategyMetrics from './StrategyMetrics';
 import StrategyComparison from './StrategyComparison';
@@ -160,9 +160,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
 
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-in fade-in slide-in-from-right-8 duration-500">
-        <button onClick={() => setView('list')} className="text-sm font-bold text-zinc-500 hover:text-white mb-6 flex items-center gap-2 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> {t('返回市场列表', 'Back to Market')}
-        </button>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><button onClick={() => setView('list')} className="text-sm font-bold text-zinc-500 hover:text-white flex items-center gap-2 transition-colors"><ArrowLeft className="w-4 h-4" /> {t('返回市场列表', 'Back to Market')}</button>{selectedEA.slug&&<a href={`/market/${encodeURIComponent(selectedEA.slug)}`} className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300"><ExternalLink className="h-3.5 w-3.5"/>{t('打开可分享页面','Open shareable page')}</a>}</div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">

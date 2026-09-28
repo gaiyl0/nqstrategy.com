@@ -24,6 +24,7 @@ import { getVerification, syncAutomaticVerification } from '@/lib/strategy-verif
 import { createInitialVersion, getCurrentVersion, listVersions, publishInitialVersion } from '@/lib/product-versions';
 import { productSocialSummary } from '@/lib/social';
 import { queryMarketCatalog } from '@/lib/market-catalog.mjs';
+import { productSlug } from '@/lib/product-slug.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -46,7 +47,7 @@ function publicProductDto(product,currentUser=null) {
 function publicProducts(currentUser = null) {
   const includeOwned = currentUser && ['developer', 'admin'].includes(currentUser.role);
   const products = db.prepare(`
-    SELECT id, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
+    SELECT id, slug, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
            pairs, ea_type, trial_enabled, trial_days, status, created_at
     FROM products
     WHERE moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
@@ -57,7 +58,7 @@ function publicProducts(currentUser = null) {
 
 function marketProducts(currentUser,query){
   const now=Date.now();
-  const candidates=db.prepare(`SELECT p.id,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.trial_enabled,p.trial_days,p.status,p.created_at,
+  const candidates=db.prepare(`SELECT p.id,p.slug,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.trial_enabled,p.trial_days,p.status,p.created_at,
     m.max_drawdown_percent metric_drawdown,m.reviewed_at metric_reviewed,
     CASE WHEN v.status='active' AND (v.expires_at IS NULL OR v.expires_at>?) THEN v.level ELSE 'unverified' END verification_level
     FROM products p LEFT JOIN strategy_metrics m ON m.product_id=p.id LEFT JOIN strategy_verifications v ON v.product_id=p.id
@@ -135,6 +136,7 @@ export async function POST(request) {
         body.logo_url || null, body.file_url,body.trialEnabled?1:0,body.trialDays||7,
       );
       const productId = Number(result.lastInsertRowid);
+      db.prepare('UPDATE products SET slug=? WHERE id=?').run(productSlug(body.title,productId),productId);
       upsertStrategyMetrics(productId, body.metrics);
       claimEvidence(productId, currentUser.id, body.evidenceIds);
       claimReport(productId, currentUser.id, body.reportId);

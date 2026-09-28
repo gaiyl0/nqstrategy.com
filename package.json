@@ -22,7 +22,8 @@
     "test:strategy-comparison": "node tests/strategy-comparison.mjs",
     "test:social": "node tests/social.mjs",
     "test:market-catalog": "node tests/market-catalog.mjs",
-    "test:content-moderation": "node tests/content-moderation.mjs"
+    "test:content-moderation": "node tests/content-moderation.mjs",
+    "test:product-slug": "node tests/product-slug.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
