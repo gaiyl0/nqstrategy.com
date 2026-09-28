@@ -33,6 +33,7 @@
     "test:profile-password": "node tests/profile-password-http.mjs",
     "test:api-client": "node tests/api-client.mjs",
     "test:frontend-api": "node tests/frontend-api-usage.mjs",
+    "test:frontend-structure": "node tests/frontend-structure.mjs",
     "test:api-errors": "node tests/api-error-boundary.mjs",
     "test:api-error-audit": "node tests/api-error-audit.mjs",
     "test:docs": "node tests/documentation-convergence.mjs"
