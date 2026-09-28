@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-28  
-当前状态：P0、P1、P2 与 NQ-DOC-001 已完成；P3 尚待处理
+当前状态：P0、P1、P2、NQ-DOC-001 与 P3-001 已完成；P3-002 至 P3-004 待处理
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/doc-001-status-convergence
+feature/p3-001-eslint
 ```
 
 最近功能提交：
 
 ```text
-23f3531 docs: converge release status and runbooks
+7987c36 feat: resolve frontend lint baseline
 ```
 
 数据库迁移状态：
@@ -46,7 +46,7 @@ foreign_key_violations=0
 - Next.js 16.3.5 生产构建通过；
 - 22 个 `test:*` 脚本全部通过；
 - 文档链接、状态分类、命令引用和旧文案专项检查共 55 个断言通过；
-- 全仓 ESLint 剩余 4 个既有 errors 和 26 个 warnings，列入 P3-001；
+- 全仓 ESLint 以退出码 0 完成，0 errors / 0 warnings；
 - Git 仓库已经建立；
 - SQLite 当前只允许单实例部署；
 - 真实付费入口保持关闭。
@@ -120,12 +120,6 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 ## 明确未完成
 
-### P3-001：修复剩余 ESLint errors
-
-当前全仓 ESLint 有 4 个 errors 和 26 个 warnings；errors 集中在 `app/page.js` 的 effect 内同步 `setState`，warnings 主要涉及原生图片、alt 和 Hook 依赖。
-
-验收标准：全仓 `npm run lint` 以退出码 0 完成，不通过禁用规则掩盖问题。
-
 ### P3-002：拆分 `app/page.js`
 
 问题：首页 Client Component 同时承担路由、认证、市场、论坛、上传、订单、授权和个人中心，维护和测试成本过高。
@@ -175,7 +169,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 2. ✅ **NQ-P1-014：统一前端 API 客户端和失败提示**；
 3. ✅ **NQ-P1-015：全 API 错误泄漏审计**；
 4. ✅ **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
-5. **P3-001：修复剩余 ESLint errors**；
+5. ✅ **P3-001：修复剩余 ESLint errors**；
 6. **P3-002：拆分 `app/page.js`**；
 7. **P3-003：图片和加载性能优化**；
 8. **P3-004：CI、远程 Git、备份恢复和部署文档**；
@@ -184,11 +178,43 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-P3-001：修复剩余 ESLint errors
+P3-002：拆分 `app/page.js`
 状态：尚未开始，等待项目所有者确认启动
 ```
 
 ## 更新记录
+
+### 2026-09-28：P3-001 全仓 ESLint 清零
+
+状态：**已完成，等待项目所有者验收**
+提交：`7987c36 feat: resolve frontend lint baseline`
+
+原问题：全仓 ESLint 有 4 个 errors 和 26 个 warnings。4 个错误集中在 `app/page.js` 的 effect 内同步更新状态；warnings 涉及原生 `<img>`、缺失 alt、Hook 依赖和内部页面使用整页跳转。持续保留这些问题会降低后续组件拆分与性能优化的可信度，也会使 CI 无法把 lint 作为硬门槛。
+
+完成内容：
+
+- 使用 `useSyncExternalStore` 管理语言本地存储订阅，删除 effect 内同步读取并更新语言状态；
+- 将初始路由恢复改为可清理的异步调度，避免 effect 内同步状态更新；
+- 移除仅用于首屏挂载判断的 `isMounted` 状态；
+- 重构当前用户资产加载，在 effect 内直接启动并发请求，以 Promise 完成结果更新状态，依赖项收敛到稳定的用户 ID；
+- 修复管理页初始化 effect 的 `router` 依赖；
+- 将内部管理页导航改为 Next.js `router.push`；
+- 将本次发现的原生 `<img>` 替换为 Next.js `Image`，补齐尺寸和可访问的 alt；本地 Blob 头像预览明确使用 `unoptimized`；
+- 移除前端以 `Date.now()` 拼接的缓存破坏参数，保留现有 `cache: 'no-store'` 请求语义；
+- 没有新增 ESLint 禁用规则，也没有通过忽略文件隐藏问题；
+- 按 Next.js 16.3.5 本地文档复核 `Image`、`useRouter`、链接导航、Server/Client Components 和 `use client` 边界后实施修改。
+
+验收结果：
+
+```text
+变更前：4 errors, 26 warnings
+变更后：0 errors, 0 warnings
+npm run lint：退出码 0
+```
+
+完整验证：22 个 `test:*` 脚本全部通过；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面与全部动态 API 路由收集通过；`git diff --check` 通过。
+
+验收结论：P3-001 达标。全仓 lint 已可作为后续提交和 CI 的硬门槛。下一项为 P3-002，需按业务边界拆分 `app/page.js`，本任务没有提前启动该项。
 
 ### 2026-09-28：NQ-DOC-001 状态和上线文档收敛
 
