@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, useEffect, useId, useRef } from 'react';
+import { cloneElement, createContext, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Info, LoaderCircle, X, XCircle } from 'lucide-react';
 
 const join = (...classes) => classes.filter(Boolean).join(' ');
@@ -129,4 +129,66 @@ export function Dialog({ open, onClose, title, description, children, footer }) 
 export function Drawer({ open, onClose, title, description, children, footer }) {
   const titleId = useId();
   return <Overlay open={open} onClose={onClose} labelledBy={titleId} side><div className="flex min-h-full flex-col"><OverlayHeader id={titleId} title={title} description={description} onClose={onClose} /><div className="flex-1 px-6 py-5">{children}</div>{footer && <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-slate-800 bg-[#0b1119]/95 px-6 py-4 backdrop-blur">{footer}</div>}</div></Overlay>;
+}
+
+const InteractionContext = createContext(null);
+
+export function InteractionProvider({ children }) {
+  const [request, setRequest] = useState(null);
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const resolver = useRef(null);
+
+  const close = useCallback((result) => {
+    resolver.current?.(result);
+    resolver.current = null;
+    setRequest(null);
+    setValue('');
+    setError('');
+  }, []);
+
+  const openRequest = useCallback((configuration) => new Promise(resolve => {
+    resolver.current?.(null);
+    resolver.current = resolve;
+    setValue(String(configuration.initialValue ?? ''));
+    setError('');
+    setRequest(configuration);
+  }), []);
+
+  const confirmAction = useCallback(configuration => openRequest({ type: 'confirm', tone: 'danger', confirmLabel: '确认', ...configuration }), [openRequest]);
+  const requestInput = useCallback(configuration => openRequest({ type: 'input', confirmLabel: '继续', ...configuration }), [openRequest]);
+  const showValue = useCallback(configuration => openRequest({ type: 'value', confirmLabel: '关闭', ...configuration }), [openRequest]);
+
+  const submit = () => {
+    if (request.type === 'confirm') return close(true);
+    if (request.type === 'value') return close(true);
+    const normalized = request.trim === false ? value : value.trim();
+    if (request.required && !normalized) return setError(request.requiredMessage || '请填写此字段');
+    if (request.minLength && normalized.length < request.minLength) return setError(request.minLengthMessage || `至少输入 ${request.minLength} 个字符`);
+    if (request.maxLength && normalized.length > request.maxLength) return setError(request.maxLengthMessage || `最多输入 ${request.maxLength} 个字符`);
+    const validationError = request.validate?.(normalized);
+    if (validationError) return setError(validationError);
+    close(normalized);
+  };
+
+  const requestType = request?.type;
+  const cancel = useCallback(() => close(requestType === 'confirm' ? false : null), [close, requestType]);
+  const footer = request ? <><Button variant="secondary" onClick={cancel}>{request.cancelLabel || (request.type === 'value' ? '关闭' : '取消')}</Button>{request.type !== 'value' && <Button variant={request.tone === 'danger' ? 'danger' : 'primary'} onClick={submit}>{request.confirmLabel}</Button>}</> : null;
+
+  return (
+    <InteractionContext.Provider value={{ confirmAction, requestInput, showValue }}>
+      {children}
+      <Dialog open={Boolean(request)} onClose={cancel} title={request?.title || '请确认'} description={request?.description} footer={footer}>
+        {request?.type === 'confirm' && <Notice tone={request.tone === 'danger' ? 'danger' : request.tone || 'warning'} title={request.noticeTitle || '请检查操作影响'}>{request.notice}</Notice>}
+        {request?.type === 'input' && <Field label={request.label} hint={request.hint} error={error} required={request.required}>{request.options ? <select value={value} onChange={event => { setValue(event.target.value); setError(''); }}>{request.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select> : request.multiline ? <textarea rows={request.rows || 5} value={value} maxLength={request.maxLength} placeholder={request.placeholder} onChange={event => { setValue(event.target.value); setError(''); }} /> : <input type={request.inputType || 'text'} value={value} maxLength={request.maxLength} placeholder={request.placeholder} onChange={event => { setValue(event.target.value); setError(''); }} />}</Field>}
+        {request?.type === 'value' && <Field label={request.label} hint={request.hint}><textarea readOnly rows={request.rows || 6} value={request.value || ''} onFocus={event => event.currentTarget.select()} /></Field>}
+      </Dialog>
+    </InteractionContext.Provider>
+  );
+}
+
+export function useInteraction() {
+  const value = useContext(InteractionContext);
+  if (!value) throw new Error('useInteraction must be used inside InteractionProvider');
+  return value;
 }

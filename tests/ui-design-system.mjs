@@ -12,10 +12,28 @@ for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--
 for (const component of ['Button', 'Panel', 'Badge', 'Field', 'Tabs', 'EmptyState', 'Skeleton', 'Notice', 'Dialog', 'Drawer']) {
   assert.match(kit, new RegExp(`export function ${component}\\b`), `missing UI primitive ${component}`);
 }
+assert.match(kit, /export function InteractionProvider\b/);
+assert.match(kit, /export function useInteraction\b/);
 assert.match(kit, /role="dialog"/);
 assert.match(kit, /aria-modal="true"/);
 assert.match(kit, /event\.key === 'Escape'/);
 assert.match(kit, /document\.body\.style\.overflow = 'hidden'/);
 assert.match(css, /prefers-reduced-motion/);
+
+for (const directory of ['app', 'lib']) {
+  const files = [];
+  const walk = current => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) walk(target);
+      else if (/\.(?:js|mjs)$/.test(entry.name)) files.push(target);
+    }
+  };
+  walk(path.join(root, directory));
+  for (const file of files) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /\b(?:window\.)?(?:alert|confirm|prompt)\s*\(/, `${path.relative(root, file)} uses a native browser dialog`);
+  }
+}
 
 console.log('UI design system tests passed: tokens, primitives, focus management and reduced-motion policy');
