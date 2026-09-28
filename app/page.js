@@ -435,7 +435,7 @@ export default function App() {
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
 
-      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, avatarFile, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
+      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
     </div>
   );
 }

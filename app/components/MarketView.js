@@ -125,7 +125,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
                   <button onClick={event => { event.stopPropagation(); toggleComparison(p.id); }} disabled={!compareIds.includes(p.id) && compareIds.length >= COMPARISON_MAX} className={`absolute left-4 top-4 z-10 rounded-lg border px-2.5 py-1 text-[10px] font-black ${compareIds.includes(p.id) ? 'border-violet-400 bg-violet-600 text-white' : 'border-zinc-700 bg-zinc-950/90 text-zinc-400'} disabled:opacity-30`}>{compareIds.includes(p.id) ? t('已选择', 'Selected') : t('加入对比', 'Compare')}</button>
                   <div>
                     <div className="flex items-center gap-4 mb-5 mt-7">
-                      {p.logo_url ? <Image src={p.logo_url} alt={p.title} width={56} height={56} unoptimized className="w-14 h-14 rounded-2xl object-cover bg-zinc-950 border border-zinc-800" /> : <div className="w-14 h-14 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center"><Cpu className="w-6 h-6 text-cyan-400/50" /></div>}
+                      {p.logo_url ? <Image src={p.logo_url} alt={p.title} width={56} height={56} className="w-14 h-14 rounded-2xl object-cover bg-zinc-950 border border-zinc-800" /> : <div className="w-14 h-14 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center"><Cpu className="w-6 h-6 text-cyan-400/50" /></div>}
                       <div><h3 className="text-base font-bold text-white truncate w-36 group-hover:text-cyan-400 transition-colors">{p.title}</h3><p className="text-xs text-zinc-500 mt-0.5">by {p.author}</p></div>
                     </div>
                     {p.ea_type && (
@@ -167,7 +167,7 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden">
               {selectedEA.logo_url ? 
-                <Image src={selectedEA.logo_url} alt={selectedEA.title} width={128} height={128} unoptimized className="w-32 h-32 mx-auto rounded-3xl object-cover border-4 border-zinc-950 shadow-xl mb-6" /> : 
+                <Image src={selectedEA.logo_url} alt={selectedEA.title} width={128} height={128} className="w-32 h-32 mx-auto rounded-3xl object-cover border-4 border-zinc-950 shadow-xl mb-6" /> :
                 <div className="w-32 h-32 mx-auto rounded-3xl bg-zinc-950 border-4 border-zinc-900 flex items-center justify-center shadow-xl mb-6"><Cpu className="w-12 h-12 text-zinc-600" /></div>
               }
               <h2 className="text-3xl font-black text-white mb-2">{selectedEA.price === 0 ? t('免费', 'Free') : `$${selectedEA.price}`}</h2>

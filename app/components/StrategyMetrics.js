@@ -117,7 +117,7 @@ export default function StrategyMetrics({ metrics, evidence = [], report = null,
         <h4 className="mb-4 font-bold text-white">{t('已审核 MT5 证据', 'Reviewed MT5 Evidence')}</h4>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {evidence.map(item => <a key={item.id} href={item.previewUrl} target="_blank" rel="noreferrer" className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950">
-            <Image src={item.previewUrl} alt={`MT5 ${item.type}`} width={1200} height={700} unoptimized className="h-44 w-full object-contain" />
+            <Image src={item.previewUrl} alt={`MT5 ${item.type}`} width={1200} height={700} sizes="(max-width: 767px) calc(100vw - 2rem), 50vw" unoptimized className="h-44 w-full object-contain" />
             <div className="flex items-center justify-between px-3 py-2 text-[10px] text-zinc-500"><span className="font-bold uppercase text-emerald-400">{item.type}</span><span>SHA-256 {item.sha256.slice(0, 12)}…</span></div>
           </a>)}
         </div>

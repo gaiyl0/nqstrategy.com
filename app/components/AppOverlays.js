@@ -1,7 +1,38 @@
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { CheckCircle, Settings, Shield, User as UserIcon, Wallet, X } from 'lucide-react';
 
-export default function AppOverlays({ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, avatarFile, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }) {
+function AvatarPicker({ currentUrl, username, setAvatarFile, t }) {
+  const previewUrlRef = useRef(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+  }, []);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const nextUrl = file ? URL.createObjectURL(file) : null;
+    previewUrlRef.current = nextUrl;
+    setPreviewUrl(nextUrl);
+    setAvatarFile(file);
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <div className="w-16 h-16 shrink-0 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center overflow-hidden">
+        {previewUrl ? <Image src={previewUrl} width={64} height={64} unoptimized alt={t('新头像预览', 'New avatar preview')} className="w-full h-full object-cover" /> : (currentUrl ? <Image src={currentUrl} width={64} height={64} alt={`${username} avatar`} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-zinc-600" />)}
+      </div>
+      <label className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors w-full text-center">
+        {t('上传新头像', 'Upload New')}
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleFileChange} />
+      </label>
+    </div>
+  );
+}
+
+export default function AppOverlays({ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }) {
   return (
     <>
 {versionModal&&<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"><div className="w-full max-w-xl rounded-3xl border border-violet-500/30 bg-zinc-950 p-7 shadow-2xl"><div className="flex items-center justify-between"><h3 className="text-xl font-black text-white">{t('提交新版本','Submit New Version')} · {versionModal.title}</h3><button onClick={()=>setVersionModal(null)} className="text-zinc-500 hover:text-white"><X/></button></div><div className="mt-6 space-y-4"><input value={versionForm.version} onChange={e=>setVersionForm({...versionForm,version:e.target.value})} placeholder="1.1.0" className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"/><textarea value={versionForm.releaseNotes} onChange={e=>setVersionForm({...versionForm,releaseNotes:e.target.value})} rows="5" placeholder={t('本版本更新日志','Release notes')} className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"/><select value={versionForm.upgradePolicy} onChange={e=>setVersionForm({...versionForm,upgradePolicy:e.target.value})} className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"><option value="all_existing">{t('所有已有买家免费继承','All existing owners inherit')}</option><option value="new_purchases_only">{t('仅版本发布后的新买家','Only purchases after release')}</option></select><input type="file" accept=".ex4,.ex5" onChange={e=>setVersionFile(e.target.files?.[0]||null)} className="block w-full text-xs text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-500/10 file:px-3 file:py-2 file:font-bold file:text-violet-300"/><button onClick={submitVersion} disabled={isVersionSubmitting} className="w-full rounded-xl bg-violet-600 py-3 font-black text-white disabled:opacity-50">{isVersionSubmitting?t('提交中…','Submitting…'):t('提交管理员审核','Submit for Review')}</button></div></div></div>}
@@ -15,15 +46,7 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
       <div className="space-y-5">
         <div>
           <label className="block text-xs font-bold text-zinc-400 mb-2">{t('个人头像 (可选)', 'Avatar (Optional)')}</label>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 shrink-0 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center overflow-hidden">
-              {avatarFile ? <Image src={URL.createObjectURL(avatarFile)} width={64} height={64} unoptimized alt={t('新头像预览', 'New avatar preview')} className="w-full h-full object-cover" /> : (user?.avatar_url ? <Image src={user.avatar_url} width={64} height={64} alt={`${user.username} avatar`} className="w-full h-full object-cover" /> : <UserIcon className="w-6 h-6 text-zinc-600" />)}
-            </div>
-            <label className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors w-full text-center">
-              {t('上传新头像', 'Upload New')}
-              <input type="file" accept="image/*" className="hidden" onChange={e => setAvatarFile(e.target.files[0])} />
-            </label>
-          </div>
+          <AvatarPicker currentUrl={user?.avatar_url} username={user?.username || ''} setAvatarFile={setAvatarFile} t={t} />
         </div>
         <div>
           <label className="block text-xs font-bold text-zinc-400 mb-2">{t('专属用户名', 'Username')}</label>

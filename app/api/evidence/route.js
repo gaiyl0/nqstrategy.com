@@ -85,7 +85,7 @@ async function GETHandler(request) {
     const allowed = row.review_status === 'approved' && row.product_status === 'active' || user?.id === row.owner_user_id || user?.role === 'admin';
     if (!allowed) return NextResponse.json({ success: false, message: '无权查看证据' }, { status: 403 });
     const content = fs.readFileSync(evidencePath(row.preview_stored_name));
-    return new Response(content, { headers: { 'content-type': 'image/png', 'content-length': String(content.length), 'cache-control': 'private, no-store', 'content-security-policy': "default-src 'none'; sandbox" } });
+    return new Response(content, { headers: { 'content-type': 'image/png', 'content-length': String(content.length), 'cache-control': 'private, no-store', 'content-disposition': 'inline', 'content-security-policy': "default-src 'none'; sandbox", 'cross-origin-resource-policy': 'same-origin', 'referrer-policy': 'no-referrer', 'x-content-type-options': 'nosniff' } });
   } catch (error) {
     return NextResponse.json({ success: false, message: '读取证据失败' }, { status: 500 });
   }
