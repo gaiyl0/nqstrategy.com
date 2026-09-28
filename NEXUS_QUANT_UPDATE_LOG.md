@@ -29,7 +29,7 @@ feature/ui-redesign
 最近功能提交：
 
 ```text
-0d9d085 feat: replace native browser dialogs
+3d58bc2 feat: redesign the verified strategy homepage
 ```
 
 数据库迁移状态：
@@ -58,8 +58,8 @@ foreign_key_violations=0
 |---|---|---|
 | UI-DESIGN-001 | 设计令牌与基础组件 | ✅ 已完成 |
 | UI-DESIGN-002 | 替换原生 `alert` / `confirm` / `prompt` 与统一反馈 | ✅ 已完成 |
-| UI-DESIGN-003 | 重构首页 | 🟡 下一项 |
-| UI-DESIGN-004 | 重构策略市场 | ⏳ 待执行 |
+| UI-DESIGN-003 | 重构首页 | ✅ 已完成 |
+| UI-DESIGN-004 | 重构策略市场 | 🟡 下一项 |
 | UI-DESIGN-005 | 重构个人中心 | ⏳ 待执行 |
 | UI-DESIGN-006 | 重构开发者社区 | ⏳ 待执行 |
 | UI-DESIGN-007 | 重构后台管理与增加运营视图 | ⏳ 待执行 |
@@ -184,11 +184,23 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-UI-DESIGN-003：按已确认的视觉稿重构首页
-状态：UI-DESIGN-002 已完成；等待项目所有者确认后开始
+UI-DESIGN-004：按已确认的视觉稿重构策略市场
+状态：UI-DESIGN-003 已完成；等待项目所有者确认后开始
 ```
 
 ## 更新记录
+
+### 2026-09-29：UI-DESIGN-003 首页重构
+
+状态：**已完成，等待项目所有者验收**
+
+提交：`3d58bc2 feat: redesign the verified strategy homepage`
+
+完成内容：用“让可信的量化策略被看见”重构首屏；新增真实策略历史净值/回撤面板、精选认证策略、Nexus Verification 四步流程、开发者生态真实统计与最新社区研究；移除旧首页旋转球体、大量发光与装饰动画。首页只选择“已上架 + MT5 原始报告 + 指标已审核 + report_verified 或更高等级”产品；无合格数据显示空状态，不生成随机曲线。顶部未加入任何写死的行情报价，亦未把历史回测标记为实盘。
+
+验收：首页实测 HTTP 200，响应包含新标题且不含伪行情；26/26 测试通过；ESLint 0 errors / 0 warnings；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页和全部动态路由通过。
+
+下一项：UI-DESIGN-004 重构策略市场；验收要求为专业筛选、认证与风险指标卡片、比较工作区、加载/空/失败状态使用新设计系统，并继续禁止真实付费。
 
 ### 2026-09-29：UI-DESIGN-002 统一弹窗、输入与危险确认
 
