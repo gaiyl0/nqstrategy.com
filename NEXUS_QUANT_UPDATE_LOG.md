@@ -1,7 +1,7 @@
 # Nexus Quant 最新更新日志与执行顺序
 
 最后更新：2026-09-28  
-当前状态：P0 安全封堵完成；P1 已完成至 NQ-P1-013；P2 计划功能完成；P3 尚待处理
+当前状态：P0 安全封堵完成；P1 已完成至 NQ-P1-014；P2 计划功能完成；P3 尚待处理
 真实资金状态：**禁止上线，付费能力继续关闭**
 
 ## 本日志的维护规则
@@ -23,13 +23,13 @@
 当前 Git 分支：
 
 ```text
-feature/p1-012-schema-convergence
+feature/p1-014-api-client
 ```
 
 最近功能提交：
 
 ```text
-296d8c2 feat: require current password for profile changes
+104f25a feat: unify frontend api error handling
 ```
 
 数据库迁移状态：
@@ -44,9 +44,9 @@ foreign_key_violations=0
 工程验证状态：
 
 - Next.js 16.3.5 生产构建通过；
-- 17 个 `test:*` 脚本全部通过；
-- 本轮修改文件定向 ESLint 通过；
-- 全仓 ESLint 仍有 11 个既有 errors；
+- 19 个 `test:*` 脚本全部通过；
+- 新增 API 客户端与前端接入测试共 36 个断言通过；
+- 全仓 ESLint 剩余 4 个既有 errors 和 26 个 warnings，列入 P3-001；
 - Git 仓库已经建立；
 - SQLite 当前只允许单实例部署；
 - 真实付费入口保持关闭。
@@ -87,6 +87,7 @@ P0 的“完成”不代表真实支付系统已经完成。NQ-P0-008 的完成�
 | NQ-P1-011 | 核心关系外键和删除约束 | 补齐评论到帖子、订单到产品外键；孤儿数据失败关闭；明确 CASCADE/RESTRICT/SET NULL |
 | NQ-P1-012 | 用户表 Schema 收敛 | 邮箱、密码、角色、布尔值、余额、会话和大小写不敏感唯一性约束统一；实际用户逐字段保留 |
 | NQ-P1-013 | 主动改密二次身份确认 | 修改密码必须验证当前密码；双层限流、签名审计、条件更新和会话版本撤销已通过真实 HTTP 回归 |
+| NQ-P1-014 | 统一前端 API 客户端和失败提示 | 非 2xx、`success:false`、网络及响应格式错误统一阻止成功流程；管理失败、下载、multipart 和取消请求边界通过回归 |
 
 ### P1 已完成但需要部署现场验收
 
@@ -118,19 +119,6 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 
 ## 明确未完成
 
-### NQ-P1-014：统一前端 API 客户端和失败提示
-
-问题：前后台请求没有统一检查 HTTP 状态、`success` 字段和网络异常，部分管理动作可能在服务端失败时显示成功。
-
-验收标准：
-
-- 建立统一请求封装；
-- 非 2xx 或 `success:false` 不得显示成功；
-- 401、403、409、422、429 和 500 提供一致处理；
-- 管理操作只在服务端确认后更新本地状态；
-- 下载、JSON、multipart 和取消请求都有明确边界；
-- 为关键管理失败路径增加回归测试。
-
 ### NQ-P1-015：全 API 错误泄漏审计
 
 问题：products/posts/comments 已使用受控错误响应，但其余 Route Handler 尚未形成全项目证明，可能存在把 SQL、路径、堆栈或第三方错误正文返回客户端的分支。
@@ -154,9 +142,9 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 - 不把历史报告当作通过证明；
 - README、上线清单和专题安全文档之间无冲突或失效链接。
 
-### P3-001：修复 11 个 ESLint errors
+### P3-001：修复剩余 ESLint errors
 
-当前已知问题集中在 `app/page.js`：effect 内同步 `setState`、渲染作用域函数中的 `Date.now()` 和相关 React Hooks/Purity 规则。
+当前全仓 ESLint 有 4 个 errors 和 26 个 warnings；errors 集中在 `app/page.js` 的 effect 内同步 `setState`，warnings 主要涉及原生图片、alt 和 Hook 依赖。
 
 验收标准：全仓 `npm run lint` 以退出码 0 完成，不通过禁用规则掩盖问题。
 
@@ -206,10 +194,10 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 除非项目所有者明确调整，后续按以下顺序执行，每项完成后更新本日志并等待确认：
 
 1. ✅ **NQ-P1-013：主动改密要求当前密码或二次验证**；
-2. **NQ-P1-014：统一前端 API 客户端和失败提示**；
+2. ✅ **NQ-P1-014：统一前端 API 客户端和失败提示**；
 3. **NQ-P1-015：全 API 错误泄漏审计**；
 4. **NQ-DOC-001：收敛状态和上线文档中的过时内容**；
-5. **P3-001：修复 11 个 ESLint errors**；
+5. **P3-001：修复剩余 ESLint errors**；
 6. **P3-002：拆分 `app/page.js`**；
 7. **P3-003：图片和加载性能优化**；
 8. **P3-004：CI、远程 Git、备份恢复和部署文档**；
@@ -218,11 +206,44 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ## 当前下一项
 
 ```text
-NQ-P1-014：统一前端 API 客户端和失败提示
+NQ-P1-015：全 API 错误泄漏审计
 状态：尚未开始，等待项目所有者确认启动
 ```
 
 ## 更新记录
+
+### 2026-09-28：NQ-P1-014 统一前端 API 客户端和失败提示
+
+状态：**已完成，等待项目所有者验收**
+提交：`104f25a feat: unify frontend api error handling`
+
+原问题：主页、市场和后台直接调用原生 `fetch`，错误处理方式不一致。后台保存设置、重置密码、调整角色和删除用户等写操作可能不检查 HTTP 或业务失败就显示成功；部分登录、资料、资产列表错误被空 `catch` 吞掉；验证码 JSON 请求缺少 `Content-Type`。
+
+完成内容：
+
+- 新增 `lib/api-client.js`，统一封装浏览器请求并提供结构化 `ApiError`；
+- 非 2xx 和 HTTP 200 下的 `success:false` 都抛出错误，后续成功提示与本地状态更新不会执行；
+- 为 401、403、409、422、429 和 500+ 定义一致的安全回退文案，同时保留服务端受控文案、错误代码、请求关联 ID 和 `Retry-After`；
+- 网络异常转换为 `NETWORK_ERROR`，`AbortError` 原样保留，使取消请求不会被误报为网络故障；
+- `apiJson` 统一 JSON 序列化和响应类型校验，支持 204/205 空响应，并拒绝非 JSON 与损坏 JSON；
+- 成功的二进制下载不克隆或预读响应体，避免大 EA 文件产生额外内存副本；multipart 上传不强行设置 Content-Type，由浏览器生成 boundary；
+- `app/page.js`、`app/admin/page.js` 和 `MarketView.js` 的原生 `fetch()` 已全部收口到 `apiFetch()`；静态审计确认三个入口没有残留原生调用；
+- 页面和后台增加异步事件失败兜底提示，原先静默吞掉的登录、资料、订单、许可证、社交数据和删除失败现在可见；
+- 后台保存配置使用 `try/catch/finally`，只有服务端确认后显示成功，失败显示原因并恢复按钮状态；其余管理写操作发生 API 错误时也在成功提示前中止；
+- 注册、登录、找回密码、验证码、提现和资料更新统一使用安全错误文案；两个验证码请求补齐 JSON Content-Type；
+- 新增 `tests/api-client.mjs` 与 `tests/frontend-api-usage.mjs`，并登记 `test:api-client`、`test:frontend-api`。
+
+专项回归：
+
+```text
+API client: 27 assertions passed
+Frontend API usage: 9 assertions passed
+覆盖：JSON、204、success:false、403、429、非 JSON、网络失败、AbortError、二进制下载、请求序列化、管理写失败不进入成功分支、原生 fetch 零残留
+```
+
+完整验证：19 个 `test:*` 脚本全部通过；Next.js 16.3.5 生产构建、TypeScript、8/8 静态页面和所有动态 API 路由收集通过。全仓 ESLint 当前报告 4 个既有 errors 和 26 个 warnings，本任务没有新增错误，剩余项继续由 P3-001 处理。
+
+验收结论：关键前后台请求已统一检查传输层和业务层结果；服务端拒绝、冲突、限流、异常响应或网络故障均不能继续执行成功提示或写后状态更新，达到本任务验收标准。下一项为 NQ-P1-015。
 
 ### 2026-09-28：NQ-P1-013 主动改密二次身份确认
 
