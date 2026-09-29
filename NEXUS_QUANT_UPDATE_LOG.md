@@ -192,7 +192,7 @@ UI-DESIGN-008 已完成。下一步需项目所有者确认后再启动新的 UI
 ### 2026-09-29：UI-DESIGN-008 补齐后台英文界面并完成回归
 
 状态：**已完成**
-提交：待本次提交
+提交：`55a9d6f feat: add bilingual admin console`
 
 完成内容：
 
