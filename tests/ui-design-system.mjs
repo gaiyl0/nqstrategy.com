@@ -12,6 +12,7 @@ const market = [
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
 const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
+const adminLocale = fs.readFileSync(path.join(root, 'app', 'tianwei', 'admin-locale.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
 const overlays = fs.readFileSync(path.join(root, 'app', 'components', 'AppOverlays.js'), 'utf8');
 const comparison = fs.readFileSync(path.join(root, 'app', 'components', 'StrategyComparison.js'), 'utf8');
@@ -64,6 +65,11 @@ assert.match(header, /env\(safe-area-inset-bottom\)/, 'mobile navigation must re
 assert.equal((overlays.match(/fixed inset-0/g) || []).length, (overlays.match(/role="dialog"/g) || []).length, 'every application overlay must expose dialog semantics');
 assert.equal((overlays.match(/<button aria-label=\{t\('关闭','Close'\)\}/g) || []).length, 4, 'every application dialog must have a named close button');
 assert.match(admin, /<Dialog open=\{balanceModal\.isOpen\}/, 'admin balance editor must use the accessible dialog primitive');
+assert.match(admin, /setLang\(current => current === 'zh' \? 'en' : 'zh'\)/, 'admin must allow switching its language');
+assert.match(admin, /<AdminLocale lang=\{lang\}>/, 'admin interface must localize static UI labels');
+assert.match(admin, /localizeConfig\(config\)/, 'admin action dialogs must use the selected language');
+assert.match(adminLocale, /'Users & Roles'/, 'admin English catalog must contain translated navigation');
+assert.match(adminLocale, /'Finance actions'/, 'admin English catalog must cover operational modules');
 assert.match(admin, /<Dialog open=\{pwdModal\.isOpen\}/, 'admin password editor must use the accessible dialog primitive');
 assert.match(admin, /activeTab==='licenses'&&<div className="overflow-x-auto/, 'license table must scroll on narrow screens');
 assert.match(admin, /activeTab === 'withdrawals'[\s\S]*overflow-x-auto/, 'withdrawal table must scroll on narrow screens');

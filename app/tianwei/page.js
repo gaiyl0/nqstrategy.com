@@ -6,12 +6,14 @@ import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
 import { Settings, Wallet, Mail, ShieldCheck, Users, Box, CheckCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut } from 'lucide-react';
 import { Badge, Button, Dialog, Field, Panel, useInteraction } from '@/app/components/ui/UiKit';
+import { AdminLocale, localizeAdminValue } from './admin-locale';
 
 export default function AdminDashboard() {
   const { confirmAction, requestInput } = useInteraction();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [lang, setLang] = useState('zh');
   // 完整补齐所有设置字段，修复界面残缺
   const [settings, setSettings] = useState({ 
     siteName: '', primaryColor: '#22d3ee', contactEmail: '', 
@@ -33,6 +35,15 @@ export default function AdminDashboard() {
   
   const [pwdModal, setPwdModal] = useState({ isOpen: false, userId: null, username: '', newPwd: '' });
   const [balanceModal, setBalanceModal] = useState({ isOpen: false, userId: null, username: '', balance: 0 });
+
+  const localizeConfig = value => {
+    if (typeof value === 'string') return localizeAdminValue(value, lang);
+    if (Array.isArray(value)) return value.map(localizeConfig);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, localizeConfig(item)]));
+    return value;
+  };
+  const request = config => requestInput(localizeConfig(config));
+  const adminConfirm = config => confirmAction(localizeConfig(config));
 
   const fetchUsers = () => apiFetch(`/api/users`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setUserList(data.users); });
   const fetchProducts = () => apiFetch(`/api/products?role=admin`, { cache: 'no-store' }).then(res => res.json()).then(data => { if (data.success) setProductList(data.products); });
@@ -101,11 +112,11 @@ export default function AdminDashboard() {
     fetchProducts(); showStatus('✅ 策略状态已更新');
   };
   const handleEvidenceReview = async (item, statusAction, report = null) => {
-    const rejectionReason = statusAction === 'rejected' ? (await requestInput({title:'拒绝证据',description:`${item.type || '证据'} #${item.id}`,label:'拒绝原因',required:true,minLength:3,maxLength:500,multiline:true,confirmLabel:'确认拒绝'}) || '') : '';
+    const rejectionReason = statusAction === 'rejected' ? (await request({title:'拒绝证据',description:`${item.type || '证据'} #${item.id}`,label:'拒绝原因',required:true,minLength:3,maxLength:500,multiline:true,confirmLabel:'确认拒绝'}) || '') : '';
     if (statusAction === 'rejected' && !rejectionReason) return;
     let correctedExtraction;
     if (statusAction === 'approved' && item.type === 'statistics' && !item.extraction && !report) {
-      const entered = await requestInput({title:'校正 OCR 统计数据',description:'OCR 未提取到可用结果。校正数据将进入审核记录。',label:'结构化 JSON',hint:'必须包含初始资金、净利润、Profit Factor、最大回撤、胜率和交易次数。',initialValue:'{"initialDeposit":1000,"netProfit":100,"profitFactor":1.5,"maxDrawdownPercent":10,"winRatePercent":55,"totalTrades":100}',required:true,multiline:true,rows:8,confirmLabel:'应用校正',validate:value=>{try{JSON.parse(value);return '';}catch{return 'JSON 格式无效';}}});
+      const entered = await request({title:'校正 OCR 统计数据',description:'OCR 未提取到可用结果。校正数据将进入审核记录。',label:'结构化 JSON',hint:'必须包含初始资金、净利润、Profit Factor、最大回撤、胜率和交易次数。',initialValue:'{"initialDeposit":1000,"netProfit":100,"profitFactor":1.5,"maxDrawdownPercent":10,"winRatePercent":55,"totalTrades":100}',required:true,multiline:true,rows:8,confirmLabel:'应用校正',validate:value=>{try{JSON.parse(value);return '';}catch{return 'JSON 格式无效';}}});
       if (!entered) return;
       try { correctedExtraction = JSON.parse(entered); } catch { return showStatus('❌ 校正数据必须是合法 JSON'); }
     }
@@ -115,7 +126,7 @@ export default function AdminDashboard() {
     fetchProducts(); showStatus('✅ 证据审核状态已更新');
   };
   const handleVerification = async (product) => {
-    const level = await requestInput({title:'授予策略认证',description:product.title,label:'认证等级',initialValue:'reproducible_backtest',options:[{value:'reproducible_backtest',label:'可复现回测'},{value:'platform_rerun',label:'平台复跑'},{value:'live_verified',label:'实盘验证'}],required:true,confirmLabel:'下一步'});
+    const level = await request({title:'授予策略认证',description:product.title,label:'认证等级',initialValue:'reproducible_backtest',options:[{value:'reproducible_backtest',label:'可复现回测'},{value:'platform_rerun',label:'平台复跑'},{value:'live_verified',label:'实盘验证'}],required:true,confirmLabel:'下一步'});
     if (!level) return;
     const examples = {
       reproducible_backtest: '{"parameterFileSha256":"64位SHA256","dataset":"数据集名称","terminalBuild":"MT5 build","testRange":"2026-01-01 至 2026-09-22"}',
@@ -123,16 +134,16 @@ export default function AdminDashboard() {
       live_verified: '{"provider":"提供方","accountMasked":"****1234","accessMode":"read_only","observedDays":30,"lastCheckedDate":"2026-09-27","maxDrawdownPercent":10}',
     };
     if (!examples[level]) return showStatus('❌ 认证等级不合法');
-    const entered = await requestInput({title:'填写认证证据',description:`认证等级：${level}`,label:'证据 JSON',initialValue:examples[level],required:true,multiline:true,rows:9,confirmLabel:'批准认证',validate:value=>{try{JSON.parse(value);return '';}catch{return 'JSON 格式无效';}}}); if (!entered) return;
+    const entered = await request({title:'填写认证证据',description:`认证等级：${level}`,label:'证据 JSON',initialValue:examples[level],required:true,multiline:true,rows:9,confirmLabel:'批准认证',validate:value=>{try{JSON.parse(value);return '';}catch{return 'JSON 格式无效';}}}); if (!entered) return;
     let evidence; try { evidence=JSON.parse(entered); } catch { return showStatus('❌ 证据必须是合法 JSON'); }
     const response=await apiFetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approve',productId:product.id,level,evidence})}); const data=await response.json();
     if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'认证失败'}`); fetchProducts();showStatus('✅ 认证等级已更新');
   };
-  const handleRevokeVerification=async(product)=>{const reason=await requestInput({title:'撤销策略认证',description:product.title,label:'撤销原因',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:'撤销认证'});if(!reason)return;const response=await apiFetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',productId:product.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'撤销失败'}`);fetchProducts();showStatus('✅ 认证已撤销');};
-  const handleVersionReview=async(version,decision)=>{const needsReason=['reject','retire'].includes(decision);const reason=needsReason?(await requestInput({title:`版本${decision==='retire'?'下架':'拒绝'}`,description:version.version||`#${version.id}`,label:'操作原因',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:decision==='retire'?'确认下架':'确认拒绝'})||''):'';if(needsReason&&!reason)return;const response=await apiFetch('/api/versions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:version.id,decision,...(reason?{reason}:{})})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'版本审核失败'}`);fetchProducts();showStatus(data.replayed?'ℹ️ 该版本已经处理':'✅ 版本审核完成');};
-  const handleRevokeLicense=async(license)=>{const reason=await requestInput({title:'撤销授权',description:`许可证 #${license.id}`,label:'撤销原因',hint:'撤销后现有令牌立即失效。',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:'撤销授权'});if(!reason)return;const response=await apiFetch('/api/licenses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'授权撤销失败'}`);fetchLicenses();showStatus(data.replayed?'ℹ️ 授权已撤销':'✅ 授权已撤销，现有令牌失效');};
-  const handleReportResolution=async(report,decision)=>{const note=await requestInput({title:decision==='confirm'?'确认违规':'驳回举报',description:`举报 #${report.id}`,label:decision==='confirm'?'违规确认依据':'驳回说明',required:true,minLength:5,maxLength:1000,multiline:true,confirmLabel:'提交处理'});if(!note)return;const response=await apiFetch('/api/reports',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:report.id,decision,note})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'举报处理失败'}`);fetchReports();showStatus(data.result?.replayed?'ℹ️ 该举报已处理':'✅ 举报处理完成');};
-  const handleDeleteEA = async (id, title) => { if (!await confirmAction({title:'彻底删除策略',description:title,noticeTitle:'此操作不可撤销',notice:'策略文件、审核状态和市场入口将受到影响。',confirmLabel:'永久删除'})) return; const res = await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' }); const data = await res.json(); if (data.success) { showStatus('🗑️ 已彻底删除'); fetchProducts(); } };
+  const handleRevokeVerification=async(product)=>{const reason=await request({title:'撤销策略认证',description:product.title,label:'撤销原因',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:'撤销认证'});if(!reason)return;const response=await apiFetch('/api/verifications',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'revoke',productId:product.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'撤销失败'}`);fetchProducts();showStatus('✅ 认证已撤销');};
+  const handleVersionReview=async(version,decision)=>{const needsReason=['reject','retire'].includes(decision);const reason=needsReason?(await request({title:`版本${decision==='retire'?'下架':'拒绝'}`,description:version.version||`#${version.id}`,label:'操作原因',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:decision==='retire'?'确认下架':'确认拒绝'})||''):'';if(needsReason&&!reason)return;const response=await apiFetch('/api/versions',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:version.id,decision,...(reason?{reason}:{})})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'版本审核失败'}`);fetchProducts();showStatus(data.replayed?'ℹ️ 该版本已经处理':'✅ 版本审核完成');};
+  const handleRevokeLicense=async(license)=>{const reason=await request({title:'撤销授权',description:`许可证 #${license.id}`,label:'撤销原因',hint:'撤销后现有令牌立即失效。',required:true,minLength:5,maxLength:500,multiline:true,confirmLabel:'撤销授权'});if(!reason)return;const response=await apiFetch('/api/licenses',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,reason})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'授权撤销失败'}`);fetchLicenses();showStatus(data.replayed?'ℹ️ 授权已撤销':'✅ 授权已撤销，现有令牌失效');};
+  const handleReportResolution=async(report,decision)=>{const note=await request({title:decision==='confirm'?'确认违规':'驳回举报',description:`举报 #${report.id}`,label:decision==='confirm'?'违规确认依据':'驳回说明',required:true,minLength:5,maxLength:1000,multiline:true,confirmLabel:'提交处理'});if(!note)return;const response=await apiFetch('/api/reports',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:report.id,decision,note})});const data=await response.json();if(!response.ok||!data.success)return showStatus(`❌ ${data.message||'举报处理失败'}`);fetchReports();showStatus(data.result?.replayed?'ℹ️ 该举报已处理':'✅ 举报处理完成');};
+  const handleDeleteEA = async (id, title) => { if (!await adminConfirm({title:'彻底删除策略',description:title,noticeTitle:'此操作不可撤销',notice:'策略文件、审核状态和市场入口将受到影响。',confirmLabel:'永久删除'})) return; const res = await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' }); const data = await res.json(); if (data.success) { showStatus('🗑️ 已彻底删除'); fetchProducts(); } };
 
   const submitResetPwd = async () => { if (!pwdModal.newPwd) return showStatus('❌ 密码不能为空'); await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pwdModal.userId, newPassword: pwdModal.newPwd }) }); setPwdModal({ isOpen: false, userId: null, username: '', newPwd: '' }); showStatus('✅ 密码重置成功！'); };
   
@@ -143,11 +154,11 @@ export default function AdminDashboard() {
     setBalanceModal({ isOpen: false }); fetchUsers(); showStatus(data.replayed ? 'ℹ️ 余额操作已处理' : '💰 余额修改成功并已记录账本！');
   };
 
-  const handleChangeRole = async (id, newRole) => { if (!await confirmAction({title:'调整用户权限',description:`用户 #${id} → ${newRole}`,tone:'warning',noticeTitle:'权限变更会立即生效',notice:'请确认新角色与用户的实际职责一致。',confirmLabel:'确认更改'})) return; await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newRole }) }); fetchUsers(); showStatus('👑 用户权限已更新'); };
-  const handleDeleteUser = async (id, username) => { if (!await confirmAction({title:'注销用户',description:username,noticeTitle:'历史资产将保留原 user_id 关联',notice:'账户会被匿名化并停用，同名重新注册不会继承旧订单、产品或收入。',confirmLabel:'确认注销'})) return; await apiFetch(`/api/users?id=${id}`, { method: 'DELETE' }); fetchUsers(); showStatus('🗑️ 用户已删除'); };
+  const handleChangeRole = async (id, newRole) => { if (!await adminConfirm({title:'调整用户权限',description:`用户 #${id} → ${newRole}`,tone:'warning',noticeTitle:'权限变更会立即生效',notice:'请确认新角色与用户的实际职责一致。',confirmLabel:'确认更改'})) return; await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newRole }) }); fetchUsers(); showStatus('👑 用户权限已更新'); };
+  const handleDeleteUser = async (id, username) => { if (!await adminConfirm({title:'注销用户',description:username,noticeTitle:'历史资产将保留原 user_id 关联',notice:'账户会被匿名化并停用，同名重新注册不会继承旧订单、产品或收入。',confirmLabel:'确认注销'})) return; await apiFetch(`/api/users?id=${id}`, { method: 'DELETE' }); fetchUsers(); showStatus('🗑️ 用户已删除'); };
 
   const handleWithdrawAction = async (id, statusAction) => {
-    if (!await confirmAction({title:statusAction === 'completed' ? '批准提现' : '驳回提现',description:`提现申请 #${id}`,tone:statusAction === 'completed'?'warning':'danger',noticeTitle:statusAction === 'completed'?'请确认链下打款已完成':'冻结余额将原子退回',notice:statusAction === 'completed'?'状态更新具有幂等保护，重复操作不会重复结算。':'驳回退款只会执行一次并写入账本。',confirmLabel:statusAction === 'completed'?'确认已打款':'驳回并退回余额'})) return;
+    if (!await adminConfirm({title:statusAction === 'completed' ? '批准提现' : '驳回提现',description:`提现申请 #${id}`,tone:statusAction === 'completed'?'warning':'danger',noticeTitle:statusAction === 'completed'?'请确认链下打款已完成':'冻结余额将原子退回',notice:statusAction === 'completed'?'状态更新具有幂等保护，重复操作不会重复结算。':'驳回退款只会执行一次并写入账本。',confirmLabel:statusAction === 'completed'?'确认已打款':'驳回并退回余额'})) return;
     const response = await apiFetch('/api/withdraw', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `withdraw:${id}:${statusAction}:v1` },
@@ -170,7 +181,7 @@ export default function AdminDashboard() {
   };
 
   const handleOrderAction = async (orderId, action) => {
-    if (!await confirmAction({title:'驳回无效订单',description:`订单 #${orderId}`,noticeTitle:'订单将进入拒绝状态',notice:'未经服务端确认的付款不会发放资产或触发创作者结算。',confirmLabel:'确认驳回'})) return;
+    if (!await adminConfirm({title:'驳回无效订单',description:`订单 #${orderId}`,noticeTitle:'订单将进入拒绝状态',notice:'未经服务端确认的付款不会发放资产或触发创作者结算。',confirmLabel:'确认驳回'})) return;
     try {
       const res = await apiFetch('/api/orders', {
         method: 'PATCH',
@@ -200,10 +211,10 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#060c13] text-zinc-300 relative">
+    <AdminLocale lang={lang}><div className="min-h-screen bg-[#060c13] text-zinc-300 relative">
       <header className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-5 backdrop-blur-xl">
         <div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10"><Activity className="h-5 w-5 text-cyan-300" /></div><div><p className="font-black tracking-[0.14em] text-white">NEXUS QUANT</p><p className="text-[10px] text-slate-600">运营控制台</p></div></div>
-        <div className="ml-auto flex items-center gap-3"><Badge variant="success">生产环境</Badge><span className="hidden items-center gap-2 text-xs text-slate-500 md:flex"><span className="h-2 w-2 rounded-full bg-emerald-400" />管理员会话已验证</span><Button variant="ghost" size="sm" icon={LogOut} onClick={() => router.push('/')}>返回网站</Button></div>
+        <div className="ml-auto flex items-center gap-3"><Badge variant="success">{lang === 'zh' ? '生产环境' : 'Production'}</Badge><span className="hidden items-center gap-2 text-xs text-slate-500 md:flex"><span className="h-2 w-2 rounded-full bg-emerald-400" />{lang === 'zh' ? '管理员会话已验证' : 'Administrator session verified'}</span><Button variant="ghost" size="sm" onClick={() => setLang(current => current === 'zh' ? 'en' : 'zh')} aria-label={lang === 'zh' ? 'Switch language' : '切换语言'}>{lang === 'zh' ? 'EN' : '中文'}</Button><Button variant="ghost" size="sm" icon={LogOut} onClick={() => router.push('/')}>{lang === 'zh' ? '返回网站' : 'Back to website'}</Button></div>
       </header>
       <div className="flex min-h-[calc(100vh-64px)]">
         <aside className="hidden w-60 shrink-0 border-r border-slate-800/80 bg-[#08111a]/70 p-3 lg:flex lg:flex-col"><nav className="space-y-1">{navigation.map(([value, label, Icon]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors ${activeTab === value ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-inset ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}`}><Icon className="h-4 w-4" /><span className="flex-1">{label}</span>{value === 'products' && pendingProducts.length > 0 && <Badge variant="warning">{pendingProducts.length}</Badge>}{value === 'withdrawals' && pendingWithdrawals.length > 0 && <Badge variant="danger">{pendingWithdrawals.length}</Badge>}{value === 'reports' && reports.length > 0 && <Badge variant="danger">{reports.length}</Badge>}</button>)}</nav><Panel className="mt-auto p-4"><ShieldCheck className="h-5 w-5 text-cyan-300" /><p className="mt-3 text-sm font-bold text-white">安全边界已启用</p><p className="mt-2 text-xs leading-5 text-slate-500">管理员 RBAC、会话校验、幂等操作与审计日志继续由服务端执行。</p></Panel></aside>
@@ -434,6 +445,6 @@ export default function AdminDashboard() {
       <Dialog open={balanceModal.isOpen} onClose={() => setBalanceModal({ ...balanceModal, isOpen: false })} title="调控用户余额" description={`修改 ${balanceModal.username || '用户'} 的底层金额；操作会写入账本和审计。`} footer={<><Button onClick={() => setBalanceModal({ ...balanceModal, isOpen: false })}>取消</Button><Button variant="primary" onClick={submitUpdateBalance}>确认调整</Button></>}><Field label="余额（USD）" required><input type="number" inputMode="decimal" value={balanceModal.balance} onChange={event => setBalanceModal({ ...balanceModal, balance: event.target.value })} /></Field></Dialog>
 
       <Dialog open={pwdModal.isOpen} onClose={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })} title="强制修改密码" description={`为 ${pwdModal.username || '用户'} 设置新密码；现有会话会按服务端策略失效。`} footer={<><Button onClick={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })}>取消</Button><Button variant="primary" onClick={submitResetPwd}>确认修改</Button></>}><Field label="新密码" required><input type="password" autoComplete="new-password" value={pwdModal.newPwd} onChange={event => setPwdModal({ ...pwdModal, newPwd: event.target.value })} /></Field></Dialog>
-    </div>
+    </div></AdminLocale>
   );
 }
