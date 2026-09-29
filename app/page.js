@@ -421,7 +421,7 @@ export default function App() {
   const myBadge = user ? getUserTitle(myPostCount, myEAs.length, user.role) : null;
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-zinc-950 text-zinc-300 font-sans selection:bg-cyan-500/30">
+    <div className="min-h-screen flex flex-col justify-between bg-zinc-950 pb-14 text-zinc-300 font-sans selection:bg-cyan-500/30 lg:pb-0">
       
       <AppHeader {...{ router, siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }} />
 

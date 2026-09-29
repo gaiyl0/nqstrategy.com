@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
-import { Settings, Wallet, Mail, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut } from 'lucide-react';
-import { Badge, Button, Panel, useInteraction } from '@/app/components/ui/UiKit';
+import { Settings, Wallet, Mail, ShieldCheck, Users, Box, CheckCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut } from 'lucide-react';
+import { Badge, Button, Dialog, Field, Panel, useInteraction } from '@/app/components/ui/UiKit';
 
 export default function AdminDashboard() {
   const { confirmAction, requestInput } = useInteraction();
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
-        {activeTab==='licenses'&&<div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50"><table className="w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">授权</th><th className="p-4">产品</th><th className="p-4">状态/到期</th><th className="p-4">绑定</th><th className="p-4 text-right">操作</th></tr></thead><tbody>{licenses.map(license=><tr key={license.id} className="border-b border-zinc-800/50"><td className="p-4">#{license.id} · {license.type}<div className="text-[10px] text-zinc-600">user_id {license.userId}</div></td><td className="p-4 text-white">{license.productTitle}</td><td className="p-4"><span className={license.status==='active'?'text-emerald-400':'text-red-400'}>{license.status}</span><div className="text-[10px] text-zinc-600">{license.expiresAt?new Date(license.expiresAt).toLocaleString():'永久'}</div></td><td className="p-4 text-[10px] text-zinc-500">{license.bindings.map(binding=>`${binding.type}:${binding.mask}`).join(' · ')||'未绑定'}</td><td className="p-4 text-right">{license.status==='active'&&<button onClick={()=>handleRevokeLicense(license)} className="rounded bg-red-900/50 px-3 py-2 text-xs text-red-300">撤销</button>}</td></tr>)}</tbody></table></div>}
+        {activeTab==='licenses'&&<div className="overflow-x-auto rounded-3xl border border-zinc-800 bg-zinc-900/50"><table className="min-w-[760px] w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">授权</th><th className="p-4">产品</th><th className="p-4">状态/到期</th><th className="p-4">绑定</th><th className="p-4 text-right">操作</th></tr></thead><tbody>{licenses.map(license=><tr key={license.id} className="border-b border-zinc-800/50"><td className="p-4">#{license.id} · {license.type}<div className="text-[10px] text-zinc-600">user_id {license.userId}</div></td><td className="p-4 text-white">{license.productTitle}</td><td className="p-4"><span className={license.status==='active'?'text-emerald-400':'text-red-400'}>{license.status}</span><div className="text-[10px] text-zinc-600">{license.expiresAt?new Date(license.expiresAt).toLocaleString():'永久'}</div></td><td className="p-4 text-[10px] text-zinc-500">{license.bindings.map(binding=>`${binding.type}:${binding.mask}`).join(' · ')||'未绑定'}</td><td className="p-4 text-right">{license.status==='active'&&<button onClick={()=>handleRevokeLicense(license)} className="rounded bg-red-900/50 px-3 py-2 text-xs text-red-300">撤销</button>}</td></tr>)}</tbody></table></div>}
         {activeTab==='reports'&&<div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50"><div className="border-b border-zinc-800 p-5 text-xs text-zinc-500">确认违规会隐藏对应策略、帖子或评论；前台举报不会直接删除内容。</div><table className="w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">目标</th><th className="p-4">原因</th><th className="p-4">身份</th><th className="p-4">提交时间</th><th className="p-4 text-right">处置</th></tr></thead><tbody>{reports.length===0?<tr><td colSpan="5" className="p-10 text-center text-zinc-500">暂无待处理举报</td></tr>:reports.map(report=><tr key={report.id} className="border-b border-zinc-800/50"><td className="p-4"><span className="font-bold uppercase text-amber-300">{report.targetType} #{report.targetId}</span><div className="mt-1 max-w-sm truncate text-zinc-400">{report.targetLabel}</div></td><td className="p-4"><span className="font-bold text-white">{report.reason}</span><div className="mt-1 max-w-sm whitespace-pre-wrap text-xs text-zinc-500">{report.details||'无补充说明'}</div></td><td className="p-4 text-xs text-zinc-500">举报 user_id {report.reporterUserId}<br/>作者 user_id {report.targetOwnerUserId}</td><td className="p-4 text-xs text-zinc-500">{new Date(report.createdAt).toLocaleString()}</td><td className="p-4 text-right space-x-2"><button onClick={()=>handleReportResolution(report,'dismiss')} className="rounded bg-zinc-800 px-3 py-2 text-xs text-zinc-300">驳回</button><button onClick={()=>handleReportResolution(report,'confirm')} className="rounded bg-red-900/60 px-3 py-2 text-xs font-bold text-red-300">确认违规并隐藏</button></td></tr>)}</tbody></table></div>}
 
         {/* 财务订单：付费结算在可信支付核验接入前保持关闭 */}
@@ -402,8 +402,8 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === 'withdrawals' && (
-           <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in duration-300">
-              <table className="w-full text-left whitespace-nowrap">
+           <div className="overflow-x-auto rounded-3xl border border-zinc-800 bg-zinc-900/50 shadow-2xl animate-in fade-in duration-300">
+              <table className="min-w-[760px] w-full text-left whitespace-nowrap">
                 <thead><tr className="bg-zinc-950/50 text-xs text-zinc-500 border-b border-zinc-800"><th className="p-5">申请人</th><th className="p-5">提现金额</th><th className="p-5">收款地址(USDT等)</th><th className="p-5">状态</th><th className="p-5 text-right">财务操作</th></tr></thead>
                 <tbody className="text-sm">
                   {withdrawals.length === 0 ? <tr><td colSpan="5" className="p-10 text-center text-zinc-500">暂无提现申请</td></tr> : withdrawals.map(w => (
@@ -431,28 +431,9 @@ export default function AdminDashboard() {
         </div></main>
       </div>
 
-      {balanceModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 relative shadow-2xl w-full max-w-sm">
-            <button onClick={() => setBalanceModal({...balanceModal, isOpen: false})} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><XCircle className="w-5 h-5" /></button>
-            <h3 className="text-xl font-bold text-white mb-4">调控用户余额</h3>
-            <p className="text-sm text-zinc-500 mb-4">修改 <span className="text-cyan-400">{balanceModal.username}</span> 的底层金额 (USD)</p>
-            <input type="number" value={balanceModal.balance} onChange={e => setBalanceModal({...balanceModal, balance: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-emerald-400 font-bold text-xl focus:border-cyan-500 outline-none mb-4" />
-            <button onClick={submitUpdateBalance} className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl">强制覆盖余额</button>
-          </div>
-        </div>
-      )}
+      <Dialog open={balanceModal.isOpen} onClose={() => setBalanceModal({ ...balanceModal, isOpen: false })} title="调控用户余额" description={`修改 ${balanceModal.username || '用户'} 的底层金额；操作会写入账本和审计。`} footer={<><Button onClick={() => setBalanceModal({ ...balanceModal, isOpen: false })}>取消</Button><Button variant="primary" onClick={submitUpdateBalance}>确认调整</Button></>}><Field label="余额（USD）" required><input type="number" inputMode="decimal" value={balanceModal.balance} onChange={event => setBalanceModal({ ...balanceModal, balance: event.target.value })} /></Field></Dialog>
 
-      {pwdModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 relative shadow-2xl w-full max-w-sm">
-            <button onClick={() => setPwdModal({...pwdModal, isOpen: false})} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><XCircle className="w-5 h-5" /></button>
-            <h3 className="text-xl font-bold text-white mb-4">强制修改密码</h3>
-            <input type="text" value={pwdModal.newPwd} onChange={e => setPwdModal({...pwdModal, newPwd: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-amber-500 outline-none mb-4" placeholder="输入新密码" />
-            <button onClick={submitResetPwd} className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl">确认修改</button>
-          </div>
-        </div>
-      )}
+      <Dialog open={pwdModal.isOpen} onClose={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })} title="强制修改密码" description={`为 ${pwdModal.username || '用户'} 设置新密码；现有会话会按服务端策略失效。`} footer={<><Button onClick={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })}>取消</Button><Button variant="primary" onClick={submitResetPwd}>确认修改</Button></>}><Field label="新密码" required><input type="password" autoComplete="new-password" value={pwdModal.newPwd} onChange={event => setPwdModal({ ...pwdModal, newPwd: event.target.value })} /></Field></Dialog>
     </div>
   );
 }

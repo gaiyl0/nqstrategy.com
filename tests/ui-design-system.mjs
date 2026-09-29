@@ -13,6 +13,8 @@ const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileVie
 const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
+const overlays = fs.readFileSync(path.join(root, 'app', 'components', 'AppOverlays.js'), 'utf8');
+const comparison = fs.readFileSync(path.join(root, 'app', 'components', 'StrategyComparison.js'), 'utf8');
 
 for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--nq-success', '--nq-warning', '--nq-danger', '--nq-radius-md', '--nq-shadow-dialog', '--nq-focus']) {
   assert.match(css, new RegExp(token), `missing design token ${token}`);
@@ -56,6 +58,16 @@ for (const landmark of ['运营仪表盘', '待办队列', '系统状态', '业�
 assert.match(header, /href="\/tianwei"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/, 'admin entry must open the tianwei route in an isolated tab');
 assert.equal(fs.existsSync(path.join(root, 'app', 'admin', 'page.js')), false, 'legacy /admin page must not remain routable');
 for (const fakeMetric of ['99.9%', '1,284']) assert.doesNotMatch(admin, new RegExp(fakeMetric), `admin dashboard must not copy mock metric ${fakeMetric}`);
+assert.match(header, /Mobile primary navigation/, 'small screens must expose primary navigation');
+assert.match(header, /aria-current=\{route === value \? 'page'/, 'mobile navigation must announce the active page');
+assert.match(header, /env\(safe-area-inset-bottom\)/, 'mobile navigation must respect device safe areas');
+assert.equal((overlays.match(/fixed inset-0/g) || []).length, (overlays.match(/role="dialog"/g) || []).length, 'every application overlay must expose dialog semantics');
+assert.equal((overlays.match(/<button aria-label=\{t\('关闭','Close'\)\}/g) || []).length, 4, 'every application dialog must have a named close button');
+assert.match(admin, /<Dialog open=\{balanceModal\.isOpen\}/, 'admin balance editor must use the accessible dialog primitive');
+assert.match(admin, /<Dialog open=\{pwdModal\.isOpen\}/, 'admin password editor must use the accessible dialog primitive');
+assert.match(admin, /activeTab==='licenses'&&<div className="overflow-x-auto/, 'license table must scroll on narrow screens');
+assert.match(admin, /activeTab === 'withdrawals'[\s\S]*overflow-x-auto/, 'withdrawal table must scroll on narrow screens');
+assert.match(comparison, /aria-label=\{t\('移出对比','Remove from comparison'\)\}/, 'comparison remove controls must have accessible names');
 
 for (const directory of ['app', 'lib']) {
   const files = [];
