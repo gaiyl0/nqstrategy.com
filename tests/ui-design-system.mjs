@@ -11,6 +11,8 @@ const market = [
 ].join('\n');
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
 const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
+const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
+const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
 
 for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--nq-success', '--nq-warning', '--nq-danger', '--nq-radius-md', '--nq-shadow-dialog', '--nq-focus']) {
   assert.match(css, new RegExp(token), `missing design token ${token}`);
@@ -48,6 +50,12 @@ assert.match(forum, /post\.comment_count/, 'community reply totals must come fro
 assert.match(forum, /Statistics cover only the currently loaded and filtered results/, 'community statistics must disclose their scope');
 assert.doesNotMatch(forum, /Math\.random/, 'community must not generate synthetic activity data');
 for (const fakeTotal of ['12,426', '256,781']) assert.doesNotMatch(forum, new RegExp(fakeTotal), `community must not copy mock total ${fakeTotal}`);
+for (const landmark of ['运营仪表盘', '待办队列', '系统状态', '业务快照', '用户与角色', '社区治理']) {
+  assert.match(admin, new RegExp(landmark), `admin operations console is missing ${landmark}`);
+}
+assert.match(header, /href="\/tianwei"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/, 'admin entry must open the tianwei route in an isolated tab');
+assert.equal(fs.existsSync(path.join(root, 'app', 'admin', 'page.js')), false, 'legacy /admin page must not remain routable');
+for (const fakeMetric of ['99.9%', '1,284']) assert.doesNotMatch(admin, new RegExp(fakeMetric), `admin dashboard must not copy mock metric ${fakeMetric}`);
 
 for (const directory of ['app', 'lib']) {
   const files = [];

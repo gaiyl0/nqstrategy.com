@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const files = [
   'app/page.js',
-  'app/admin/page.js',
+  'app/tianwei/page.js',
   'app/components/MarketView.js',
 ];
 
@@ -16,7 +16,7 @@ for (const file of files) {
   assertions += 1;
 }
 
-const adminSource = await readFile(new URL('../app/admin/page.js', import.meta.url), 'utf8');
+const adminSource = await readFile(new URL('../app/tianwei/page.js', import.meta.url), 'utf8');
 assert.match(adminSource, /await apiFetch\('\/api\/settings'[\s\S]*showStatus\('✅ 所有配置已永久保存生效！'\)/, 'settings success feedback must follow the API request');
 assertions += 1;
 assert.match(adminSource, /catch \(error\)[\s\S]*apiErrorMessage\(error, '配置保存失败'\)[\s\S]*finally[\s\S]*setIsSaving\(false\)/, 'settings failures must be shown and saving state restored');

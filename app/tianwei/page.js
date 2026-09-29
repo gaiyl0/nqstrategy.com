@@ -4,14 +4,14 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
-import { Settings, Wallet, Mail, Save, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Globe, Crown, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag } from 'lucide-react';
-import { useInteraction } from '@/app/components/ui/UiKit';
+import { Settings, Wallet, Mail, ShieldCheck, Users, Box, Search, CheckCircle, XCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut } from 'lucide-react';
+import { Badge, Button, Panel, useInteraction } from '@/app/components/ui/UiKit';
 
 export default function AdminDashboard() {
   const { confirmAction, requestInput } = useInteraction();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState('settings'); 
+  const [activeTab, setActiveTab] = useState('dashboard'); 
   // 完整补齐所有设置字段，修复界面残缺
   const [settings, setSettings] = useState({ 
     siteName: '', primaryColor: '#22d3ee', contactEmail: '', 
@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         }
         setAuthChecked(true);
         apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => setSettings(prev => ({ ...prev, ...data })));
-        fetchUsers();
+        await Promise.allSettled([fetchUsers(), fetchProducts(), fetchOrders(), fetchWithdrawals(), fetchLicenses(), fetchReports()]);
       } catch {
         router.replace('/');
       }
@@ -189,24 +189,38 @@ export default function AdminDashboard() {
     return <main className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">正在验证管理员身份…</main>;
   }
 
+  const pendingProducts = productList.filter(product => product.status === 'pending');
+  const pendingWithdrawals = withdrawals.filter(withdrawal => withdrawal.status === 'pending');
+  const pendingOrders = orderList.filter(order => order.status === 'pending');
+  const completedRevenue = orderList.filter(order => order.status === 'completed' && (Number(order.price) === 0 || order.payment_verified === 1)).reduce((sum, order) => sum + (Number(order.price) || 0), 0);
+  const navigation = [
+    ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
+    ['orders', '订单与支付', BadgeDollarSign], ['withdrawals', '提现管理', HandCoins], ['licenses', '授权管理', Key],
+    ['reports', '社区治理', Flag], ['settings', '系统设置', Settings],
+  ];
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-300 p-6 md:p-12 relative">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-end mb-8 border-b border-zinc-800 pb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white flex items-center gap-3"><ShieldCheck className="text-cyan-400 w-8 h-8" /> Nexus Quant 超级控制台</h1>
-            <div className="flex flex-wrap gap-4 mt-6">
-              <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'settings' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-900'}`}><Settings size={16} /> 核心配置</button>
-              <button onClick={() => setActiveTab('users')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'users' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-900'}`}><Users size={16} /> 用户管理</button>
-              <button onClick={() => setActiveTab('products')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'products' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:bg-zinc-900'}`}><Box size={16} /> 策略审核</button>
-              <button onClick={() => setActiveTab('orders')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'orders' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><BadgeDollarSign size={16} /> 财务订单</button>
-              <button onClick={() => setActiveTab('withdrawals')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'withdrawals' ? 'bg-purple-900/40 text-purple-400 border border-purple-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><HandCoins size={16} /> 提现审批</button>
-              <button onClick={() => setActiveTab('licenses')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'licenses' ? 'bg-violet-900/40 text-violet-300 border border-violet-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><Key size={16} /> 授权管理</button>
-              <button onClick={() => setActiveTab('reports')} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${activeTab === 'reports' ? 'bg-amber-900/40 text-amber-300 border border-amber-500/20' : 'text-zinc-500 hover:bg-zinc-900'}`}><Flag size={16} /> 内容举报</button>
-            </div>
-          </div>
-          {activeTab === 'settings' && <button onClick={handleSave} disabled={isSaving} className="px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all">{isSaving ? '保存中...' : '保存所有配置'}</button>}
-        </div>
+    <div className="min-h-screen bg-[#060c13] text-zinc-300 relative">
+      <header className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-5 backdrop-blur-xl">
+        <div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10"><Activity className="h-5 w-5 text-cyan-300" /></div><div><p className="font-black tracking-[0.14em] text-white">NEXUS QUANT</p><p className="text-[10px] text-slate-600">运营控制台</p></div></div>
+        <div className="ml-auto flex items-center gap-3"><Badge variant="success">生产环境</Badge><span className="hidden items-center gap-2 text-xs text-slate-500 md:flex"><span className="h-2 w-2 rounded-full bg-emerald-400" />管理员会话已验证</span><Button variant="ghost" size="sm" icon={LogOut} onClick={() => router.push('/')}>返回网站</Button></div>
+      </header>
+      <div className="flex min-h-[calc(100vh-64px)]">
+        <aside className="hidden w-60 shrink-0 border-r border-slate-800/80 bg-[#08111a]/70 p-3 lg:flex lg:flex-col"><nav className="space-y-1">{navigation.map(([value, label, Icon]) => <button key={value} type="button" onClick={() => setActiveTab(value)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors ${activeTab === value ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-inset ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}`}><Icon className="h-4 w-4" /><span className="flex-1">{label}</span>{value === 'products' && pendingProducts.length > 0 && <Badge variant="warning">{pendingProducts.length}</Badge>}{value === 'withdrawals' && pendingWithdrawals.length > 0 && <Badge variant="danger">{pendingWithdrawals.length}</Badge>}{value === 'reports' && reports.length > 0 && <Badge variant="danger">{reports.length}</Badge>}</button>)}</nav><Panel className="mt-auto p-4"><ShieldCheck className="h-5 w-5 text-cyan-300" /><p className="mt-3 text-sm font-bold text-white">安全边界已启用</p><p className="mt-2 text-xs leading-5 text-slate-500">管理员 RBAC、会话校验、幂等操作与审计日志继续由服务端执行。</p></Panel></aside>
+        <main className="min-w-0 flex-1 p-4 md:p-6 xl:p-8"><div className="mx-auto max-w-[1500px]">
+        <div className="mb-7 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-6 md:flex-row md:items-end"><div><p className="text-sm font-semibold text-cyan-300">Nexus Quant Operations</p><h1 className="mt-2 text-3xl font-black text-white">{activeTab === 'dashboard' ? '运营仪表盘' : navigation.find(item => item[0] === activeTab)?.[1]}</h1><p className="mt-2 text-sm text-slate-500">真实业务数据、审核队列与风险操作集中管理。</p></div>{activeTab === 'settings' && <Button variant="primary" loading={isSaving} onClick={handleSave}>保存所有配置</Button>}<div className="flex gap-2 overflow-x-auto lg:hidden">{navigation.map(([value, label]) => <Button key={value} size="sm" variant={activeTab === value ? 'primary' : 'secondary'} onClick={() => setActiveTab(value)}>{label}</Button>)}</div></div>
+
+        {activeTab === 'dashboard' && <div className="space-y-5">
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
+            ['待审策略', pendingProducts.length, '进入策略审核队列', Box, 'primary'],
+            ['待处理提现', pendingWithdrawals.length, '真实打款前必须人工复核', HandCoins, 'warning'],
+            ['风险事件', reports.length, '当前待处理内容举报', AlertTriangle, 'danger'],
+            ['历史订单', orderList.length, '付费能力仍处于关闭状态', CreditCard, 'neutral'],
+          ].map(([label, value, hint, Icon, tone]) => <Panel key={label} className="p-5"><div className="flex items-start justify-between"><div><p className="text-sm text-slate-400">{label}</p><p className="nq-number mt-2 text-3xl font-black text-white">{value}</p></div><div className="rounded-lg border border-slate-700/50 bg-slate-800/70 p-3"><Icon className="h-5 w-5 text-cyan-300" /></div></div><div className="mt-4"><Badge variant={tone}>{hint}</Badge></div></Panel>)}</section>
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,.7fr)]"><Panel className="overflow-hidden"><div className="flex items-center justify-between border-b border-slate-800 px-5 py-4"><div><h2 className="font-bold text-white">待办队列</h2><p className="mt-1 text-xs text-slate-600">来自当前数据库的真实待处理记录</p></div><FileCheck2 className="h-5 w-5 text-cyan-300" /></div><div className="divide-y divide-slate-800/70">{[
+            ['策略审核', pendingProducts.length, 'products'], ['提现复核', pendingWithdrawals.length, 'withdrawals'], ['订单异常', pendingOrders.length, 'orders'], ['内容举报', reports.length, 'reports'],
+          ].map(([label, count, target]) => <button key={target} type="button" onClick={() => setActiveTab(target)} className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-slate-800/35"><span className={`h-2.5 w-2.5 rounded-full ${count ? 'bg-amber-400' : 'bg-emerald-400'}`} /><div className="flex-1"><p className="font-semibold text-slate-200">{label}</p><p className="mt-1 text-xs text-slate-600">{count ? `${count} 条等待处理` : '当前没有待处理记录'}</p></div><ArrowUpRight className="h-4 w-4 text-slate-600" /></button>)}</div></Panel><div className="space-y-5"><Panel className="p-5"><h2 className="font-bold text-white">系统状态</h2><div className="mt-5 space-y-4">{[['管理员身份','已验证'],['付费能力','保持关闭'],['API 操作','服务端鉴权'],['审计边界','已启用']].map(([label,value]) => <div key={label} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-emerald-400" />{label}</span><span className="font-semibold text-emerald-300">{value}</span></div>)}</div></Panel><Panel className="p-5"><h2 className="font-bold text-white">业务快照</h2><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{userList.length}</p><p className="mt-1 text-xs text-slate-600">用户</p></div><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{productList.length}</p><p className="mt-1 text-xs text-slate-600">策略</p></div><div className="col-span-2 rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-emerald-300">${completedRevenue.toLocaleString()}</p><p className="mt-1 text-xs text-slate-600">已核验完成订单金额</p></div></div></Panel></div></div>
+        </div>}
         
         {activeTab === 'settings' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-20 animate-in fade-in duration-300">
@@ -414,6 +428,7 @@ export default function AdminDashboard() {
         )}
 
         {status && <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-zinc-800 text-white border border-zinc-700 px-6 py-3 rounded-full shadow-2xl text-sm font-bold z-50 animate-bounce flex items-center gap-2"><CheckCircle className="w-4 h-4 text-cyan-400" />{status}</div>}
+        </div></main>
       </div>
 
       {balanceModal.isOpen && (
