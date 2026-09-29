@@ -87,3 +87,32 @@ select:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+.market-filter {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #64748b;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.market-filter select {
+  height: 2.5rem;
+  width: 100%;
+  border: 1px solid rgb(51 65 85 / 0.8);
+  border-radius: 0.5rem;
+  background: rgb(7 16 26 / 0.9);
+  padding: 0 0.75rem;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.market-filter select:focus-visible {
+  border-color: rgb(34 211 238 / 0.75);
+  box-shadow: 0 0 0 3px rgb(34 211 238 / 0.12);
+}
