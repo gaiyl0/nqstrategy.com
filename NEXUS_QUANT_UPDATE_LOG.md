@@ -192,7 +192,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ### 2026-09-29：首页交易所广告位支持后台配置
 
 状态：**已完成**
-提交：待本次提交
+提交：`405ab7c feat: add configurable exchange ad to homepage`
 
 完成内容：
 
