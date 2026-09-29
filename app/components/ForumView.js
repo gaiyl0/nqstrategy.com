@@ -1,146 +1,70 @@
+"use client";
+
 import Image from 'next/image';
-import { ArrowLeft, Clock, Eye, Hash, MessageSquare, Trash2, User as UserIcon } from 'lucide-react';
-import { FadeInView } from './HomeView';
+import { useMemo, useState } from 'react';
+import { ArrowLeft, BarChart3, Clock, Code2, Eye, Hash, Megaphone, MessageSquare, PenLine, Search, ShieldCheck, Star, Trash2, TrendingUp, Users } from 'lucide-react';
+import { Badge, Button, EmptyState, Field, Panel, Tabs } from './ui/UiKit';
 
-export default function ForumView({ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }) {
-  return (
-<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-[calc(100vh-100px)] flex gap-8 animate-in fade-in duration-300">
-  <div className="w-64 shrink-0 hidden md:flex flex-col gap-2 border-r border-zinc-800/80 pr-6">
-    <div className="text-xs font-black text-zinc-500 uppercase tracking-widest mb-2 pl-3">{t('版块导航', 'Categories')}</div>
-    {categories.map(cat => (
-      <button key={cat} onClick={() => { setActiveCategory(cat); setForumView('list'); fetchForumPosts(cat,forumSort); }} className={`text-left px-4 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-3 ${activeCategory === cat && forumView === 'list' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300'}`}>
-        <Hash className={`w-4 h-4 ${activeCategory === cat && forumView === 'list' ? 'text-cyan-400' : 'text-zinc-600'}`} /> {tCat(cat)}
-      </button>
-    ))}
-    <div className="mt-auto">
-      <button onClick={() => { if (!user) return setAuthModal('login'); setForumView('create'); setNewPost({...newPost, category: dynamicCats[0] || '全部'}) }} className="w-full py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-sm font-bold shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all">+ {t('发起新讨论', 'New Topic')}</button>
-    </div>
-  </div>
+const categoryIcons = [MessageSquare, TrendingUp, Code2, BarChart3, Megaphone];
+const sorts = t => [
+  { value: 'latest', label: t('最新讨论', 'Latest') },
+  { value: 'hot', label: t('热门讨论', 'Popular') },
+  { value: 'discussed', label: t('精华内容', 'Most discussed') },
+];
 
-  <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-20">
-    {forumView === 'list' && (
-      <div className="space-y-4">
-        <div className="mb-6"><div className="flex flex-wrap justify-between items-center gap-3"><h2 className="text-2xl font-bold text-white flex items-center gap-2">{tCat(activeCategory)}</h2><div className="flex gap-2">{[['latest',t('最新','Latest')],['hot',t('热门','Hot')],['discussed',t('讨论最多','Most discussed')]].map(([value,label])=><button key={value} onClick={()=>{setForumSort(value);fetchForumPosts(activeCategory,value);}} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${forumSort===value?'border-cyan-500/40 bg-cyan-500/10 text-cyan-300':'border-zinc-800 text-zinc-500'}`}>{label}</button>)}</div></div>{forumSort==='hot'&&<p className="mt-2 text-right text-[10px] text-zinc-600">{t('热度按去重浏览、有效评论、置顶权重和发布时间衰减计算。','Hot score uses deduplicated views, visible comments, pin weight, and time decay.')}</p>}</div>
-        {forumPosts.map(post => (
-          <div key={post.id} onClick={() => openPostDetail(post)} className={`relative border p-6 rounded-3xl transition-all cursor-pointer group shadow-lg ${post.is_pinned ? 'bg-cyan-900/10 border-cyan-500/30' : 'bg-zinc-900/40 border-zinc-800 hover:border-cyan-500/30'}`}>
-            {user?.role === 'admin' && (
-              <div className="absolute top-6 right-6 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => handlePinPost(post.id, !post.is_pinned, e)} className="p-2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white rounded-lg transition-colors text-xs font-bold">{post.is_pinned ? t('取消置顶', 'Unpin') : t('📌 置顶', '📌 Pin')}</button>
-                <button onClick={(e) => handleDeletePost(post.id, e)} className="p-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-              </div>
-            )}
-            <div className="flex gap-2 mb-3 items-center">
-              {post.is_pinned && <span className="px-2.5 py-1 rounded-md text-[10px] font-black border border-cyan-500/50 bg-cyan-500 text-zinc-950">{t('📌 置顶', '📌 Pinned')}</span>}
-              <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border border-zinc-700 bg-zinc-800 text-zinc-300">{tCat(post.category)}</span>
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors pr-32">{post.title}</h3>
-            <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed mb-5 pr-32">{post.content}</p>
-            <div className="flex items-center justify-between text-xs text-zinc-500">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5">{post.avatar_url ? <Image src={post.avatar_url} width={16} height={16} alt={`${post.author} avatar`} className="w-4 h-4 rounded-full object-cover border border-zinc-700" /> : <UserIcon className="w-3.5 h-3.5" />} {post.author}</span>
-                <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {new Date(post.created_at).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-4"><span className="flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5" /> {post.comment_count || 0}</span><span className="flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /> {post.views}</span></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-    {forumView === 'detail' && selectedPost && (
-      <div className="animate-in fade-in slide-in-from-right-4">
-        <div className="flex justify-between items-center mb-6">
-          <button onClick={() => setForumView('list')} className="text-sm font-bold text-zinc-500 hover:text-white flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> {t('返回列表', 'Back to List')}</button>
-          {user?.role === 'admin' && (
-            <div className="flex gap-2">
-              <button onClick={(e) => handlePinPost(selectedPost.id, !selectedPost.is_pinned, e)} className="text-sm font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 rounded-lg">{selectedPost.is_pinned ? t('取消置顶', 'Unpin') : t('📌 强制置顶', '📌 Force Pin')}</button>
-              <button onClick={(e) => handleDeletePost(selectedPost.id, e)} className="text-sm font-bold text-red-400 hover:text-red-300 flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4" /> {t('彻底删帖', 'Delete Post')}</button>
-            </div>
-          )}
-        </div>
+function Avatar({ source, name, size = 40 }) {
+  return source ? <Image src={source} width={size} height={size} alt={`${name} avatar`} className="h-full w-full object-cover" /> : <span>{name?.charAt(0)?.toUpperCase() || '?'}</span>;
+}
 
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 mb-6 shadow-xl">
-          <div className="flex gap-2 mb-4 items-center">
-            {selectedPost.is_pinned && <span className="px-2.5 py-1 rounded text-[10px] font-black bg-cyan-500 text-zinc-950">{t('📌 置顶', '📌 Pinned')}</span>}
-            <span className="px-2.5 py-1 rounded text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">{tCat(selectedPost.category)}</span>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-6 leading-snug">{selectedPost.title}</h1>
-          <div className="flex items-center gap-4 pb-6 border-b border-zinc-800 mb-6">
-            <div className="w-12 h-12 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center text-xl font-black text-cyan-400 overflow-hidden border border-zinc-700 shadow-inner">
-              {selectedPost.avatar_url ? <Image src={selectedPost.avatar_url} width={48} height={48} alt={`${selectedPost.author} avatar`} className="w-full h-full object-cover" /> : selectedPost.author.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <div className="font-bold text-white text-base flex items-center flex-wrap gap-2">
-                {selectedPost.author} 
-                <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">OP</span>
-                {(() => {
-                  const opPCount = forumPosts.filter(p => p.author === selectedPost.author).length;
-                  const opECount = products.filter(p => p.author === selectedPost.author).length;
-                  const opRole = selectedPost.author_role || 'user'; 
-                  const opBadge = getUserTitle(opPCount, opECount, opRole);
-                  return <span className={`px-1.5 py-0.5 rounded text-[10px] border ${opBadge.color}`}>{opBadge.title}</span>;
-                })()}
-              </div>
-              <div className="text-xs text-zinc-500 mt-1">{new Date(selectedPost.created_at).toLocaleString()} · {selectedPost.views} Views</div>
-            </div>
-          </div>
-          <div className="prose prose-invert max-w-none text-zinc-300 leading-loose whitespace-pre-wrap text-sm md:text-base">{selectedPost.content}</div>
-          {user && user.id !== selectedPost.author_user_id && <button onClick={()=>handleReport('post',selectedPost.id)} className="mt-6 text-xs font-bold text-amber-400 hover:text-amber-300">⚑ {t('举报此帖','Report post')}</button>}
-        </div>
-        <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 shadow-xl">
-          <h3 className="font-bold text-white mb-8 flex items-center gap-2 text-lg"><MessageSquare className="w-5 h-5 text-cyan-400" /> {t('参与讨论', 'Discussions')} ({comments.length})</h3>
-          <div className="space-y-6 mb-10">
-            {comments.length === 0 ? <div className="text-zinc-500 text-sm text-center py-8 border border-dashed border-zinc-800 rounded-2xl">{t('暂无回复，抢个沙发吧！', 'No replies yet, be the first!')}</div> : 
-              comments.map(c => {
-                const cPCount = forumPosts.filter(p => p.author === c.author).length;
-                const cECount = products.filter(p => p.author === c.author).length;
-                const cRole = c.author_role || 'user'; 
-                const cBadge = getUserTitle(cPCount, cECount, cRole);
-                
-                return (
-                <div key={c.id} className={`flex gap-4 pb-6 border-b border-zinc-800/50 last:border-0 last:pb-0 relative group ${c.is_pinned ? 'bg-cyan-900/10 p-4 rounded-xl border border-cyan-500/20' : ''}`}>
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-zinc-800 flex items-center justify-center text-cyan-400 font-bold text-sm shadow-inner overflow-hidden border border-zinc-700">
-                    {c.avatar_url ? <Image src={c.avatar_url} width={40} height={40} alt={`${c.author} avatar`} className="w-full h-full object-cover" /> : c.author.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 w-full overflow-hidden">
-                    <div className="flex items-center flex-wrap gap-2 mb-1.5 pr-20">
-                      {c.is_pinned && <span className="text-[10px] font-black text-cyan-400">{t('📌 置顶', '📌 Pinned')}</span>}
-                      <span className="font-bold text-white text-sm">{c.author}</span>
-                      {c.author === selectedPost.author && <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">OP</span>}
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] border ${cBadge.color}`}>{cBadge.title}</span>
-                      <span className="text-xs text-zinc-600 ml-auto hidden sm:block">{new Date(c.created_at).toLocaleString()}</span>
-                    </div>
-                    <div className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">{c.content}</div>
-                    {user && user.id !== c.author_user_id && <button onClick={()=>handleReport('comment',c.id)} className="mt-2 text-[11px] font-bold text-amber-500 hover:text-amber-300">⚑ {t('举报评论','Report comment')}</button>}
-                  </div>
-                  
-                  {user?.role === 'admin' && (
-                    <div className="absolute top-4 right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handlePinComment(c.id, !c.is_pinned)} className="p-1.5 bg-zinc-800 hover:bg-amber-500/20 text-zinc-500 hover:text-amber-400 rounded text-[10px] font-bold transition-colors">{c.is_pinned ? t('取消置顶', 'Unpin') : t('📌 置顶', '📌 Pin')}</button>
-                      <button onClick={() => handleDeleteComment(c.id)} className="p-1.5 bg-zinc-800 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                    </div>
-                  )}
-                </div>
-              )})}
-          </div>
-          <div className="relative">
-            <textarea value={commentInput} onChange={e => setCommentInput(e.target.value)} placeholder={user ? t("写下你的独到见解...", "Write your insights...") : t("请先登录系统后再发表您的回复", "Please login to reply")} disabled={!user} rows="4" className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl px-5 py-4 text-white focus:border-cyan-500 focus:outline-none resize-none mb-4 disabled:opacity-50 disabled:cursor-not-allowed shadow-inner transition-colors"></textarea>
-            <div className="flex justify-end"><button onClick={submitComment} disabled={!user || isCommenting} className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(8,145,178,0.3)]">{isCommenting ? t('同步中...', 'Syncing...') : t('发表回复', 'Reply')}</button></div>
-          </div>
-        </div>
-      </div>
-    )}
-    {forumView === 'create' && (
-      <div className="bg-zinc-900/40 border border-zinc-800 rounded-3xl p-8 shadow-2xl animate-in fade-in">
-        <h2 className="text-2xl font-bold text-white mb-8">{t('发表新主题', 'Post New Topic')}</h2>
-        <div className="space-y-6">
-          <div><label className="block text-sm font-bold text-zinc-400 mb-2">{t('选择版块', 'Category')}</label><select value={newPost.category} onChange={e => setNewPost({...newPost, category: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none appearance-none">{categories.filter(c => c !== '全部').map(c => <option key={c} value={c}>{tCat(c)}</option>)}</select></div>
-          <div><label className="block text-sm font-bold text-zinc-400 mb-2">{t('帖子标题', 'Title')}</label><input type="text" value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-cyan-500 focus:outline-none" /></div>
-          <div><label className="block text-sm font-bold text-zinc-400 mb-2">{t('正文内容', 'Content')}</label><textarea value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} rows="12" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 text-white focus:border-cyan-500 focus:outline-none resize-none"></textarea></div>
-          <div className="flex justify-end gap-4"><button onClick={() => setForumView('list')} className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl text-sm transition-colors">{t('取消', 'Cancel')}</button><button onClick={submitPost} className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm shadow-[0_0_15px_rgba(8,145,178,0.4)]">{t('发布主题', 'Publish Topic')}</button></div>
-        </div>
-      </div>
-    )}
-  </div>
-</div>
-  );
+function ForumNavigation({ categories, activeCategory, tCat, t, onCategory, onCreate, authors }) {
+  return <aside className="ForumNavigation hidden w-60 shrink-0 border-r border-slate-800/80 bg-[#08111a]/80 xl:flex xl:flex-col">
+    <div className="border-b border-slate-800/80 px-5 py-6"><h1 className="text-xl font-black text-white">{t('开发者社区', 'Developer community')}</h1><p className="mt-2 text-xs leading-5 text-slate-500">{t('分享研究、开发经验与真实问题', 'Share research, development experience and real problems')}</p></div>
+    <nav aria-label={t('社区版块', 'Community categories')} className="space-y-1 px-3 py-5">{categories.map((category, index) => { const Icon = categoryIcons[index % categoryIcons.length]; const selected = activeCategory === category; return <button key={category} type="button" onClick={() => onCategory(category)} className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors ${selected ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-inset ring-cyan-400/20' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'}`}><Icon className="h-4 w-4" /><span>{tCat(category)}</span></button>; })}</nav>
+    {authors.length > 0 && <div className="border-t border-slate-800/80 px-5 py-5"><div className="mb-4 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{t('本页活跃作者', 'Active here')}</p><Users className="h-4 w-4 text-cyan-400" /></div><div className="space-y-4">{authors.slice(0, 4).map(author => <div key={author.name} className="flex items-center gap-3"><div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-xs font-bold text-cyan-300"><Avatar source={author.avatar} name={author.name} size={36} /></div><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-200">{author.name}</p><p className="text-[11px] text-slate-600">{author.posts} {t('篇讨论', 'posts')}</p></div></div>)}</div></div>}
+    <div className="mt-auto p-4"><Button variant="primary" className="w-full" icon={PenLine} onClick={onCreate}>{t('发布讨论', 'New discussion')}</Button></div>
+  </aside>;
+}
+
+function CommunityHero({ post, t, tCat, openPostDetail }) {
+  if (!post) return null;
+  return <Panel interactive className="relative overflow-hidden border-cyan-400/20 p-6 md:p-7"><div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_10%,rgba(34,211,238,0.16),transparent_38%),linear-gradient(125deg,rgba(15,23,42,0.15),rgba(2,6,23,0.9))]" /><div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(56,189,248,.14)_1px,transparent_1px),linear-gradient(90deg,rgba(56,189,248,.14)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:linear-gradient(to_left,black,transparent)]" /><button type="button" onClick={() => openPostDetail(post)} className="relative z-10 block w-full text-left"><Badge variant="primary">{post.is_pinned ? t('社区置顶', 'Community pinned') : tCat(post.category)}</Badge><h2 className="mt-4 max-w-3xl text-2xl font-black leading-tight text-white md:text-3xl">{post.title}</h2><p className="mt-3 max-w-3xl line-clamp-2 text-sm leading-6 text-slate-400">{post.content}</p><div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500"><span>{post.author}</span><span>{new Date(post.created_at).toLocaleDateString()}</span><span className="flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />{post.views || 0}</span><span className="flex items-center gap-1.5"><MessageSquare className="h-3.5 w-3.5" />{post.comment_count || 0}</span></div></button></Panel>;
+}
+
+function PostCard({ post, user, t, tCat, openPostDetail, handlePinPost, handleDeletePost }) {
+  return <Panel interactive as="article" className={`group relative p-5 md:p-6 ${post.is_pinned ? 'border-cyan-400/25 bg-cyan-400/[0.035]' : ''}`}><button type="button" className="block w-full text-left" onClick={() => openPostDetail(post)}><div className="flex items-start gap-4"><div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 font-bold text-cyan-300"><Avatar source={post.avatar_url} name={post.author} size={44} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><span className="font-bold text-slate-100">{post.author}</span>{post.author_role === 'admin' && <ShieldCheck className="h-4 w-4 text-cyan-400" />}<Badge variant={post.is_pinned ? 'primary' : 'violet'}>{post.is_pinned ? t('置顶', 'Pinned') : tCat(post.category)}</Badge></div><p className="mt-1 text-xs text-slate-600">{new Date(post.created_at).toLocaleString()}</p></div></div><h2 className="mt-5 pr-12 text-lg font-bold leading-7 text-white transition-colors group-hover:text-cyan-300">{post.title}</h2><p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{post.content}</p><div className="mt-5 flex items-center gap-5 text-xs text-slate-500"><span className="flex items-center gap-1.5"><MessageSquare className="h-4 w-4" />{post.comment_count || 0}</span><span className="flex items-center gap-1.5"><Eye className="h-4 w-4" />{post.views || 0}</span><span className="ml-auto flex items-center gap-1.5"><Clock className="h-4 w-4" />{new Date(post.created_at).toLocaleDateString()}</span></div></button>{user?.role === 'admin' && <div className="absolute right-4 top-4 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"><Button aria-label={post.is_pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')} size="icon" variant="ghost" onClick={event => handlePinPost(post.id, !post.is_pinned, event)}><Star className="h-4 w-4" /></Button><Button aria-label={t('删除帖子', 'Delete post')} size="icon" variant="danger" onClick={event => handleDeletePost(post.id, event)}><Trash2 className="h-4 w-4" /></Button></div>}</Panel>;
+}
+
+function CommunityAside({ authors, categoryStats, totals, t, tCat }) {
+  return <aside className="CommunityAside hidden w-72 shrink-0 space-y-4 2xl:block"><Panel className="p-5"><h2 className="mb-5 font-bold text-white">{t('本页活跃作者', 'Active authors')}</h2><div className="space-y-4">{authors.slice(0, 5).map((author, index) => <div key={author.name} className="flex items-center gap-3"><span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-black ${index < 3 ? 'bg-cyan-400/10 text-cyan-300' : 'bg-slate-800 text-slate-500'}`}>{index + 1}</span><div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-xs font-bold text-cyan-300"><Avatar source={author.avatar} name={author.name} size={36} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-200">{author.name}</p><p className="text-[11px] text-slate-600">{author.posts} {t('篇 · ', 'posts · ')}{author.comments} {t('条回复', 'replies')}</p></div></div>)}</div>{authors.length === 0 && <p className="text-sm text-slate-600">{t('当前列表暂无作者数据', 'No author data in this result set')}</p>}</Panel><Panel className="p-5"><h2 className="mb-4 font-bold text-white">{t('热门版块', 'Popular categories')}</h2><div className="flex flex-wrap gap-2">{categoryStats.map(item => <Badge key={item.name}># {tCat(item.name)} <span className="text-slate-500">{item.count}</span></Badge>)}</div></Panel><Panel className="p-5"><h2 className="mb-4 font-bold text-white">{t('当前列表统计', 'Current result set')}</h2><div className="grid grid-cols-2 gap-3">{[[t('讨论','Posts'),totals.posts],[t('作者','Authors'),totals.authors],[t('浏览','Views'),totals.views],[t('回复','Replies'),totals.comments]].map(([label,value]) => <div key={label} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"><p className="nq-number text-lg font-black text-white">{value.toLocaleString()}</p><p className="mt-1 text-[11px] text-slate-600">{label}</p></div>)}</div><p className="mt-4 text-[11px] leading-5 text-slate-600">{t('统计只覆盖当前已加载的筛选结果，不代表全站累计值。', 'Statistics cover only the currently loaded and filtered results.')}</p></Panel></aside>;
+}
+
+function ForumList(props) {
+  const { categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, openPostDetail, handlePinPost, handleDeletePost, t } = props;
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLocaleLowerCase();
+  const filteredPosts = useMemo(() => needle ? forumPosts.filter(post => [post.title, post.content, post.author, post.category].some(value => String(value || '').toLocaleLowerCase().includes(needle))) : forumPosts, [forumPosts, needle]);
+  const authors = useMemo(() => Object.values(forumPosts.reduce((index, post) => { const key = post.author || t('未知作者', 'Unknown'); const current = index[key] || { name: key, avatar: post.avatar_url, posts: 0, comments: 0 }; current.posts += 1; current.comments += Number(post.comment_count || 0); index[key] = current; return index; }, {})).sort((a, b) => (b.posts + b.comments) - (a.posts + a.comments)), [forumPosts, t]);
+  const categoryStats = useMemo(() => Object.entries(forumPosts.reduce((index, post) => { index[post.category] = (index[post.category] || 0) + 1; return index; }, {})).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count), [forumPosts]);
+  const totals = useMemo(() => ({ posts: filteredPosts.length, authors: new Set(filteredPosts.map(post => post.author)).size, views: filteredPosts.reduce((sum, post) => sum + Number(post.views || 0), 0), comments: filteredPosts.reduce((sum, post) => sum + Number(post.comment_count || 0), 0) }), [filteredPosts]);
+  const hero = filteredPosts.find(post => post.is_pinned) || filteredPosts[0];
+  const feed = hero ? filteredPosts.filter(post => post.id !== hero.id) : filteredPosts;
+  const create = () => { if (!user) return setAuthModal('login'); setForumView('create'); setNewPost({ ...newPost, category: dynamicCats[0] || categories.find(category => category !== '全部') || '全部' }); };
+  return <div className="flex min-h-[calc(100vh-76px)] bg-[#060c13]"><ForumNavigation {...{ categories, activeCategory, tCat, t, authors }} onCategory={category => { setActiveCategory(category); setForumView('list'); fetchForumPosts(category, forumSort); }} onCreate={create} /><main className="min-w-0 flex-1 px-4 py-5 md:px-6"><div className="mx-auto max-w-5xl"><header className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center"><div className="flex items-center gap-6 text-sm font-bold"><span className="border-b-2 border-cyan-400 pb-3 text-cyan-300">{t('社区', 'Community')}</span><span className="pb-3 text-slate-500">{t('文档', 'Docs')}</span><span className="pb-3 text-slate-500">{t('策略库', 'Strategies')}</span></div><label className="relative lg:ml-auto lg:w-96"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('搜索当前讨论、作者或关键词…', 'Search loaded discussions, authors or keywords…')} className="w-full rounded-lg border border-slate-700/70 bg-slate-950/75 py-2.5 pl-10 pr-4 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70" /></label><Button variant="primary" icon={PenLine} onClick={create}>{t('发布讨论', 'New discussion')}</Button></header><CommunityHero post={hero} {...{ t, tCat, openPostDetail }} /><div className="mt-5 flex items-end justify-between gap-4"><Tabs items={sorts(t)} value={forumSort} onChange={value => { setForumSort(value); fetchForumPosts(activeCategory, value); }} label={t('讨论排序', 'Discussion sort')} /><span className="hidden pb-3 text-xs text-slate-600 md:block">{tCat(activeCategory)} · {filteredPosts.length} {t('条结果', 'results')}</span></div>{forumSort === 'hot' && <p className="mt-3 text-xs leading-5 text-slate-600">{t('热门排序由去重浏览、有效评论、置顶权重和发布时间衰减共同计算。', 'Popularity combines deduplicated views, visible comments, pin weight and time decay.')}</p>}<div className="mt-4 space-y-3">{feed.map(post => <PostCard key={post.id} {...{ post, user, t, tCat, openPostDetail, handlePinPost, handleDeletePost }} />)}{filteredPosts.length === 0 && <EmptyState icon={Search} title={t('没有匹配的讨论', 'No matching discussions')} description={needle ? t('请缩短关键词或清除搜索条件。', 'Try a shorter keyword or clear the search.') : t('这个版块还没有内容。', 'This category has no discussions yet.')} action={<Button variant="primary" icon={PenLine} onClick={create}>{t('发布讨论', 'New discussion')}</Button>} />}</div></div></main><div className="border-l border-slate-800/80 bg-[#08111a]/55 p-4"><CommunityAside {...{ authors, categoryStats, totals, t, tCat }} /></div></div>;
+}
+
+function DetailView(props) {
+  const { selectedPost, setForumView, user, t, tCat, forumPosts, products, getUserTitle, handlePinPost, handleDeletePost, handleReport, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment } = props;
+  const userBadge = author => getUserTitle(forumPosts.filter(post => post.author === author).length, products.filter(product => product.author === author).length, author === selectedPost.author ? selectedPost.author_role || 'user' : 'user');
+  return <div className="mx-auto max-w-4xl px-4 py-8 md:px-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" icon={ArrowLeft} onClick={() => setForumView('list')}>{t('返回社区', 'Back to community')}</Button>{user?.role === 'admin' && <div className="flex gap-2"><Button icon={Star} onClick={event => handlePinPost(selectedPost.id, !selectedPost.is_pinned, event)}>{selectedPost.is_pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}</Button><Button variant="danger" icon={Trash2} onClick={event => handleDeletePost(selectedPost.id, event)}>{t('删除', 'Delete')}</Button></div>}</div><Panel className="p-6 md:p-8"><div className="flex gap-2">{selectedPost.is_pinned && <Badge variant="primary">{t('置顶', 'Pinned')}</Badge>}<Badge variant="violet">{tCat(selectedPost.category)}</Badge></div><h1 className="mt-5 text-2xl font-black leading-tight text-white md:text-3xl">{selectedPost.title}</h1><div className="mt-6 flex items-center gap-4 border-b border-slate-800 pb-6"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 font-bold text-cyan-300"><Avatar source={selectedPost.avatar_url} name={selectedPost.author} size={48} /></div><div><div className="flex items-center gap-2"><b className="text-white">{selectedPost.author}</b><Badge>{userBadge(selectedPost.author).title}</Badge></div><p className="mt-1 text-xs text-slate-600">{new Date(selectedPost.created_at).toLocaleString()} · {selectedPost.views || 0} {t('次浏览', 'views')}</p></div></div><div className="whitespace-pre-wrap py-7 text-sm leading-8 text-slate-300 md:text-base">{selectedPost.content}</div>{user && user.id !== selectedPost.author_user_id && <Button variant="ghost" size="sm" onClick={() => handleReport('post', selectedPost.id)}>{t('举报此帖', 'Report post')}</Button>}</Panel><Panel className="mt-5 p-6 md:p-8"><h2 className="flex items-center gap-2 text-lg font-bold text-white"><MessageSquare className="h-5 w-5 text-cyan-400" />{t('参与讨论', 'Discussion')} ({comments.length})</h2><div className="my-7 space-y-4">{comments.map(comment => <div key={comment.id} className={`group relative flex gap-3 rounded-xl border p-4 ${comment.is_pinned ? 'border-cyan-400/25 bg-cyan-400/[0.035]' : 'border-slate-800 bg-slate-950/25'}`}><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-bold text-cyan-300"><Avatar source={comment.avatar_url} name={comment.author} size={40} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-sm text-white">{comment.author}</b>{comment.author === selectedPost.author && <Badge variant="primary">OP</Badge>}<span className="ml-auto text-[11px] text-slate-600">{new Date(comment.created_at).toLocaleString()}</span></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.content}</p>{user && user.id !== comment.author_user_id && <button type="button" onClick={() => handleReport('comment', comment.id)} className="mt-3 text-xs text-amber-400">{t('举报评论', 'Report comment')}</button>}</div>{user?.role === 'admin' && <div className="absolute right-3 top-3 flex gap-1 opacity-0 group-hover:opacity-100"><Button size="sm" variant="ghost" onClick={() => handlePinComment(comment.id, !comment.is_pinned)}>{comment.is_pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}</Button><Button aria-label={t('删除评论', 'Delete comment')} size="icon" variant="danger" onClick={() => handleDeleteComment(comment.id)}><Trash2 className="h-4 w-4" /></Button></div>}</div>)}{comments.length === 0 && <EmptyState icon={MessageSquare} title={t('暂无回复', 'No replies yet')} description={t('成为第一个参与讨论的人。', 'Be the first to join this discussion.')} />}</div><Field label={t('回复内容', 'Your reply')}><textarea rows="5" value={commentInput} onChange={event => setCommentInput(event.target.value)} disabled={!user} placeholder={user ? t('写下你的见解…', 'Share your perspective…') : t('请先登录后回复', 'Sign in to reply')} /></Field><div className="mt-4 flex justify-end"><Button variant="primary" loading={isCommenting} disabled={!user} onClick={submitComment}>{t('发表回复', 'Post reply')}</Button></div></Panel></div>;
+}
+
+function CreateView({ categories, newPost, setNewPost, setForumView, submitPost, t, tCat }) {
+  return <div className="mx-auto max-w-3xl px-4 py-8 md:px-6"><Button variant="ghost" icon={ArrowLeft} onClick={() => setForumView('list')}>{t('返回社区', 'Back to community')}</Button><Panel className="mt-5 p-6 md:p-8"><Badge variant="primary">{t('新讨论', 'New discussion')}</Badge><h1 className="mt-4 text-2xl font-black text-white">{t('发布有价值的研究与经验', 'Share useful research and experience')}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{t('请提供清晰标题、上下文与可复现细节。', 'Use a clear title, context and reproducible details.')}</p><div className="mt-7 space-y-5"><Field label={t('选择版块', 'Category')} required><select value={newPost.category} onChange={event => setNewPost({ ...newPost, category: event.target.value })}>{categories.filter(category => category !== '全部').map(category => <option key={category} value={category}>{tCat(category)}</option>)}</select></Field><Field label={t('帖子标题', 'Title')} required><input value={newPost.title} onChange={event => setNewPost({ ...newPost, title: event.target.value })} /></Field><Field label={t('正文内容', 'Content')} required><textarea rows="14" value={newPost.content} onChange={event => setNewPost({ ...newPost, content: event.target.value })} /></Field><div className="flex justify-end gap-3"><Button onClick={() => setForumView('list')}>{t('取消', 'Cancel')}</Button><Button variant="primary" icon={PenLine} onClick={submitPost}>{t('发布主题', 'Publish')}</Button></div></div></Panel></div>;
+}
+
+export default function ForumView({ products, handlePinPost, handlePinComment, handleReport, ...props }) {
+  const viewProps = { ...props, products, handlePinPost, handlePinComment, handleReport };
+  if (props.forumView === 'detail' && props.selectedPost) return <DetailView {...viewProps} />;
+  if (props.forumView === 'create') return <CreateView {...viewProps} />;
+  return <ForumList {...viewProps} />;
 }

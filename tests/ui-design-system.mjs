@@ -10,6 +10,7 @@ const market = [
   fs.readFileSync(path.join(root, 'app', 'components', 'StrategyMarketCatalog.js'), 'utf8'),
 ].join('\n');
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
+const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
 
 for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--nq-success', '--nq-warning', '--nq-danger', '--nq-radius-md', '--nq-shadow-dialog', '--nq-focus']) {
   assert.match(css, new RegExp(token), `missing design token ${token}`);
@@ -39,6 +40,14 @@ for (const landmark of ['ProfileNav', 'AssetTable', 'Licenses', 'BindingDrawer',
 assert.match(profile, /Trading passwords and exchange API secrets are not accepted/, 'profile binding drawer must disclose the credential boundary');
 assert.doesNotMatch(profile, /placeholder=["'](?:API Key|API Secret)/, 'profile must not collect exchange API credentials');
 assert.doesNotMatch(profile, /Math\.random/, 'profile must not generate synthetic portfolio data');
+for (const landmark of ['ForumNavigation', 'CommunityHero', 'PostCard', 'CommunityAside', 'Current result set']) {
+  assert.match(forum, new RegExp(landmark), `community visual composition is missing ${landmark}`);
+}
+assert.match(forum, /post\.views/, 'community view totals must come from post data');
+assert.match(forum, /post\.comment_count/, 'community reply totals must come from post data');
+assert.match(forum, /Statistics cover only the currently loaded and filtered results/, 'community statistics must disclose their scope');
+assert.doesNotMatch(forum, /Math\.random/, 'community must not generate synthetic activity data');
+for (const fakeTotal of ['12,426', '256,781']) assert.doesNotMatch(forum, new RegExp(fakeTotal), `community must not copy mock total ${fakeTotal}`);
 
 for (const directory of ['app', 'lib']) {
   const files = [];
