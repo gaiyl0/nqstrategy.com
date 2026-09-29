@@ -9,6 +9,7 @@ const market = [
   fs.readFileSync(path.join(root, 'app', 'components', 'MarketView.js'), 'utf8'),
   fs.readFileSync(path.join(root, 'app', 'components', 'StrategyMarketCatalog.js'), 'utf8'),
 ].join('\n');
+const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
 
 for (const token of ['--nq-bg', '--nq-panel', '--nq-border', '--nq-primary', '--nq-success', '--nq-warning', '--nq-danger', '--nq-radius-md', '--nq-shadow-dialog', '--nq-focus']) {
   assert.match(css, new RegExp(token), `missing design token ${token}`);
@@ -32,6 +33,12 @@ assert.doesNotMatch(market, /Math\.random/, 'market must not generate synthetic 
 for (const landmark of ['SideNavigation', 'ComparisonRail', 'StrategyCard', 'market-filter']) {
   assert.match(market, new RegExp(landmark), `market visual composition is missing ${landmark}`);
 }
+for (const landmark of ['ProfileNav', 'AssetTable', 'Licenses', 'BindingDrawer', 'No trusted return time series']) {
+  assert.match(profile, new RegExp(landmark), `profile visual composition is missing ${landmark}`);
+}
+assert.match(profile, /Trading passwords and exchange API secrets are not accepted/, 'profile binding drawer must disclose the credential boundary');
+assert.doesNotMatch(profile, /placeholder=["'](?:API Key|API Secret)/, 'profile must not collect exchange API credentials');
+assert.doesNotMatch(profile, /Math\.random/, 'profile must not generate synthetic portfolio data');
 
 for (const directory of ['app', 'lib']) {
   const files = [];
