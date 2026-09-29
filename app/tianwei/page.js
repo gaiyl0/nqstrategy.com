@@ -22,6 +22,7 @@ export default function AdminDashboard() {
     broker1Name: '', broker1Desc: '', broker1Link: '', 
     broker2Name: '', broker2Desc: '', broker2Link: '', 
     broker3Name: '', broker3Desc: '', broker3Link: '', 
+    exchangeAdEnabled: false, exchangeAdTitle: '', exchangeAdDescription: '', exchangeAdCta: '', exchangeAdUrl: '',
     forumCategories: 'XAUUSD 策略,MQL5 开发,AI 与深度学习,官方公告' 
   });
   const [status, setStatus] = useState('');
@@ -238,6 +239,20 @@ export default function AdminDashboard() {
              <div className="md:col-span-2 bg-gradient-to-br from-purple-900/20 to-zinc-900/50 border border-purple-500/20 rounded-3xl p-8 space-y-4 shadow-xl">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2"><Hash className="text-purple-400" /> 论坛与社区导航配置</h2>
                 <input type="text" name="forumCategories" value={settings.forumCategories || ''} onChange={(e) => setSettings({...settings, forumCategories: e.target.value})} placeholder="例如：XAUUSD 策略,MQL5 开发,官方公告" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-cyan-500 focus:outline-none transition-colors" />
+             </div>
+
+             <div className="md:col-span-2 rounded-3xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 to-zinc-900/60 p-8 shadow-xl">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+                  <div><h2 className="text-lg font-bold text-white">{lang === 'zh' ? '首页交易所广告位' : 'Homepage exchange advertisement'}</h2><p className="mt-1 text-sm text-zinc-500">{lang === 'zh' ? '配置赞助标识、标题、说明、按钮和跳转链接；保存后在首页策略区上方展示。' : 'Set the sponsored label, title, description, button, and destination. It appears above the strategy section.'}</p></div>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-semibold text-white"><input type="checkbox" checked={settings.exchangeAdEnabled === true || settings.exchangeAdEnabled === 'true'} onChange={event => setSettings({ ...settings, exchangeAdEnabled: event.target.checked })} className="h-4 w-4 accent-cyan-400" />{lang === 'zh' ? '启用广告位' : 'Enable ad slot'}</label>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <input type="text" maxLength={100} value={settings.exchangeAdTitle || ''} onChange={event => setSettings({ ...settings, exchangeAdTitle: event.target.value })} placeholder={lang === 'zh' ? '广告标题，例如：连接全球市场' : 'Ad title, e.g. Access global markets'} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+                  <input type="text" maxLength={40} value={settings.exchangeAdCta || ''} onChange={event => setSettings({ ...settings, exchangeAdCta: event.target.value })} placeholder={lang === 'zh' ? '按钮文字，例如：了解更多' : 'Button label, e.g. Learn more'} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white" />
+                  <textarea maxLength={300} rows={3} value={settings.exchangeAdDescription || ''} onChange={event => setSettings({ ...settings, exchangeAdDescription: event.target.value })} placeholder={lang === 'zh' ? '广告说明（最多 300 字）' : 'Ad description (up to 300 characters)'} className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white md:col-span-2" />
+                  <input type="url" maxLength={500} value={settings.exchangeAdUrl || ''} onChange={event => setSettings({ ...settings, exchangeAdUrl: event.target.value })} placeholder="https://exchange.example/" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-cyan-200 md:col-span-2" />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-zinc-500">{lang === 'zh' ? '广告默认关闭；只接受 HTTP/HTTPS 跳转，链接将在新标签打开。启用时至少填写标题和说明。' : 'The ad is disabled by default. Only HTTP/HTTPS links are allowed and open in a new tab. Add a title and description before enabling.'}</p>
              </div>
 
              <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 space-y-5 shadow-xl">

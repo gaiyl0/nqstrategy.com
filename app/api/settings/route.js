@@ -13,6 +13,7 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'broker1Name', 'broker1Desc', 'broker1Link',
   'broker2Name', 'broker2Desc', 'broker2Link',
   'broker3Name', 'broker3Desc', 'broker3Link',
+  'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl',
   'forumCategories'
 ]);
 const ADMIN_SETTINGS_KEYS = new Set([...PUBLIC_SETTINGS_KEYS, 'smtpHost', 'smtpUser', 'smtpPass']);
