@@ -4,6 +4,7 @@ import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import {
   createProductSchema,
+  forceDeleteProductSchema,
   adminScopeSchema,
   idSchema,
   parseJson,
@@ -26,6 +27,7 @@ import { createInitialVersion, getCurrentVersion, listVersions, publishInitialVe
 import { productSocialSummary } from '@/lib/social';
 import { queryMarketCatalog } from '@/lib/market-catalog.mjs';
 import { productSlug } from '@/lib/product-slug.mjs';
+import { createSecurityContext, withAudit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -51,7 +53,7 @@ function publicProducts(currentUser = null) {
     SELECT id, slug, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
            pairs, ea_type, trial_enabled, trial_days, status, created_at
     FROM products
-    WHERE moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
+    WHERE deleted_at IS NULL AND moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
     ORDER BY created_at DESC
   `).all(...(includeOwned ? [currentUser.id] : []));
   return products.map(product=>publicProductDto(product,currentUser));
@@ -63,7 +65,7 @@ function marketProducts(currentUser,query){
     m.max_drawdown_percent metric_drawdown,m.reviewed_at metric_reviewed,
     CASE WHEN v.status='active' AND (v.expires_at IS NULL OR v.expires_at>?) THEN v.level ELSE 'unverified' END verification_level
     FROM products p LEFT JOIN strategy_metrics m ON m.product_id=p.id LEFT JOIN strategy_verifications v ON v.product_id=p.id
-    WHERE p.status='active' AND p.moderation_status='visible' ORDER BY p.created_at DESC`).all(now).map(product=>({...product,metrics:product.metric_reviewed?{maxDrawdownPercent:product.metric_drawdown,reviewedAt:product.metric_reviewed}:null,verification:{level:product.verification_level}}));
+    WHERE p.deleted_at IS NULL AND p.status='active' AND p.moderation_status='visible' ORDER BY p.created_at DESC`).all(now).map(product=>({...product,metrics:product.metric_reviewed?{maxDrawdownPercent:product.metric_drawdown,reviewedAt:product.metric_reviewed}:null,verification:{level:product.verification_level}}));
   const result=queryMarketCatalog(candidates,query);
   return {products:result.items.map(candidate=>{const product={...candidate};for(const key of ['metric_drawdown','metric_reviewed','verification_level','metrics','verification'])delete product[key];return publicProductDto(product,currentUser);}),pagination:result.pagination};
 }
@@ -83,7 +85,7 @@ async function GETHandler(request) {
       if (currentUser?.role !== 'admin') {
         return NextResponse.json({ success: false, message: '无权查看全部策略' }, { status: 403 });
       }
-      const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all()
+      const products = db.prepare('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC').all()
         .map((product) => { const report = db.prepare('SELECT id,content_sha256,parser_version FROM strategy_reports WHERE product_id=?').get(product.id); return { ...product, metrics: getStrategyMetrics(product.id, { includeUnreviewed: true }), evidence: listEvidence(product.id, { admin: true }), report: report ? { id: report.id, sha256: report.content_sha256, parserVersion: report.parser_version } : null, verification:getVerification(product.id,{includePrivate:true}),currentVersion:getCurrentVersion(product.id,{includePrivate:true}),versions:listVersions(product.id,{includePrivate:true}),social:productSocialSummary(product.id,currentUser.id) }; });
       return NextResponse.json({ success: true, products });
     }
@@ -180,7 +182,7 @@ async function PATCHHandler(request) {
     const body = parsed.data;
     const id = body.id;
 
-    const existing = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT * FROM products WHERE id = ? AND deleted_at IS NULL').get(id);
     if (!existing) return NextResponse.json({ success: false, message: '策略不存在' }, { status: 404 });
 
     if ('status' in body) {
@@ -275,42 +277,43 @@ async function PATCHHandler(request) {
 }
 
 async function DELETEHandler(request) {
-  try {
-    const currentUser = await getSessionUser();
-    if (!currentUser) {
-      return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
-    }
-    const parsedId = validate(idSchema, new URL(request.url).searchParams.get('id'));
-    if (!parsedId.success) return validationErrorResponse(parsedId.error);
-    const id = parsedId.data;
-
-    const product = db.prepare('SELECT id, author_user_id FROM products WHERE id = ?').get(id);
-    if (!product) return NextResponse.json({ success: false, message: '策略不存在' }, { status: 404 });
-    if (currentUser.role !== 'admin' && product.author_user_id !== currentUser.id) {
-      return NextResponse.json({ success: false, message: '无权删除该策略' }, { status: 403 });
-    }
-    const linkedOrder = db.prepare("SELECT id,status FROM orders WHERE product_id = ? LIMIT 1").get(id);
-    if (linkedOrder) {
-      return NextResponse.json({ success: false, message: '该策略已有订单记录，为保留财务审计只能下架，不能删除' }, { status: 409 });
-    }
-    const publishedVersion=db.prepare("SELECT id FROM product_versions WHERE product_id=? AND status='published' LIMIT 1").get(id);
-    if(publishedVersion)return NextResponse.json({success:false,message:'该策略已有发布版本，为保留版本与下载审计只能下架，不能删除'},{status:409});
-    const evidenceFiles = db.prepare('SELECT original_stored_name, preview_stored_name FROM strategy_evidence WHERE product_id = ?').all(id);
-    const reportFile = db.prepare('SELECT stored_name FROM strategy_reports WHERE product_id=?').get(id);
-
-    db.transaction(() => {
-      db.prepare(`UPDATE uploads SET attached_product_id = NULL, expires_at = ?
-        WHERE attached_product_id = ? AND deleted_at IS NULL`
-      ).run(Date.now() + 24 * 60 * 60 * 1000, id);
-      db.prepare("DELETE FROM product_versions WHERE product_id=? AND status<>'published'").run(id);
-      db.prepare('DELETE FROM products WHERE id = ?').run(id);
-    }).immediate();
-    for (const evidence of evidenceFiles) removeEvidenceFiles(evidence);
-    if (reportFile) try { fs.rmSync(reportPath(reportFile.stored_name), { force: true }); } catch {}
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ success: false, message: '删除策略失败' }, { status: 500 });
+  const currentUser = await getSessionUser();
+  const context = createSecurityContext(request, currentUser);
+  if (!currentUser) return withAudit(context, NextResponse.json({ success: false, message: '请先登录' }, { status: 401 }), { eventType:'product.delete',outcome:'failure',reasonCode:'UNAUTHENTICATED' });
+  const requestUrl = new URL(request.url);
+  const parsedId = validate(idSchema, requestUrl.searchParams.get('id'));
+  if (!parsedId.success) return withAudit(context, validationErrorResponse(parsedId.error), { eventType:'product.delete',outcome:'failure',reasonCode:'VALIDATION_ERROR' });
+  const id = parsedId.data;
+  const force = requestUrl.searchParams.get('force') === '1';
+  const product = db.prepare('SELECT id,title,author_user_id FROM products WHERE id = ? AND deleted_at IS NULL').get(id);
+  if (!product) return withAudit(context, NextResponse.json({ success: false, message: '策略不存在或已删除' }, { status: 404 }), { eventType:'product.delete',outcome:'failure',reasonCode:'NOT_FOUND',targetType:'product',targetId:id });
+  if (force) {
+    const parsedForce = validate(forceDeleteProductSchema, { id, force:true, reason:requestUrl.searchParams.get('reason') || '' });
+    if (!parsedForce.success) return withAudit(context, validationErrorResponse(parsedForce.error), { eventType:'product.force_delete',outcome:'failure',reasonCode:'VALIDATION_ERROR',targetType:'product',targetId:id });
+    if (currentUser.role !== 'admin') return withAudit(context, NextResponse.json({ success:false,message:'只有管理员可以强制删除含订单或已发布版本的策略' },{status:403}), { eventType:'product.force_delete',outcome:'failure',reasonCode:'FORBIDDEN',targetType:'product',targetId:id });
+    const now=Date.now();
+    const result=db.transaction(()=>{
+      const orderCount=Number(db.prepare('SELECT COUNT(*) count FROM orders WHERE product_id=?').get(id).count);
+      const licenseCount=Number(db.prepare("SELECT COUNT(*) count FROM product_licenses WHERE product_id=? AND status='active'").get(id).count);
+      db.prepare("UPDATE product_licenses SET status='revoked',revoked_at=?,revoked_by_user_id=?,revocation_reason=?,token_version=token_version+1 WHERE product_id=? AND status='active'").run(now,currentUser.id,'产品已由管理员强制删除',id);
+      db.prepare("UPDATE product_versions SET status='retired',is_current=0 WHERE product_id=? AND status IN ('pending','published')").run(id);
+      db.prepare("UPDATE products SET status='pending',moderation_status='hidden',file_url=NULL,deleted_at=?,deleted_by_user_id=?,deletion_reason=? WHERE id=?").run(now,currentUser.id,parsedForce.data.reason,id);
+      return {orderCount,licenseCount};
+    });
+    const summary=result.immediate();
+    return withAudit(context, NextResponse.json({success:true,forced:true,archivedOrders:summary.orderCount,revokedLicenses:summary.licenseCount}), { eventType:'product.force_delete',outcome:'success',reasonCode:'ADMIN_FORCE_DELETE',targetType:'product',targetId:id,metadata:{title:product.title,orderCount:summary.orderCount,revokedLicenses:summary.licenseCount,reason:parsedForce.data.reason} });
   }
+  if (currentUser.role !== 'admin' && product.author_user_id !== currentUser.id) return withAudit(context, NextResponse.json({ success: false, message: '无权删除该策略' }, { status: 403 }), { eventType:'product.delete',outcome:'failure',reasonCode:'FORBIDDEN',targetType:'product',targetId:id });
+  const linkedOrder = db.prepare("SELECT id,status FROM orders WHERE product_id = ? LIMIT 1").get(id);
+  if (linkedOrder) return withAudit(context, NextResponse.json({ success: false, message: '该策略已有订单记录，为保留财务审计只能下架；管理员可使用强制删除' }, { status: 409 }), { eventType:'product.delete',outcome:'blocked',reasonCode:'ORDER_HISTORY_PROTECTED',targetType:'product',targetId:id });
+  const publishedVersion=db.prepare("SELECT id FROM product_versions WHERE product_id=? AND status='published' LIMIT 1").get(id);
+  if(publishedVersion)return withAudit(context,NextResponse.json({success:false,message:'该策略已有发布版本，为保留版本与下载审计只能下架；管理员可使用强制删除'},{status:409}),{eventType:'product.delete',outcome:'blocked',reasonCode:'VERSION_HISTORY_PROTECTED',targetType:'product',targetId:id});
+  const evidenceFiles = db.prepare('SELECT original_stored_name, preview_stored_name FROM strategy_evidence WHERE product_id = ?').all(id);
+  const reportFile = db.prepare('SELECT stored_name FROM strategy_reports WHERE product_id=?').get(id);
+  db.transaction(() => { db.prepare(`UPDATE uploads SET attached_product_id = NULL, expires_at = ? WHERE attached_product_id = ? AND deleted_at IS NULL`).run(Date.now()+86400000,id); db.prepare("DELETE FROM product_versions WHERE product_id=? AND status<>'published'").run(id); db.prepare('DELETE FROM products WHERE id = ?').run(id); }).immediate();
+  for (const evidence of evidenceFiles) removeEvidenceFiles(evidence);
+  if (reportFile) try { fs.rmSync(reportPath(reportFile.stored_name), { force: true }); } catch {}
+  return withAudit(context, NextResponse.json({ success: true }), { eventType:'product.delete',outcome:'success',reasonCode:'DELETED',targetType:'product',targetId:id,metadata:{title:product.title} });
 }
 
 export const GET = withApiErrors(GETHandler, { route: '/api/products' });

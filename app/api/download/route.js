@@ -27,7 +27,7 @@ async function GETHandler(request) {
     if(parsedVersionId&&!parsedVersionId.success)return validationErrorResponse(parsedVersionId.error);
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
-    if (!product) {
+    if (!product || product.deleted_at) {
       return new NextResponse('未找到该策略对应的主程序文件', { status: 404 });
     }
     const version=resolveDownloadVersion(productId,parsedVersionId?.data||null);
