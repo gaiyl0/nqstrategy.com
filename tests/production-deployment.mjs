@@ -14,6 +14,7 @@ for (const requirement of ['flock -n', 'npm ci --include=dev', 'npm run build', 
 }
 assert.match(remote, /systemctl stop nexus-quant[\s\S]*npm run db:migrate -- up[\s\S]*systemctl start nexus-quant/);
 assert.match(remote, /install -o nexus -g nexus -m 0600[\s\S]*data\.db/);
+assert.match(remote, /chown -R nexus:nexus "\$runtime_root\/public\/uploads"/);
 assert.doesNotMatch(remote, /\.env\.production|JWT_SECRET=/);
 
 console.log('Production deployment tests passed: preflight, immutable release, backup, migration, health checks and rollback');

@@ -58,6 +58,8 @@ run_as_nexus "DEPLOYMENT_VERSION='$release_id' npm run build"
 run_as_nexus "npm prune --omit=dev"
 
 if [[ -d "$runtime_root/public/uploads" ]]; then
+  chown -R nexus:nexus "$runtime_root/public/uploads"
+  chmod 0700 "$runtime_root/public" "$runtime_root/public/uploads"
   install -d -o nexus -g nexus -m 0700 "$release_dir/public/uploads"
   cp -a "$runtime_root/public/uploads/." "$release_dir/public/uploads/"
   chown -R nexus:nexus "$release_dir/public/uploads"
