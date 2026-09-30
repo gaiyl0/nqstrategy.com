@@ -17,6 +17,14 @@
 
 ## 发布顺序
 
+日常发布由 Windows 项目根目录的一键命令执行：
+
+```powershell
+npm run deploy:production
+```
+
+以下顺序是脚本强制执行的验收基线，也是人工排障时的核对清单：
+
 1. 从受保护的 `main` 签出确定的提交 SHA；
 2. `npm ci --omit=dev=false`；
 3. 设置 `NEXUS_DB_PATH` 和全部生产环境变量；

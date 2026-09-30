@@ -1,6 +1,6 @@
 # Nexus Quant Git 与 CI 操作手册
 
-> 状态（2026-09-28）：本地 Git 与 GitHub Actions 工作流已经完成；当前仓库没有配置远程地址，因此远程仓库创建、首次推送和 GitHub 分支保护必须由项目所有者在自己的账户中完成。
+> 状态（2026-09-30）：本地 Git、GitHub Actions 工作流和生产远端均已配置。正式仓库为 `https://github.com/gaiyl0/nqstrategy.com`，生产代码使用 `main`。
 
 ## 本地 CI
 
@@ -16,17 +16,34 @@ npm run db:migrate -- verify
 
 生产构建还需要 `.env.example` 中列出的生产必需变量。仓库内 `.github/workflows/ci.yml` 已提供隔离测试值并执行迁移、lint、全部测试、数据库校验和生产构建。
 
-## 创建远程仓库
+## 远程仓库
 
-在 GitHub 新建一个空的私有仓库，不要自动生成 README、许可证或 `.gitignore`。然后在项目目录执行：
+检查当前正式远端：
 
 ```powershell
-git remote add origin https://github.com/<你的账号>/<仓库名>.git
 git remote -v
-git push -u origin feature/p3-004-release-engineering
+git fetch origin main
+git rev-parse HEAD
+git rev-parse origin/main
 ```
 
-确认远程分支和 Actions 成功后，通过 Pull Request 合并到 `main`。不要把开发数据库、上传文件、备份或 `.env` 强制加入 Git；这些路径已经由 `.gitignore` 排除。
+两个提交哈希必须一致才允许生产部署。不要把开发数据库、上传文件、备份或 `.env` 强制加入 Git；这些路径已经由 `.gitignore` 排除。
+
+## 一键生产发布
+
+Windows 本地工作区干净且已推送 `origin/main` 后运行：
+
+```powershell
+npm run deploy:production
+```
+
+仅检查 Git、SSH、远端一致性、ESLint 和全部测试，不发布：
+
+```powershell
+npm run deploy:production -- -DryRun
+```
+
+脚本从当前 Git 提交生成归档，不读取或上传忽略文件；服务器为该提交建立不可变 release，完成构建、在线备份、迁移、审计与账本校验后才切换 `current`。切换或健康检查失败时恢复发布前数据库和旧 release。`-SkipTests` 只用于已由同一提交 CI 验证的紧急恢复发布，日常发布禁止使用。
 
 ## `main` 分支保护
 

@@ -50,7 +50,9 @@
     "backup:create": "node scripts/backup-maintenance.mjs create",
     "backup:verify": "node scripts/backup-maintenance.mjs verify",
     "backup:restore": "node scripts/backup-maintenance.mjs restore",
-    "backup:drill": "node scripts/backup-maintenance.mjs drill"
+    "backup:drill": "node scripts/backup-maintenance.mjs drill",
+    "deploy:production": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
+    "test:production-deployment": "node tests/production-deployment.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

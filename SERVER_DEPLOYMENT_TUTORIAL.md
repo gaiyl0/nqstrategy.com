@@ -75,7 +75,7 @@ sudo install -d -o root -g nexus -m 0750 /opt/nexus-quant/releases
 ```bash
 sudo mkdir -p /opt/nexus-quant/releases
 sudo chown -R deploy:deploy /opt/nexus-quant
-sudo -u deploy git clone https://github.com/gaiyl0/eashop.git /opt/nexus-quant/releases/initial
+sudo -u deploy git clone https://github.com/gaiyl0/nqstrategy.com.git /opt/nexus-quant/releases/initial
 cd /opt/nexus-quant/releases/initial
 sudo -u deploy git checkout <已审核的提交SHA>
 sudo -u deploy npm ci
@@ -86,6 +86,14 @@ sudo -u deploy npm ci
 ```bash
 sudo ln -sfn /opt/nexus-quant/releases/initial /opt/nexus-quant/current
 ```
+
+完成首次部署后，日常更新统一从 Windows 项目根目录运行：
+
+```powershell
+npm run deploy:production
+```
+
+该命令要求工作区干净且本地 HEAD 与 GitHub `origin/main` 完全一致；随后自动执行本地检查、Git 归档上传、服务器独立构建、生产备份、迁移与完整性校验、原子切换、HTTPS 冒烟和失败回滚。服务器不得在 `current` 中直接编辑或执行覆盖式 `git pull`。
 
 ## 4. 创建生产环境文件和密钥
 

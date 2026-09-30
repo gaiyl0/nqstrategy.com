@@ -952,3 +952,20 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 新增回归断言，确认同一迁移源码只改变换行格式时验证结果一致。
 
 验证：完整 `npm run test:all` 的 32 个测试脚本、`test:database-migrations` 13 项断言、`test:schema-convergence` 19 项断言、全仓 ESLint 与 `git diff --check` 通过。生产以 Git 提交归档构建并切换至 `/opt/nexus-quant/releases/5063752`；迁移达到 5/5，数据库 quick check、外键、审计链与钱包账本验证全部通过。公网首页、`/tianwei` 和健康接口均返回 200/ready；`/api/reports` 在无管理员 Session 时返回 JSON 401，证明路由存在且不再泄漏 HTML 404；真实 PNG 图片优化返回 200，服务进程和缓存写权限正常。完整源码已推送到公开仓库 `gaiyl0/nqstrategy.com` 的 `main`，生产 Secret、数据库、私有文件和用户上传未进入 Git。
+
+### 2026-09-30：DEPLOY-003 一键生产发布与自动回滚
+
+状态：**代码与自动化验收进行中**
+
+问题：现有安全发布流程已经验证，但依赖人工执行多条 Git、SCP、构建、数据库和 systemd 命令，操作时间长且容易遗漏版本一致性、备份或回滚步骤。
+
+完成内容：
+
+- 新增 Windows 入口 `npm run deploy:production`，发布前强制工作区干净、本地 HEAD 等于 GitHub `origin/main`、SSH 密钥存在，并默认执行 ESLint 和完整测试；
+- 只使用当前 Git 提交生成归档，不携带 `.env`、数据库、用户上传、私有存储、构建缓存或其他 Git 忽略文件；
+- 服务器使用排他锁和独立 `/opt/nexus-quant/releases/<commit>` 目录完成依赖安装与 Next.js 生产构建，旧服务在构建期间继续运行；
+- 切换前创建在线恢复包，停服后依次执行数据库迁移、数据库检查、审计链和钱包账本验证，再原子切换 `current`；
+- 切换后验证本机与 HTTPS 健康接口、首页、后台以及举报 API 的 JSON 401 契约；任一步失败会恢复发布前数据库、旧 release 并重新启动旧服务；
+- 文档更新为正式公开仓库 `gaiyl0/nqstrategy.com`，补充一键发布、只检查模式和禁止直接编辑生产目录的规则。
+
+验收标准：部署脚本专项测试、全套测试、ESLint、文档一致性和 `git diff --check` 通过；以新提交实际发布一次，确认备份、版本切换、健康检查和线上功能正常。
