@@ -30,7 +30,7 @@ export default function AdminDashboard() {
     broker1Name: '', broker1Desc: '', broker1Link: '', 
     broker2Name: '', broker2Desc: '', broker2Link: '', 
     broker3Name: '', broker3Desc: '', broker3Link: '', 
-    exchangeAdEnabled: false, exchangeAdTitle: '', exchangeAdDescription: '', exchangeAdCta: '', exchangeAdUrl: '',
+    exchangeAdEnabled: false, exchangeAdTitle: '', exchangeAdDescription: '', exchangeAdCta: '', exchangeAdUrl: '', featuredProductIds: [],
     wechatPaySetupEnabled: false, wechatPayMchId: '', wechatPayAppId: '', wechatPayNotifyUrl: '', wechatPayCertificateSerial: '',
     alipaySetupEnabled: false, alipayAppId: '', alipaySellerId: '', alipayNotifyUrl: '', alipayGateway: 'https://openapi.alipay.com/gateway.do',
     wechatPayApiV3KeyConfigured: false, wechatPayMerchantPrivateKeyConfigured: false, wechatPayPlatformCertificateConfigured: false,
@@ -356,6 +356,12 @@ export default function AdminDashboard() {
                   <input type="url" maxLength={500} value={settings.exchangeAdUrl || ''} onChange={event => setSettings({ ...settings, exchangeAdUrl: event.target.value })} placeholder="https://exchange.example/" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-cyan-200 md:col-span-2" />
                 </div>
                 <p className="mt-3 text-xs leading-5 text-zinc-500">{lang === 'zh' ? '广告默认关闭；只接受 HTTP/HTTPS 跳转，链接将在新标签打开。启用时至少填写标题和说明。' : 'The ad is disabled by default. Only HTTP/HTTPS links are allowed and open in a new tab. Add a title and description before enabling.'}</p>
+             </div>
+
+             <div className="md:col-span-2 rounded-3xl border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-zinc-900/60 p-8 shadow-xl">
+                <div className="mb-5"><h2 className="text-lg font-bold text-white">首页顶部精选 EA</h2><p className="mt-1 text-sm text-zinc-500">管理员可指定最多三款已上架策略。首页顶部会自动轮动展示；未提供报告的策略也能精选，但会明确显示“未提供验证资料”。</p></div>
+                <div className="grid gap-4 md:grid-cols-3">{[0,1,2].map(slot=>{const selected=Number(settings.featuredProductIds?.[slot]||0);return <label key={`featured-slot-${slot}`} className="block"><span className="mb-2 block text-xs font-bold text-slate-400">精选位 {slot+1}</span><select value={selected||''} onChange={event=>{const value=Number(event.target.value||0);const next=[...(settings.featuredProductIds||[])];if(value)next[slot]=value;else next.splice(slot,1);setSettings({...settings,featuredProductIds:[...new Set(next.filter(Boolean))].slice(0,3)});}} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"><option value="">不配置</option>{productList.filter(product=>product.status==='active'&&product.deleted_at==null).map(product=><option key={`featured-product-${product.id}`} value={product.id} disabled={product.id!==selected&&settings.featuredProductIds?.includes(product.id)}>{product.title} · ${product.price||0}</option>)}</select></label>})}</div>
+                <p className="mt-4 text-xs leading-5 text-zinc-500">留空时首页只会回退展示已通过 MT5 报告验证的策略；配置后严格按这里的顺序轮播，已下架或删除的策略会自动跳过。</p>
              </div>
 
              <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 space-y-5 shadow-xl">

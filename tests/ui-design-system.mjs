@@ -86,6 +86,8 @@ for (const landmark of ['待审核', '已审核', '待认证', '已认证', '资
 }
 assert.match(admin, /<ProductReviewWorkspace[\s\S]*products=\{productList\}/, 'admin must render the categorized strategy review workspace');
 assert.match(productReview, /REQUIRED_EVIDENCE/, 'review readiness must be derived from required evidence');
+assert.match(productReview, /未提供验证资料/, 'review workspace must distinguish optional verification materials from basic listing review');
+assert.match(productReview, /approvalEligible/, 'unsubmitted verification materials must not block the basic approval flow');
 assert.match(productReview, /product\.status === 'active'/, 'review state must come from persisted product status');
 assert.match(productReview, /verificationActive\(product\)/, 'verification filters must use persisted verification state');
 assert.match(header, /href="\/tianwei"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/, 'admin entry must open the tianwei route in an isolated tab');

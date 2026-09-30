@@ -19,6 +19,10 @@ try {
   };
   const base = { title: 'Metrics EA', description: '', price: 0, winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: ['趋势'], logo_url: '', file_url: '/private/eas/test.ex5', metrics: validMetrics, evidenceIds: [1, 2, 3], reportId: 1,version:'1.0.0',releaseNotes:'Initial release',upgradePolicy:'all_existing' };
   assert.equal(createProductSchema.safeParse(base).success, true);
+  const noDisclosure = { ...base, title: 'No report EA', reportId: null, evidenceIds: [], metrics: undefined };
+  assert.equal(createProductSchema.safeParse(noDisclosure).success, true, 'EA submission must allow no report, metrics, or screenshots');
+  assert.equal(createProductSchema.safeParse({ ...noDisclosure, metrics: validMetrics }).success, false, 'hand-entered performance cannot be submitted without an MT5 report');
+  assert.equal(createProductSchema.safeParse({ ...base, reportId: 1, metrics: undefined }).success, false, 'an attached report must retain its extracted metrics');
   assert.equal(createProductSchema.safeParse({ ...base, unknown: true }).success, false);
   assert.equal(createProductSchema.safeParse({ ...base, metrics: { ...validMetrics, winRatePercent: 101 } }).success, false);
   assert.equal(createProductSchema.safeParse({ ...base, metrics: { ...validMetrics, maxDrawdownPercent: 101 } }).success, false);

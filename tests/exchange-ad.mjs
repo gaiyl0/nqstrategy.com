@@ -22,6 +22,9 @@ assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdUrl: 'javascript:a
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdTitle: 'x'.repeat(101) }).success, false);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdDescription: 'x'.repeat(301) }).success, false);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdCta: 'x'.repeat(41) }).success, false);
+assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 2, 3] }).success, true, 'three selected homepage strategies must validate');
+assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 1] }).success, false, 'featured strategies cannot be duplicated');
+assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 2, 3, 4] }).success, false, 'featured strategies are limited to three slots');
 
 assert.equal(settingsSchema.safeParse({ communityContent: DEFAULT_COMMUNITY_CONTENT }).success, true, 'default community content must satisfy the editor schema');
 assert.equal(settingsSchema.safeParse({ communityContent: { ...DEFAULT_COMMUNITY_CONTENT, news: [{ ...DEFAULT_COMMUNITY_CONTENT.news[0], url: 'javascript:alert(1)' }] } }).success, false, 'community links must reject executable schemes');
@@ -37,7 +40,10 @@ assert.match(home, /adEnabled&&adTitle&&adDescription/, 'the ad appears only whe
 assert.match(home, /safeExchangeAdUrl/, 'homepage must validate whether an ad destination is configured');
 assert.match(home, /href="\/api\/analytics\/ad-click"/, 'homepage ad clicks must pass through the server-side counter');
 assert.match(home, /rel="noopener noreferrer sponsored"/, 'external sponsor links must be isolated and marked sponsored');
+assert.match(home, /featuredProductIds/, 'homepage must consume administrator-selected featured strategies');
+assert.match(home, /setInterval/, 'homepage feature area must rotate configured strategies');
 assert.match(admin, /Enable ad slot/, 'administrator can enable or disable the ad slot');
+assert.match(admin, /首页顶部精选 EA/, 'administrator must be able to configure the homepage feature area');
 assert.match(admin, /COMMUNITY_EDITOR_SECTIONS/, 'administrator can edit community editorial fields');
 assert.match(appPage, /communityContent: siteSettings\?\.communityContent/, 'forum receives server-managed public editorial content');
 assert.match(appPage, /<HomeView[^>]*siteSettings=\{siteSettings\}/, 'homepage receives public settings from the settings API');

@@ -285,6 +285,7 @@ export default function App() {
     const metrics = ea.metrics;
     setUploadForm({
       id: ea.id, title: ea.title || '', description: ea.description || '', price: ea.price || '',
+      currentLogoUrl: ea.logo_url || '',
       winRate: ea.win_rate || '', drawdown: ea.drawdown || '', pairs: ea.pairs || 'XAUUSD',
       eaTypes: ea.ea_type ? ea.ea_type.split(',') : [],
       trialEnabled:Boolean(ea.trial_enabled),trialDays:ea.trial_days||7,
@@ -321,7 +322,12 @@ export default function App() {
         if (previous) evidenceIds.splice(evidenceIds.indexOf(previous), 1);
         evidenceIds.push(evidenceData.evidence.id);
       }
-      const res = await apiFetch('/api/products', { method: uploadForm.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...uploadForm, evidenceIds, metrics: metricsPayload(uploadForm.metrics), logo_url, file_url, price: uploadForm.price || 0 }) });
+      const { currentLogoUrl, ...formPayload } = uploadForm;
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0 };
+      // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
+      if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
+      else delete payload.metrics;
+      const res = await apiFetch('/api/products', { method: uploadForm.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.message || '策略保存失败');
       showToast(uploadForm.id ? t('🎉 EA 修改成功！已重新进入审核队列。', '🎉 EA Updated! In review.') : t('🎉 EA 发布成功！已进入审核队列。', '🎉 EA Published! In review.'));

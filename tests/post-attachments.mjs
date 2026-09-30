@@ -22,7 +22,7 @@ const insert = db.prepare(`INSERT INTO post_attachments(owner_user_id,post_id,ki
 const storedName = `${Date.now()}_abcdef0123456789.png`;
 const attachmentId = Number(insert.run(userId, postId, storedName, Date.now()).lastInsertRowid);
 assert.equal(db.prepare('SELECT post_id FROM post_attachments WHERE id=?').get(attachmentId).post_id, postId);
-assert.equal(db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version, 5);
+assert.equal(db.prepare('SELECT MAX(version) version FROM schema_migrations').get().version, 6);
 assert.match(route, /validateAndNormalizeImage/, 'images must be decoded and normalized before storage');
 assert.match(route, /malwareScan/, 'uploads must pass the configured malware scan');
 assert.match(route, /storedPostAttachmentPath/, 'uploaded assets must stay outside public static folders');

@@ -14,7 +14,7 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'broker1Name', 'broker1Desc', 'broker1Link',
   'broker2Name', 'broker2Desc', 'broker2Link',
   'broker3Name', 'broker3Desc', 'broker3Link',
-  'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl',
+  'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl', 'featuredProductIds',
   'forumCategories', 'communityContent'
 ]);
 const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([
@@ -22,6 +22,7 @@ const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([
   'alipaySetupEnabled', 'alipayAppId', 'alipaySellerId', 'alipayNotifyUrl', 'alipayGateway',
 ]);
 const BOOLEAN_SETTINGS_KEYS = new Set(['exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
+const JSON_SETTINGS_KEYS = new Set(['communityContent', 'featuredProductIds']);
 const PAYMENT_SECRET_STATUS = {
   wechatPayApiV3KeyConfigured: 'WECHAT_PAY_API_V3_KEY',
   wechatPayMerchantPrivateKeyConfigured: 'WECHAT_PAY_MERCHANT_PRIVATE_KEY',
@@ -45,6 +46,8 @@ async function GETHandler() {
       if ((isAdmin && ADMIN_SETTINGS_KEYS.has(row.key)) || PUBLIC_SETTINGS_KEYS.has(row.key)) {
         settings[row.key] = row.key === 'communityContent'
           ? normalizeCommunityContent(row.value) || DEFAULT_COMMUNITY_CONTENT
+          : row.key === 'featuredProductIds'
+            ? (() => { try { const ids=JSON.parse(row.value); return Array.isArray(ids) ? ids.map(Number).filter(Number.isInteger).slice(0,3) : []; } catch { return []; } })()
           : BOOLEAN_SETTINGS_KEYS.has(row.key)
             ? row.value === 'true'
             : row.value;
@@ -87,7 +90,7 @@ async function POSTHandler(request) {
     
     const transaction = db.transaction((data) => {
       for (const [key, value] of Object.entries(data)) {
-        stmt.run(key, key === 'communityContent' ? JSON.stringify(value) : String(value ?? ''));
+        stmt.run(key, JSON_SETTINGS_KEYS.has(key) ? JSON.stringify(value) : String(value ?? ''));
       }
     });
     transaction(body);

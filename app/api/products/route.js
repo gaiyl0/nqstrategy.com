@@ -116,7 +116,7 @@ async function POSTHandler(request) {
     const parsed = await parseJson(request, createProductSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
-    verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
+    if (body.reportId) verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
 
     const eaUpload = findOwnedUpload(body.file_url, currentUser.id, 'ea');
     const logoUpload = body.logo_url ? findOwnedUpload(body.logo_url, currentUser.id, 'image') : null;
@@ -139,9 +139,9 @@ async function POSTHandler(request) {
       );
       const productId = Number(result.lastInsertRowid);
       db.prepare('UPDATE products SET slug=? WHERE id=?').run(productSlug(body.title,productId),productId);
-      upsertStrategyMetrics(productId, body.metrics);
-      claimEvidence(productId, currentUser.id, body.evidenceIds);
-      claimReport(productId, currentUser.id, body.reportId);
+      if (body.metrics) upsertStrategyMetrics(productId, body.metrics);
+      if (body.evidenceIds.length) claimEvidence(productId, currentUser.id, body.evidenceIds);
+      if (body.reportId) claimReport(productId, currentUser.id, body.reportId);
       const eaClaim = db.prepare(`
         UPDATE uploads SET attached_product_id = ?, expires_at = NULL, status = 'attached'
         WHERE id = ? AND owner_user_id = ? AND kind = 'ea' AND attached_product_id IS NULL
@@ -192,12 +192,16 @@ async function PATCHHandler(request) {
       const reviewProduct = db.transaction(() => {
         if (body.status === 'active') {
           const metrics = getStrategyMetrics(id, { includeUnreviewed: true });
-          if (!metrics) throw new Error('STRATEGY_METRICS_REQUIRED');
           const report = db.prepare('SELECT id,owner_user_id FROM strategy_reports WHERE product_id=?').get(id);
-          if (!report) throw new Error('STRATEGY_REPORT_REQUIRED');
-          verifyMetricsAgainstReport(report.id, report.owner_user_id, metrics);
-          verifyEvidenceForApproval(id, metrics);
-          reviewStrategyMetrics(id, currentUser.id);
+          // 验证资料是可选的。存在报告时必须走完整的不可篡改验证；未提供资料的 EA
+          // 只能作为“未提供验证资料”上架，绝不展示为已验证表现。
+          if (report || metrics) {
+            if (!metrics) throw new Error('STRATEGY_METRICS_REQUIRED');
+            if (!report) throw new Error('STRATEGY_REPORT_REQUIRED');
+            verifyMetricsAgainstReport(report.id, report.owner_user_id, metrics);
+            verifyEvidenceForApproval(id, metrics);
+            reviewStrategyMetrics(id, currentUser.id);
+          }
           publishInitialVersion(id,currentUser.id);
         } else {
           clearStrategyMetricsReview(id);
@@ -232,7 +236,7 @@ async function PATCHHandler(request) {
     if (body.logo_url && !logoUpload) {
       return NextResponse.json({ success: false, message: '策略图片无效或不属于当前账户' }, { status: 400 });
     }
-    verifyMetricsAgainstReport(body.reportId, existing.author_user_id, body.metrics);
+    if (body.reportId) verifyMetricsAgainstReport(body.reportId, existing.author_user_id, body.metrics);
 
     const updateProduct = db.transaction(() => {
       const replacementExpiry = Date.now() + 24 * 60 * 60 * 1000;
@@ -246,9 +250,9 @@ async function PATCHHandler(request) {
       query += ' WHERE id = ?';
       params.push(id);
       db.prepare(query).run(...params);
-      upsertStrategyMetrics(id, body.metrics);
-      claimEvidence(id, existing.author_user_id, body.evidenceIds);
-      claimReport(id, existing.author_user_id, body.reportId);
+      if (body.metrics) upsertStrategyMetrics(id, body.metrics);
+      if (body.evidenceIds.length) claimEvidence(id, existing.author_user_id, body.evidenceIds);
+      if (body.reportId) claimReport(id, existing.author_user_id, body.reportId);
 
       if (body.logo_url && body.logo_url !== existing.logo_url) {
         db.prepare(`UPDATE uploads SET attached_product_id = NULL, expires_at = ?
