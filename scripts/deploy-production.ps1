@@ -47,6 +47,7 @@ if (-not $SkipTests) {
 $releaseId = $localCommit.Substring(0, 12)
 $tempRoot = [System.IO.Path]::GetTempPath()
 $archive = Join-Path $tempRoot "nexus-quant-$releaseId.tar.gz"
+$runnerArchive = Join-Path $tempRoot "nexus-deploy-$releaseId.sh"
 $remoteArchive = "/tmp/nexus-quant-$releaseId.tar.gz"
 $remoteScript = "/tmp/nexus-deploy-$releaseId.sh"
 $destination = "$SshUser@$Server"
@@ -61,13 +62,18 @@ if ($DryRun) {
 
 try {
   Invoke-Checked "Create release archive" { git archive --format=tar.gz -o $archive $localCommit }
+  # scp transfers the Windows working-tree bytes. Normalize the Bash runner before upload
+  # so core.autocrlf cannot turn `pipefail` into `pipefail\r` on the Linux host.
+  $runnerText = [System.IO.File]::ReadAllText("$PSScriptRoot/deploy-release.sh").Replace("`r`n", "`n")
+  [System.IO.File]::WriteAllText($runnerArchive, $runnerText, [System.Text.UTF8Encoding]::new($false))
   Invoke-Checked "Upload release archive" { scp -i $KeyPath -o StrictHostKeyChecking=accept-new $archive "${destination}:$remoteArchive" }
-  Invoke-Checked "Upload server deployment runner" { scp -i $KeyPath -o StrictHostKeyChecking=accept-new "$PSScriptRoot/deploy-release.sh" "${destination}:$remoteScript" }
+  Invoke-Checked "Upload server deployment runner" { scp -i $KeyPath -o StrictHostKeyChecking=accept-new $runnerArchive "${destination}:$remoteScript" }
   Invoke-Checked "Deploy and verify production" {
     ssh -i $KeyPath -o StrictHostKeyChecking=accept-new $destination "sudo bash $remoteScript $releaseId $remoteArchive $Domain"
   }
 } finally {
   if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+  if (Test-Path -LiteralPath $runnerArchive) { Remove-Item -LiteralPath $runnerArchive -Force }
 }
 
 Write-Host "`nProduction deployment completed." -ForegroundColor Green
