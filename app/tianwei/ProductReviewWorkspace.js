@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertTriangle, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, FileCheck2,
   FileText, Filter, MoreHorizontal, Search, ShieldCheck, ShieldQuestion, SlidersHorizontal,
@@ -80,13 +80,12 @@ export default function ProductReviewWorkspace({ lang, products, onProductStatus
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const selected = products.find(product => product.id === selectedId) || null;
 
-  useEffect(() => { setPage(1); }, [mode, filter, query, author]);
-  useEffect(() => { if (selectedId && !products.some(product => product.id === selectedId)) setSelectedId(null); }, [products, selectedId]);
 
   const chooseSummary = value => {
     if (value === 'certificationPending' || value === 'certified') setMode('verification');
     else setMode('review');
     setFilter(value);
+    setPage(1);
   };
   const filters = mode === 'review'
     ? [['all', '全部'], ['pending', '待审核'], ['approved', '已通过'], ['incomplete', '资料不完整'], ['rejected', '已驳回']]
@@ -103,14 +102,14 @@ export default function ProductReviewWorkspace({ lang, products, onProductStatus
     </div>
 
     <div className="border-b border-slate-800"><div className="flex gap-7">
-      {[['review', '策略审核'], ['verification', '证据认证']].map(([value, label]) => <button key={value} type="button" onClick={() => { setMode(value); setFilter('all'); }} className={`border-b-2 px-1 pb-3 text-sm font-bold ${mode === value ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-slate-500 hover:text-white'}`}>{label}</button>)}
+      {[['review', '策略审核'], ['verification', '证据认证']].map(([value, label]) => <button key={value} type="button" onClick={() => { setMode(value); setFilter('all'); setPage(1); }} className={`border-b-2 px-1 pb-3 text-sm font-bold ${mode === value ? 'border-cyan-400 text-cyan-300' : 'border-transparent text-slate-500 hover:text-white'}`}>{label}</button>)}
     </div></div>
 
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">{filters.map(([value, label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${filter === value ? 'border-cyan-400/60 bg-cyan-400/10 text-cyan-300' : 'border-slate-800 bg-slate-900/50 text-slate-500 hover:text-white'}`}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{filters.map(([value, label]) => <button key={value} type="button" onClick={() => { setFilter(value); setPage(1); }} className={`rounded-lg border px-3 py-2 text-xs font-bold ${filter === value ? 'border-cyan-400/60 bg-cyan-400/10 text-cyan-300' : 'border-slate-800 bg-slate-900/50 text-slate-500 hover:text-white'}`}>{label}</button>)}</div>
       <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_180px]">
-        <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3"><Search className="h-4 w-4 text-slate-600" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜索策略名称、开发者…" className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-white outline-none" /></label>
-        <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3"><Filter className="h-4 w-4 text-slate-600" /><select value={author} onChange={event => setAuthor(event.target.value)} className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-slate-300 outline-none"><option value="all">全部开发者</option>{authors.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
+        <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3"><Search className="h-4 w-4 text-slate-600" /><input value={query} onChange={event => { setQuery(event.target.value); setPage(1); }} placeholder="搜索策略名称、开发者…" className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-white outline-none" /></label>
+        <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3"><Filter className="h-4 w-4 text-slate-600" /><select value={author} onChange={event => { setAuthor(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-slate-300 outline-none"><option value="all">全部开发者</option>{authors.map(value => <option key={value} value={value}>{value}</option>)}</select></label>
         <div className="flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 text-xs text-slate-500"><SlidersHorizontal className="h-4 w-4" />最新提交优先</div>
       </div>
     </div>
