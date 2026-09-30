@@ -8,6 +8,7 @@ import { Settings, Wallet, Mail, ShieldCheck, Users, Box, CheckCircle, Key, Tras
 import { Badge, Button, Dialog, Field, Panel, useInteraction } from '@/app/components/ui/UiKit';
 import { AdminLocale, localizeAdminValue } from './admin-locale';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
+import ProductReviewWorkspace from './ProductReviewWorkspace';
 
 const COMMUNITY_EDITOR_SECTIONS = [
   { tab: 'communityContent', key: 'news', title: '社区内容管理', max: 6, icon: Newspaper, fields: [['region', '分类 / 地区', 60], ['regionEn', '分类英文', 60], ['date', '日期 YYYY-MM-DD', 10], ['title', '标题', 140], ['titleEn', '英文标题', 180], ['summary', '摘要', 600, true], ['summaryEn', '英文摘要', 600, true], ['url', '来源 URL', 500], ['source', '来源名称', 120], ['sourceEn', '来源英文名称', 120]] },
@@ -424,46 +425,16 @@ export default function AdminDashboard() {
            </div>
         )}
 
-        {activeTab === 'products' && (
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in duration-300">
-            <table className="w-full text-left">
-              <thead><tr className="bg-zinc-950/50 text-xs uppercase text-zinc-500 border-b border-zinc-800"><th className="p-5">策略详情</th><th className="p-5">开发者</th><th className="p-5">售价</th><th className="p-5">状态</th><th className="p-5 text-right">审核操作</th></tr></thead>
-              <tbody className="text-sm">
-                {productList.map((p, index) => (
-                  <tr key={`product-${p.id}-${index}`} className="border-b border-zinc-800/40 hover:bg-zinc-800/30 transition-colors">
-                    <td className="p-5">
-                      <div className="font-bold text-white">{p.title}</div>
-                      {p.metrics ? <div className="mt-2 text-[11px] text-zinc-500">PF {p.metrics.profitFactor} · Sharpe {p.metrics.sharpeRatio} · DD {p.metrics.maxDrawdownPercent}% · {p.metrics.totalTrades} 笔 · 曲线 {p.metrics.equityCurve.length}/{p.metrics.drawdownCurve.length}/{p.metrics.monthlyReturns.length}</div> : <div className="mt-2 text-[11px] font-bold text-amber-400">缺少结构化指标，不能批准</div>}
-                      {p.report ? <div className="mt-2 text-[11px] font-bold text-violet-400">MT5 HTML 报告已解析 · SHA {p.report.sha256.slice(0,12)}… · Parser v{p.report.parserVersion}</div> : <div className="mt-2 text-[11px] font-bold text-red-400">缺少 MT5 HTML 原始报告</div>}
-                      <div className="mt-2 text-[11px] font-bold text-emerald-400">认证等级：{p.verification?.level || 'unverified'}{p.verification?.status === 'revoked' ? '（已撤销）' : ''}</div>
-                      <div className="mt-3 space-y-1">{(p.versions||[]).map((version, index)=><div key={`version-${version.id}-${index}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[10px]"><span className="font-bold text-violet-300">v{version.version}{version.isCurrent?' · 当前':''}</span><span className="text-zinc-500">{version.status} · {version.upgradePolicy}</span><span className="max-w-xs truncate text-zinc-600">{version.releaseNotes}</span>{version.status==='pending'&&<><button onClick={()=>handleVersionReview(version,'approve')} className="rounded bg-emerald-700 px-2 py-1 text-white">发布版本</button><button onClick={()=>handleVersionReview(version,'reject')} className="rounded bg-red-900/60 px-2 py-1 text-red-300">拒绝版本</button></>}{version.status==='published'&&<button onClick={()=>handleVersionReview(version,'retire')} className="rounded bg-amber-900/50 px-2 py-1 text-amber-300">下架版本</button>}</div>)}</div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        {(p.evidence || []).map((item, index) => <div key={`evidence-${item.id}-${index}`} className="rounded-lg border border-zinc-800 bg-zinc-950 p-2 text-[10px]">
-                          <a href={item.previewUrl} target="_blank" rel="noreferrer" className="font-bold uppercase text-cyan-400">{item.type}</a>
-                          <div className="mt-1 text-zinc-500">{item.reviewStatus} · OCR {item.extractionStatus}{item.confidence != null ? ` ${(item.confidence * 100).toFixed(0)}%` : ''}</div>
-                          <div className="truncate text-zinc-600">SHA {item.sha256.slice(0, 12)}…</div>
-                          {item.reviewStatus === 'pending' && <div className="mt-2 flex gap-1"><button onClick={()=>handleEvidenceReview(item,'approved',p.report)} className="rounded bg-emerald-700 px-2 py-1 text-white">证据通过</button><button onClick={()=>handleEvidenceReview(item,'rejected',p.report)} className="rounded bg-red-900/60 px-2 py-1 text-red-300">拒绝</button></div>}
-                        </div>)}
-                      </div>
-                    </td><td className="p-5">{p.author}</td><td className="p-5 font-bold text-cyan-400">${p.price}</td>
-                    <td className="p-5">{p.status === 'pending' ? '⏳ 待审' : '✅ 正常'}</td>
-                    <td className="p-5 text-right">
-                      {p.status === 'pending' ? (() => {
-                        const required = ['settings','statistics','chart'];
-                        const pendingTypes = required.filter(type => !(p.evidence || []).some(item => item.type === type && item.reviewStatus === 'approved'));
-                        const ready = Boolean(p.metrics && p.report && pendingTypes.length === 0);
-                        return <div className="inline-flex flex-col items-end gap-1"><button disabled={!ready} title={!ready ? `请先完成：${pendingTypes.join(', ') || '指标和报告'}` : ''} onClick={() => handleApproveEA(p.id, 'active')} className="px-3 py-1 bg-cyan-600 text-white rounded disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-600">批准</button>{!ready && <span className="text-[10px] text-amber-400">先审核必需证据</span>}</div>;
-                      })() : <button onClick={() => handleApproveEA(p.id, 'pending')} className="px-3 py-1 bg-zinc-800 text-zinc-300 rounded">下架</button>}
-                      <button onClick={() => handleDeleteEA(p.id, p.title)} className="px-3 py-1 bg-red-900/40 text-red-400 rounded ml-2">删除</button>
-                      {p.status === 'active' && <button onClick={()=>handleVerification(p)} className="px-3 py-1 bg-violet-900/50 text-violet-300 rounded ml-2">认证</button>}
-                      {p.verification?.level && p.verification.level !== 'unverified' && <button onClick={()=>handleRevokeVerification(p)} className="px-3 py-1 bg-amber-900/40 text-amber-300 rounded ml-2">撤销认证</button>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {activeTab === 'products' && <ProductReviewWorkspace
+          lang={lang}
+          products={productList}
+          onProductStatus={handleApproveEA}
+          onDelete={handleDeleteEA}
+          onEvidenceReview={handleEvidenceReview}
+          onVerification={handleVerification}
+          onRevokeVerification={handleRevokeVerification}
+          onVersionReview={handleVersionReview}
+        />}
         {activeTab==='licenses'&&<div className="overflow-x-auto rounded-3xl border border-zinc-800 bg-zinc-900/50"><table className="min-w-[760px] w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">授权</th><th className="p-4">产品</th><th className="p-4">状态/到期</th><th className="p-4">绑定</th><th className="p-4 text-right">操作</th></tr></thead><tbody>{licenses.map((license, index)=><tr key={`license-${license.id}-${index}`} className="border-b border-zinc-800/50"><td className="p-4">#{license.id} · {license.type}<div className="text-[10px] text-zinc-600">user_id {license.userId}</div></td><td className="p-4 text-white">{license.productTitle}</td><td className="p-4"><span className={license.status==='active'?'text-emerald-400':'text-red-400'}>{license.status}</span><div className="text-[10px] text-zinc-600">{license.expiresAt?new Date(license.expiresAt).toLocaleString():'永久'}</div></td><td className="p-4 text-[10px] text-zinc-500">{license.bindings.map(binding=>`${binding.type}:${binding.mask}`).join(' · ')||'未绑定'}</td><td className="p-4 text-right">{license.status==='active'&&<button onClick={()=>handleRevokeLicense(license)} className="rounded bg-red-900/50 px-3 py-2 text-xs text-red-300">撤销</button>}</td></tr>)}</tbody></table></div>}
         {activeTab==='reports'&&<div className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50"><div className="border-b border-zinc-800 p-5 text-xs text-zinc-500">确认违规会隐藏对应策略、帖子或评论；前台举报不会直接删除内容。</div><table className="w-full text-left text-sm"><thead><tr className="border-b border-zinc-800 bg-zinc-950/50 text-xs text-zinc-500"><th className="p-4">目标</th><th className="p-4">原因</th><th className="p-4">身份</th><th className="p-4">提交时间</th><th className="p-4 text-right">处置</th></tr></thead><tbody>{reports.length===0?<tr><td colSpan="5" className="p-10 text-center text-zinc-500">暂无待处理举报</td></tr>:reports.map((report, index)=><tr key={`report-${report.id}-${index}`} className="border-b border-zinc-800/50"><td className="p-4"><span className="font-bold uppercase text-amber-300">{report.targetType} #{report.targetId}</span><div className="mt-1 max-w-sm truncate text-zinc-400">{report.targetLabel}</div></td><td className="p-4"><span className="font-bold text-white">{report.reason}</span><div className="mt-1 max-w-sm whitespace-pre-wrap text-xs text-zinc-500">{report.details||'无补充说明'}</div></td><td className="p-4 text-xs text-zinc-500">举报 user_id {report.reporterUserId}<br/>作者 user_id {report.targetOwnerUserId}</td><td className="p-4 text-xs text-zinc-500">{new Date(report.createdAt).toLocaleString()}</td><td className="p-4 text-right space-x-2"><button onClick={()=>handleReportResolution(report,'dismiss')} className="rounded bg-zinc-800 px-3 py-2 text-xs text-zinc-300">驳回</button><button onClick={()=>handleReportResolution(report,'confirm')} className="rounded bg-red-900/60 px-3 py-2 text-xs font-bold text-red-300">确认违规并隐藏</button></td></tr>)}</tbody></table></div>}
 

@@ -13,6 +13,7 @@ const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileVie
 const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
 const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
+const productReview = fs.readFileSync(path.join(root, 'app', 'tianwei', 'ProductReviewWorkspace.js'), 'utf8');
 const adminLocale = fs.readFileSync(path.join(root, 'app', 'tianwei', 'admin-locale.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
 const overlays = fs.readFileSync(path.join(root, 'app', 'components', 'AppOverlays.js'), 'utf8');
@@ -80,6 +81,13 @@ for (const fakeTotal of ['12,426', '256,781']) assert.doesNotMatch(forum, new Re
 for (const landmark of ['运营仪表盘', '待办队列', '系统状态', '业务快照', '用户与角色', '社区治理']) {
   assert.match(admin, new RegExp(landmark), `admin operations console is missing ${landmark}`);
 }
+for (const landmark of ['待审核', '已审核', '待认证', '已认证', '资料不完整', '已驳回', '策略审核', '证据认证', '审核清单', '风险摘要', '认证管理']) {
+  assert.match(productReview, new RegExp(landmark), `strategy review workspace is missing ${landmark}`);
+}
+assert.match(admin, /<ProductReviewWorkspace[\s\S]*products=\{productList\}/, 'admin must render the categorized strategy review workspace');
+assert.match(productReview, /REQUIRED_EVIDENCE/, 'review readiness must be derived from required evidence');
+assert.match(productReview, /product\.status === 'active'/, 'review state must come from persisted product status');
+assert.match(productReview, /verificationActive\(product\)/, 'verification filters must use persisted verification state');
 assert.match(header, /href="\/tianwei"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/, 'admin entry must open the tianwei route in an isolated tab');
 assert.equal(fs.existsSync(path.join(root, 'app', 'admin', 'page.js')), false, 'legacy /admin page must not remain routable');
 for (const fakeMetric of ['99.9%', '1,284']) assert.doesNotMatch(admin, new RegExp(fakeMetric), `admin dashboard must not copy mock metric ${fakeMetric}`);
@@ -99,14 +107,12 @@ for (const key of [
   /key=\{`dashboard-metric-\$\{label\}-\$\{index\}`\}/,
   /key=\{`queue-\$\{target\}-\$\{index\}`\}/,
   /key=\{`user-\$\{u\.id\}-\$\{index\}`\}/,
-  /key=\{`product-\$\{p\.id\}-\$\{index\}`\}/,
-  /key=\{`version-\$\{version\.id\}-\$\{index\}`\}/,
-  /key=\{`evidence-\$\{item\.id\}-\$\{index\}`\}/,
   /key=\{`license-\$\{license\.id\}-\$\{index\}`\}/,
   /key=\{`report-\$\{report\.id\}-\$\{index\}`\}/,
   /key=\{`order-\$\{o\.order_id\}-\$\{index\}`\}/,
   /key=\{`withdrawal-\$\{w\.id\}-\$\{index\}`\}/,
 ]) assert.match(admin, key, 'admin mapped rows must use unique namespaced keys with a positional collision guard');
+for (const key of [/key=\{product\.id\}/, /key=\{version\.id\}/, /key=\{item\.id\}/]) assert.match(productReview, key, 'review workspace rows must use stable database identifiers');
 assert.match(admin, /activeTab==='licenses'&&<div className="overflow-x-auto/, 'license table must scroll on narrow screens');
 assert.match(admin, /activeTab === 'withdrawals'[\s\S]*overflow-x-auto/, 'withdrawal table must scroll on narrow screens');
 assert.match(comparison, /aria-label=\{t\('移出对比','Remove from comparison'\)\}/, 'comparison remove controls must have accessible names');
