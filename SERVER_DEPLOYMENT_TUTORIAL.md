@@ -1,6 +1,6 @@
 # Nexus Quant 服务器部署实例教程
 
-> 适用范围：Ubuntu 24.04 LTS、单台 Linux 服务器、一个域名、Nginx、systemd、Node.js 24 LTS、SQLite。  
+> 适用范围：Ubuntu 24.04 LTS、单台 Linux 服务器、一个域名、Nginx、systemd、Node.js 24 LTS、SQLite。
 > 当前应用只支持一个 Next.js 实例。不要部署到 Vercel、Serverless 或多台应用服务器。
 
 本教程与 [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md)、[DEPLOYMENT_SECURITY.md](DEPLOYMENT_SECURITY.md) 和 [GO_LIVE_CHECKLIST.md](GO_LIVE_CHECKLIST.md) 配合使用。完成本教程只代表服务器已部署；真实支付仍不得开启。

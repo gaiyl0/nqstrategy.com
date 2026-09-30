@@ -226,7 +226,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ### 2026-09-30：修复生产后台举报接口 404 与图片缓存权限
 
 状态：**已完成并部署**
-提交：`待提交：与当前工作区完整快照一并提交`
+提交：`24686ac feat: complete production content and operations updates`
 
 - 根因一：首次部署快照使用了宽泛的 `--exclude=reports`，误将已存在的 `app/api/reports/route.js` 排除，后台请求收到 HTML 404 页面并显示为错误提示；
 - 修复一：补齐 `/api/reports` 到生产发布目录并重新构建，生产路由清单已包含该接口；匿名请求返回 JSON 401，管理员会话可正常获取待处理举报；
@@ -237,7 +237,7 @@ P2 仍需在生产环境联调外部 OCR、真实 EA 客户端许可证验证、
 ### 2026-09-30：Ubuntu 生产部署、HTTPS 与正式数据迁移
 
 状态：**生产站点已上线，P3-004 部分完成；真实付费继续关闭**
-提交：`待提交：与当前工作区未提交功能一并纳入后续提交`
+提交：`24686ac feat: complete production content and operations updates`
 
 - 将当前工作区代码快照部署到 Google Cloud `136.85.76.222`，使用 Node.js 24.21.0、Nginx、systemd 和 UFW；
 - 应用以 `nexus` 系统用户运行并只监听 `127.0.0.1:3000`，服务已启用开机自启及失败重启；
