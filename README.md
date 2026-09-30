@@ -1,0 +1,2 @@
+# nqstrategy.com
+eashop
