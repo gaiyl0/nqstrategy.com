@@ -54,7 +54,9 @@ tar --extract --gzip --file "$archive" --directory "$release_dir" --no-same-owne
 chown -R nexus:nexus "$release_dir"
 
 run_as_nexus "npm ci --include=dev"
-run_as_nexus "DEPLOYMENT_VERSION='$release_id' npm run build"
+# 构建在隔离发布目录中完成；迁移仍在备份后、停服窗口内执行。
+# Next 会在构建时加载路由模块，明确允许待迁移状态，避免构建提前触碰生产数据库。
+run_as_nexus "NEXUS_AUTO_MIGRATE=1 DEPLOYMENT_VERSION='$release_id' npm run build"
 run_as_nexus "npm prune --omit=dev"
 
 if [[ -d "$runtime_root/public/uploads" ]]; then
