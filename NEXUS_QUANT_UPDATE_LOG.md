@@ -939,7 +939,7 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 
 ### 2026-09-30：DEPLOY-002 后台举报接口与跨平台迁移校验修复
 
-状态：**代码修复与自动化验收完成；线上接口已恢复，统一版本部署复验完成后关闭任务**
+状态：**已完成并部署**
 
 问题：生产后台请求 `/api/reports?status=pending` 时收到 Next.js HTML 404 页面，前端将 HTML 原文显示为错误提示。部署归档曾使用通配排除 `reports`，误将源码目录 `app/api/reports` 一并排除。随后用 Git 归档统一部署时，Windows CRLF 与 Linux LF 换行差异又触发迁移文件篡改保护，安全门按设计阻止了新版本启动。
 
@@ -951,4 +951,4 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 迁移文件完整性校验同时接受原始、LF 与 CRLF 三种换行表示的 SHA-256，仍严格拒绝任何实际代码内容变化；生成迁移校验值的命令保持原有精确源码行为，兼容既有迁移记录；
 - 新增回归断言，确认同一迁移源码只改变换行格式时验证结果一致。
 
-验证：`test:database-migrations` 13 项断言、`test:schema-convergence` 19 项断言、全仓 ESLint 与 `git diff --check` 通过。生产统一版本部署、健康检查、举报接口、图片优化及 GitHub 提交一致性将在本条后续验收结果中补充。
+验证：完整 `npm run test:all` 的 32 个测试脚本、`test:database-migrations` 13 项断言、`test:schema-convergence` 19 项断言、全仓 ESLint 与 `git diff --check` 通过。生产以 Git 提交归档构建并切换至 `/opt/nexus-quant/releases/5063752`；迁移达到 5/5，数据库 quick check、外键、审计链与钱包账本验证全部通过。公网首页、`/tianwei` 和健康接口均返回 200/ready；`/api/reports` 在无管理员 Session 时返回 JSON 401，证明路由存在且不再泄漏 HTML 404；真实 PNG 图片优化返回 200，服务进程和缓存写权限正常。完整源码已推送到公开仓库 `gaiyl0/nqstrategy.com` 的 `main`，生产 Secret、数据库、私有文件和用户上传未进入 Git。
