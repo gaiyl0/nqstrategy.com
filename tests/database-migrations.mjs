@@ -11,9 +11,11 @@ if(process.argv[2]==='--worker'){
 
 const remove=(base)=>{for(const suffix of ['', '-wal', '-shm']){try{fs.rmSync(`${base}${suffix}`);}catch{}}};
 const testPath=path.resolve('.tmp-database-migrations-test.db');remove(testPath);
-const {runMigrations,verifyMigrations}=await import('../lib/migrations.js');
+const {migrationSourceChecksums,runMigrations,verifyMigrations}=await import('../lib/migrations.js');
 const db=new Database(testPath);db.pragma('foreign_keys=ON');
 let assertions=0;const equal=(actual,expected,message)=>{assert.deepEqual(actual,expected,message);assertions+=1;};
+const checksumFixture=`export const checksum = '${'a'.repeat(64)}';\nexport const name = 'portable';\n`;
+equal(migrationSourceChecksums(checksumFixture).sort(),migrationSourceChecksums(checksumFixture.replace(/\n/g,'\r\n')).sort(),'migration verification accepts Git line-ending conversion without changing the recorded checksum');
 const migration1={version:1,name:'test-create-stable',checksum:'1'.repeat(64),up(database){database.exec('CREATE TABLE stable(id INTEGER PRIMARY KEY,value TEXT); INSERT INTO stable(value) VALUES (\'kept\')');}};
 const failing2={version:2,name:'test-failure-rollback',checksum:'2'.repeat(64),up(database){database.exec('CREATE TABLE should_rollback(id INTEGER)');throw new Error('EXPECTED_MIGRATION_FAILURE');}};
 assert.throws(()=>runMigrations(db,{plan:[migration1,failing2],verifyFiles:false}),/EXPECTED_MIGRATION_FAILURE/);assertions+=1;

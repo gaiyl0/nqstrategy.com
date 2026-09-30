@@ -936,3 +936,19 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 统计 API 仅允许 admin Session；事件默认保留 180 天，可通过 `ANALYTICS_RETENTION_DAYS` 在 30–3650 天范围内调整。
 
 验收结果：`test:site-analytics`、数据库迁移、附件迁移回归、广告链接回归、API 路由审计、UI 设计回归、ESLint 与 `git diff --check` 通过；完整 `npm run test:all` 的 32 个脚本全部通过；Next.js 16.3.5 生产构建通过并包含两个统计 API。真实本地数据库迁移前已自动备份，迁移成功达到 5/5。迁移后首次用旧 `.next` 启动时按设计以 `MIGRATION_UNKNOWN_APPLIED_VERSION:5` 失败关闭；重新构建后账本 HTTP 回归及全套测试通过，验证部署必须遵循“迁移后使用同版本构建包”的顺序。更新日志已同步并确认桌面副本一致。
+
+### 2026-09-30：DEPLOY-002 后台举报接口与跨平台迁移校验修复
+
+状态：**代码修复与自动化验收完成；线上接口已恢复，统一版本部署复验完成后关闭任务**
+
+问题：生产后台请求 `/api/reports?status=pending` 时收到 Next.js HTML 404 页面，前端将 HTML 原文显示为错误提示。部署归档曾使用通配排除 `reports`，误将源码目录 `app/api/reports` 一并排除。随后用 Git 归档统一部署时，Windows CRLF 与 Linux LF 换行差异又触发迁移文件篡改保护，安全门按设计阻止了新版本启动。
+
+完成内容：
+
+- 将缺失的 `app/api/reports/route.js` 恢复到生产构建，确认匿名请求返回 JSON 401，而非 HTML 404；管理员有效 Session 可继续读取举报队列；
+- 部署教程改为只排除根目录运行产物，避免按目录名误删应用源码；
+- systemd 增加 `.next/cache` 可写路径，解决启用 `ProtectSystem=strict` 后 Next.js 图片优化缓存无法写入的问题；
+- 迁移文件完整性校验同时接受原始、LF 与 CRLF 三种换行表示的 SHA-256，仍严格拒绝任何实际代码内容变化；生成迁移校验值的命令保持原有精确源码行为，兼容既有迁移记录；
+- 新增回归断言，确认同一迁移源码只改变换行格式时验证结果一致。
+
+验证：`test:database-migrations` 13 项断言、`test:schema-convergence` 19 项断言、全仓 ESLint 与 `git diff --check` 通过。生产统一版本部署、健康检查、举报接口、图片优化及 GitHub 提交一致性将在本条后续验收结果中补充。
