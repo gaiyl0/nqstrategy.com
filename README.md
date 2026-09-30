@@ -83,6 +83,8 @@ npm run ledger:verify
 | [PRODUCTION_RUNBOOK.md](PRODUCTION_RUNBOOK.md) | 单实例部署、健康检查和监控 | 目标服务器待现场执行 |
 | [BACKUP_RECOVERY.md](BACKUP_RECOVERY.md) | 一致性备份和恢复 | 本机演练通过，异地加密和生产演练待执行 |
 | [REAL_PAYMENT_INTEGRATION.md](REAL_PAYMENT_INTEGRATION.md) | 真实支付实施教程 | 教程已完成，支付代码未启动 |
+| [WEBSITE_ADVANCED_UPGRADE.md](WEBSITE_ADVANCED_UPGRADE.md) | 首次上线后的功能升级路线图 | 已建立，当前优先真实支付任务组 |
+| [SERVER_DEPLOYMENT_TUTORIAL.md](SERVER_DEPLOYMENT_TUTORIAL.md) | Ubuntu 单服务器实例部署教程 | 教程已完成，目标服务器现场执行待完成 |
 
 ## 发布原则
 

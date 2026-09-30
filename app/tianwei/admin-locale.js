@@ -3,7 +3,7 @@ import React from 'react';
 const COPY = {
   '运营控制台': 'Operations Console', '生产环境': 'Production', '管理员会话已验证': 'Administrator session verified', '返回网站': 'Back to website',
   '仪表盘': 'Dashboard', '运营仪表盘': 'Operations Dashboard', '用户与角色': 'Users & Roles', '策略与证据审核': 'Strategy & Evidence Review',
-  '订单与支付': 'Orders & Payments', '提现管理': 'Withdrawals', '授权管理': 'Licenses', '社区治理': 'Community Moderation', '系统设置': 'System Settings',
+  '订单与支付': 'Orders & Payments', '支付渠道配置': 'Payment Channels', '访问与广告统计': 'Traffic & Ad Analytics', '提现管理': 'Withdrawals', '授权管理': 'Licenses', '社区治理': 'Community Moderation', '系统设置': 'System Settings',
   '安全边界已启用': 'Security controls enabled', '管理员 RBAC、会话校验、幂等操作与审计日志继续由服务端执行。': 'Admin RBAC, session checks, idempotency, and audit logging are enforced server-side.',
   '真实业务数据、审核队列与风险操作集中管理。': 'Manage live business data, review queues, and risk-sensitive actions.', '保存所有配置': 'Save all settings',
   '待审策略': 'Strategies awaiting review', '进入策略审核队列': 'Open strategy review queue', '待处理提现': 'Withdrawals awaiting review', '真实打款前必须人工复核': 'Manual review required before payout',

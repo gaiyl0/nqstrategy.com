@@ -28,6 +28,7 @@ assert.equal(verifyCsrfRequest(request('PATCH', '/api/evidence', { origin: 'http
 assert.equal(verifyCsrfRequest(request('PATCH', '/api/evidence', { origin: 'https://nexus.test', 'content-type': 'multipart/form-data; boundary=x' }), production).status, 415);
 assert.equal(verifyCsrfRequest(request('POST', '/api/strategy-report', { origin: 'https://nexus.test', 'content-type': 'multipart/form-data; boundary=x' }), production).allowed, true);
 assert.equal(verifyCsrfRequest(request('POST', '/api/strategy-report', { origin: 'https://nexus.test', 'content-type': 'application/json' }), production).status, 415);
+assert.equal(verifyCsrfRequest(request('POST', '/api/post-attachments', { origin: 'https://nexus.test', 'content-type': 'multipart/form-data; boundary=x' }), production).allowed, true);
 assert.equal(verifyCsrfRequest(request('DELETE', '/api/products?id=1', { origin: 'https://nexus.test' }), production).allowed, true);
 assert.equal(verifyCsrfRequest(request('POST', '/api/auth/me', { origin: 'https://nexus.test' }), production).allowed, true);
 assert.equal(verifyCsrfRequest(request('PATCH', '/api/users', { authorization: `Bearer ${production.CSRF_AUTOMATION_SECRET}`, 'content-type': 'application/json' }), production).reason, 'AUTOMATION_TOKEN');
@@ -35,4 +36,4 @@ assert.equal(verifyCsrfRequest(request('PATCH', '/api/users', { authorization: '
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://admin.nexus.test' }), production), 'https://admin.nexus.test');
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://evil.test' }), production), null);
 
-console.log(JSON.stringify({ passed: true, assertions: 25 }));
+console.log(JSON.stringify({ passed: true, assertions: 26 }));

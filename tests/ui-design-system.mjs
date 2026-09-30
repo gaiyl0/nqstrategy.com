@@ -11,6 +11,7 @@ const market = [
 ].join('\n');
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
 const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
+const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
 const adminLocale = fs.readFileSync(path.join(root, 'app', 'tianwei', 'admin-locale.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
@@ -51,6 +52,29 @@ for (const landmark of ['ForumNavigation', 'CommunityHero', 'PostCard', 'Communi
 assert.match(forum, /post\.views/, 'community view totals must come from post data');
 assert.match(forum, /post\.comment_count/, 'community reply totals must come from post data');
 assert.match(forum, /Statistics cover only the currently loaded and filtered results/, 'community statistics must disclose their scope');
+for (const source of [
+  'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm',
+  'https://www.bls.gov/news.release/archives/cpi_09112026.htm',
+  'https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/2026/html/ecb.is260910~6a45359cfc.en.html',
+]) assert.ok(communityContent.includes(source), `default community briefing must link to official source ${source}`);
+for (const strategy of ['趋势跟随', '区间突破', '均值回归', '组合与风险']) assert.ok(communityContent.includes(strategy), `default community strategy guide is missing ${strategy}`);
+assert.match(forum, /教育与研究用途，不构成投资建议或收益承诺/, 'strategy guide must disclose that it is educational, not investment advice');
+assert.match(forum, /role="tab"[\s\S]*setSection/, 'community tabs must switch interactive sections');
+assert.match(forum, /DocumentLibrary/, 'documents tab must display its content');
+assert.match(forum, /nexus_forum_post_draft/, 'forum post composer must preserve a local draft through refreshes');
+assert.match(forum, /setPreview\(value => !value\)/, 'forum post composer must provide a live preview toggle');
+assert.match(forum, /insert\(snippet\)/, 'editor formatting toolbar must insert supported content blocks');
+assert.match(forum, /FormattedContent/, 'article preview and published detail must render supported formatting safely');
+assert.match(forum, /插入图片/, 'forum composer must provide an inline image action');
+assert.match(forum, /添加附件/, 'forum composer must provide a file attachment action');
+assert.match(forum, /nexus_forum_post_draft/, 'image and attachment draft state must survive a page refresh');
+assert.match(forum, /community category|Community category/i, 'post composer must keep category selection available');
+assert.match(admin, /COMMUNITY_EDITOR_SECTIONS/, 'administrator must have an editor for news, documents and strategies');
+for (const tab of ['communityContent', 'communityDocs', 'communityStrategies']) assert.ok(admin.includes(`['${tab}',`), `community editor should have its own sidebar entry: ${tab}`);
+assert.match(admin, /communityContent\?\.documents\?\.length/, 'document count should be visible in the admin navigation');
+assert.match(admin, /communityContent\?\.strategies\?\.length/, 'strategy count should be visible in the admin navigation');
+assert.match(admin, /addCommunityItem/, 'administrator can add editorial items');
+assert.match(admin, /removeCommunityItem/, 'administrator can remove editorial items');
 assert.doesNotMatch(forum, /Math\.random/, 'community must not generate synthetic activity data');
 for (const fakeTotal of ['12,426', '256,781']) assert.doesNotMatch(forum, new RegExp(fakeTotal), `community must not copy mock total ${fakeTotal}`);
 for (const landmark of ['运营仪表盘', '待办队列', '系统状态', '业务快照', '用户与角色', '社区治理']) {
@@ -71,6 +95,18 @@ assert.match(admin, /localizeConfig\(config\)/, 'admin action dialogs must use t
 assert.match(adminLocale, /'Users & Roles'/, 'admin English catalog must contain translated navigation');
 assert.match(adminLocale, /'Finance actions'/, 'admin English catalog must cover operational modules');
 assert.match(admin, /<Dialog open=\{pwdModal\.isOpen\}/, 'admin password editor must use the accessible dialog primitive');
+for (const key of [
+  /key=\{`dashboard-metric-\$\{label\}-\$\{index\}`\}/,
+  /key=\{`queue-\$\{target\}-\$\{index\}`\}/,
+  /key=\{`user-\$\{u\.id\}-\$\{index\}`\}/,
+  /key=\{`product-\$\{p\.id\}-\$\{index\}`\}/,
+  /key=\{`version-\$\{version\.id\}-\$\{index\}`\}/,
+  /key=\{`evidence-\$\{item\.id\}-\$\{index\}`\}/,
+  /key=\{`license-\$\{license\.id\}-\$\{index\}`\}/,
+  /key=\{`report-\$\{report\.id\}-\$\{index\}`\}/,
+  /key=\{`order-\$\{o\.order_id\}-\$\{index\}`\}/,
+  /key=\{`withdrawal-\$\{w\.id\}-\$\{index\}`\}/,
+]) assert.match(admin, key, 'admin mapped rows must use unique namespaced keys with a positional collision guard');
 assert.match(admin, /activeTab==='licenses'&&<div className="overflow-x-auto/, 'license table must scroll on narrow screens');
 assert.match(admin, /activeTab === 'withdrawals'[\s\S]*overflow-x-auto/, 'withdrawal table must scroll on narrow screens');
 assert.match(comparison, /aria-label=\{t\('移出对比','Remove from comparison'\)\}/, 'comparison remove controls must have accessible names');

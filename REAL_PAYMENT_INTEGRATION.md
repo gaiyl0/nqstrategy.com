@@ -45,10 +45,14 @@ PAYMENT_ALLOWED_ASSET=USDT
 PAYMENT_ALLOWED_NETWORK=TRON
 PAYMENT_REQUIRED_CONFIRMATIONS=<provider-or-chain-policy>
 PAYMENT_CHECKOUT_TTL_SECONDS=1800
-PLATFORM_FEE_BPS=<由商业规则确定>
+# 固定商业规则：创作者 80%，平台 20%。不得从浏览器或后台表单读取。
+CREATOR_REVENUE_BPS=8000
+PLATFORM_FEE_BPS=2000
 ```
 
 `PAYMENTS_ENABLED` 必须默认 `0`。构建前端时不能使用 `NEXT_PUBLIC_PAYMENT_API_KEY`。API Key、Webhook Secret、钱包私钥或助记词绝不能进入应用数据库、Git、日志、浏览器或普通备份。
+
+当前商业规则固定为：每笔已确认的商品实收金额先以最小单位结算，**80% 计入创作者可提现收入，20% 计入平台佣金**。金额出现不可整除的最小单位时，余数计入平台，确保创作者收入和平台佣金之和始终精确等于用户实付金额。代码基线见 `lib/revenue-split.mjs`，未来结算事务必须调用该服务端函数，不能接受客户端、商品表单或管理员请求传入的比例。
 
 应用服务器不应保存热钱包私钥。若业务必须签名链上交易，应使用受限的钱包服务、HSM/MPC 或独立签名系统，并设置金额、地址和每日额度策略。
 
@@ -155,8 +159,8 @@ WHERE id = ? AND status IN ('created','pending','confirming');
 
 - 把订单更新为 `completed/paid`；
 - 创建或确认用户产品权益；
-- 写入创作者销售收入；
-- 写入平台佣金；
+- 以 `calculateRevenueSplit(amountMinor)` 写入创作者销售收入（80%）；
+- 写入平台佣金（20%）；
 - 写入账本签名链；
 - 记录审计日志。
 
@@ -256,3 +260,94 @@ paid -> reorg_detected -> confirming/manual_review -> paid/reversed
 9. `PAY-009`：小额生产验证和所有者上线签字。
 
 在 `PAY-009` 完成前，NQ-P0-008 的“关闭真实付费”仍是正确生产状态。
+
+## 13. 虚拟币首发渠道：从选择到上线的操作步骤
+
+建议首发只开放一种稳定币和一种网络，例如由你选定的 USDT 或 USDC 网络。不要一开始同时开放多个代币、多个链和人工收款地址；每增加一个网络，都会增加代币合约校验、确认数、少付/超付和退款支持成本。
+
+### 第一步：选定服务商和经营范围
+
+优先选用能为商户创建付款订单、提供签名回调、可查询订单状态、支持退款/对账，并明确允许你的公司注册地和目标用户地区使用的托管支付服务。首发可以评估 Binance Pay Merchant、Coinbase Payment Acceptance 或在你的经营地区合规的同类商户服务；这不是默认推荐或合规结论，必须以服务商的地域准入、KYC/KYB 和你的法律/税务意见为准。
+
+- Binance Pay 的商户 API 使用 HTTPS、请求与回调签名校验，并要求带时间戳、随机数和商户证书标识；其官方文档说明签名和状态判断不能省略：[Binance Pay API 通用规则](https://developers.binance.com/en/docs/products/binance-pay-merchant/api-common)。
+- Coinbase 的 Payment Acceptance API 提供支付创建、捕获、退款、Webhook 事件和事件查询能力，可作为“托管支付 + 服务端回调”的产品形态参考：[Coinbase Payment Acceptance](https://docs.cdp.coinbase.com/api-reference/payment-acceptance/overview)。
+
+注册商户账户前，完成服务商要求的企业验证、受益人、银行/结算账户、网站域名、退款规则和业务说明。不要使用个人交易所账号、个人钱包地址或个人 API Key 直接收取平台商品款。
+
+### 第二步：明确首发支付规则
+
+在代码前写下并由业务负责人确认：
+
+1. 支持的币种、网络、代币合约地址和小数位；
+2. 支付意图有效期，例如 30 分钟；
+3. 所需确认数；
+4. 少付、超付、分次付款、过期到账和错误网络一律进入人工复核，首发不自动履约；
+5. 退款窗口、退款币种/网络、手续费承担方和已下载 EA 的许可证处理；
+6. 用户支付金额与美元定价之间的汇率来源、报价锁定时间和汇率精度；
+7. 创作者 80%、平台 20% 的计算基础是用户实际确认支付的商品金额，税费、网络手续费、服务商手续费和优惠券如何处理必须单独写清。
+
+### 第三步：在服务商后台配置回调和密钥
+
+1. 创建**只用于支付接入**的 API 凭据，限制 IP（服务商支持时）和权限；
+2. 在 Secret 管理中保存 API Key、Webhook Secret、商户 ID、证书序列号等，绝不放到前端或 Git；
+3. 配置 HTTPS 回调地址，例如 `https://你的域名/api/payments/webhooks/<provider>`；
+4. 配置失败重试通知、事件日志保留和退款权限；
+5. 保存服务商的签名算法、时间窗、重试策略、幂等字段和订单查询 API 文档链接；
+6. 在预发布域名先登记沙箱回调，生产域名仅在沙箱验证完成后登记。
+
+### 第四步：实现并测试支付适配器
+
+按 PAY-002 至 PAY-008 的顺序实现，不要跳到前端支付二维码：
+
+1. 迁移新增 `payment_intents`、`payment_events`、`payment_transfers`、退款与对账表；
+2. `POST /api/payments/intents` 仅接收 `productId` 和幂等键；服务端创建订单和服务商付款意图；
+3. 页面只显示服务端返回的二维码/跳转地址、金额、资产、网络和到期时间；
+4. Webhook 使用原始请求体验签，立即记录事件摘要；
+5. 调用服务商订单查询 API 二次确认金额、币种、网络、商户订单号、状态和确认数；
+6. 条件更新支付状态，只有第一个成功处理的事件才能发许可证与写账本；
+7. 订单事务里调用 80/20 分成函数，分别写入创作者收入和平台佣金；
+8. 每日比较服务商结算报表、本地支付事件、订单、许可证和账本；不一致即告警并关闭新付费订单。
+
+### 第五步：沙箱和小额真实验证
+
+先在预发布环境分别测试成功、取消、过期、重复回调、签名错误、少付、超付、错误网络、退款、网络超时和数据库中途失败。沙箱全部通过后，只用可承受损失的小额生产交易验证一次完整链路。验证人员应保存支付服务商事件 ID、应用订单 ID、支付意图 ID、账本业务键、许可证 ID 和对账结果。
+
+只有 PAY-009 通过并由项目所有者签字后，才允许把 `PAYMENTS_ENABLED` 改为 `1`。
+
+## 14. 微信支付和支付宝的预留方式
+
+微信支付和支付宝不应通过“显示个人收款码”接入。应预留为与虚拟币相同的支付提供方适配器，统一进入 Payment Intent、签名回调、二次订单查询、退款和 80/20 结算。
+
+未来适配器接口应至少包含：
+
+```text
+createIntent(serverOrder) -> providerIntent
+verifyWebhook(rawBody, headers) -> verifiedEvent
+queryIntent(providerIntentId) -> authoritativePaymentState
+requestRefund(paymentIntent, amountMinor) -> providerRefund
+```
+
+为微信支付和支付宝分别准备：商户号/应用 ID、API v3 或应用私钥、平台证书/公钥、通知地址、订单查询权限、退款权限和测试商户环境。它们与虚拟币共用以下不变规则：
+
+- 前端回跳页不履约；
+- Webhook 必须验签且由服务端查询二次确认；
+- 服务商交易号和回调事件号必须唯一；
+- 退款/撤销只能通过受控状态机；
+- 成功付款在同一事务内发放许可证、写创作者 80% 和平台 20% 账本；
+- 渠道手续费、税费和换汇成本应作为独立会计字段，不能悄悄从创作者 80% 中扣除。
+
+### 后台配置边界
+
+管理员后台的“支付渠道配置”页面只保存可审核的非敏感信息：商户号、AppID、签约主体、通知 URL、网关和微信支付平台证书序列号。它显示下列服务器 Secret 是否存在，但绝不接收、读取或回传私钥、API v3 Key、平台证书或支付宝公钥：
+
+```text
+WECHAT_PAY_API_V3_KEY
+WECHAT_PAY_MERCHANT_PRIVATE_KEY
+WECHAT_PAY_PLATFORM_CERTIFICATE
+ALIPAY_APP_PRIVATE_KEY
+ALIPAY_PUBLIC_KEY
+```
+
+将上述值仅写入服务器 `/etc/nexus-quant/nexus.env` 或等效 Secret 管理器，设置后重启应用进程。后台“保存为待接入渠道”开关只标记资料准备状态；它不是、也不能成为真实收款开关。
+
+只有在公司主体、商户资质、用户地区和相应渠道规则都允许时，才启动 `wechat_pay` 或 `alipay` 适配器。首发虚拟币渠道完成稳定运行与对账后，再逐一增加法币渠道，避免三套支付系统同时上线造成无法排查的财务差异。

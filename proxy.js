@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { allowedCorsOrigin, verifyCsrfRequest } from './lib/csrf-config.mjs';
 import { createSecurityContext, writeAudit } from './lib/security';
+import { isTrackablePageRequest, recordSiteVisit } from './lib/site-analytics';
 
 export function proxy(request) {
+  if (!request.nextUrl.pathname.startsWith('/api/')) {
+    if (isTrackablePageRequest(request)) {
+      try { recordSiteVisit(request); } catch { /* Analytics failure must not block a page response. */ }
+    }
+    return NextResponse.next();
+  }
   const corsOrigin = allowedCorsOrigin(request);
   if (request.method === 'OPTIONS' && request.headers.has('access-control-request-method')) {
     if (!corsOrigin) return blockedResponse(request, { status: 403, reason: 'CORS_ORIGIN_NOT_ALLOWED', source: 'origin' });
@@ -42,4 +49,11 @@ function addCorsHeaders(response, origin) {
   return response;
 }
 
-export const config = { matcher: '/api/:path*' };
+export const config = {
+  matcher: [
+    '/api/:path*',
+    '/robots.txt',
+    '/sitemap.xml',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.[^/]+$).*)',
+  ],
+};

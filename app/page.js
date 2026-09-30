@@ -151,7 +151,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('全部');
   const [forumView, setForumView] = useState('list'); 
   const [selectedPost, setSelectedPost] = useState(null);
-  const [newPost, setNewPost] = useState({ title: '', category: '官方公告', content: '' });
+  const [newPost, setNewPost] = useState({ title: '', category: '官方公告', content: '', attachments: [] });
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState('');
   const [isCommenting, setIsCommenting] = useState(false);
@@ -381,9 +381,13 @@ export default function App() {
   };
 
   const submitPost = async () => {
-    if(!newPost.title || !newPost.content) return showToast(t('标题和内容不能为空', 'Required'));
-    await apiFetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, category: newPost.category || categories[1] }) });
-    showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory); setNewPost({ title: '', category: categories[1], content: '' });
+    if(!newPost.title.trim() || !newPost.content.trim()) { showToast(t('标题和内容不能为空', 'Required')); return false; }
+    try {
+      const response = await apiFetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, attachments: (newPost.attachments || []).map(file => file.id), category: newPost.category || categories[1] }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) { showToast(result.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
+      showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory); setNewPost({ title: '', category: categories[1], content: '', attachments: [] }); return true;
+    } catch (error) { showToast(error?.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
   };
 
   const openPostDetail = async (post) => { 
@@ -429,7 +433,7 @@ export default function App() {
         {route === 'home' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
-        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t }} />}
+        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent }} />}
         {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
       </main>
 

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { parseJson, settingsSchema } from '@/lib/validation';
+import { DEFAULT_COMMUNITY_CONTENT, normalizeCommunityContent } from '@/lib/community-content';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,21 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'broker2Name', 'broker2Desc', 'broker2Link',
   'broker3Name', 'broker3Desc', 'broker3Link',
   'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl',
-  'forumCategories'
+  'forumCategories', 'communityContent'
 ]);
-const ADMIN_SETTINGS_KEYS = new Set([...PUBLIC_SETTINGS_KEYS, 'smtpHost', 'smtpUser', 'smtpPass']);
+const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([
+  'wechatPaySetupEnabled', 'wechatPayMchId', 'wechatPayAppId', 'wechatPayNotifyUrl', 'wechatPayCertificateSerial',
+  'alipaySetupEnabled', 'alipayAppId', 'alipaySellerId', 'alipayNotifyUrl', 'alipayGateway',
+]);
+const BOOLEAN_SETTINGS_KEYS = new Set(['exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
+const PAYMENT_SECRET_STATUS = {
+  wechatPayApiV3KeyConfigured: 'WECHAT_PAY_API_V3_KEY',
+  wechatPayMerchantPrivateKeyConfigured: 'WECHAT_PAY_MERCHANT_PRIVATE_KEY',
+  wechatPayPlatformCertificateConfigured: 'WECHAT_PAY_PLATFORM_CERTIFICATE',
+  alipayAppPrivateKeyConfigured: 'ALIPAY_APP_PRIVATE_KEY',
+  alipayPublicKeyConfigured: 'ALIPAY_PUBLIC_KEY',
+};
+const ADMIN_SETTINGS_KEYS = new Set([...PUBLIC_SETTINGS_KEYS, ...PAYMENT_CHANNEL_SETTINGS_KEYS, 'smtpHost', 'smtpUser', 'smtpPass']);
 
 async function GETHandler() {
   try {
@@ -27,10 +40,21 @@ async function GETHandler() {
     const settings = {};
 
     for (const row of rows) {
-      // 核心安全隔离：只有真正的超管才能读取 smtpHost, smtpUser, smtpPass 等私密凭据
+      // 核心安全隔离：只有真正的超管才能读取管理员配置；支付私钥始终不从此接口返回。
       // 普通用户与外部访客只能获取公开展示数据，彻底杜绝发件服务器被盗用
       if ((isAdmin && ADMIN_SETTINGS_KEYS.has(row.key)) || PUBLIC_SETTINGS_KEYS.has(row.key)) {
-        settings[row.key] = row.value;
+        settings[row.key] = row.key === 'communityContent'
+          ? normalizeCommunityContent(row.value) || DEFAULT_COMMUNITY_CONTENT
+          : BOOLEAN_SETTINGS_KEYS.has(row.key)
+            ? row.value === 'true'
+            : row.value;
+      }
+    }
+
+    if (!settings.communityContent) settings.communityContent = DEFAULT_COMMUNITY_CONTENT;
+    if (isAdmin) {
+      for (const [responseKey, environmentKey] of Object.entries(PAYMENT_SECRET_STATUS)) {
+        settings[responseKey] = Boolean(process.env[environmentKey]?.trim());
       }
     }
 
@@ -53,12 +77,17 @@ async function POSTHandler(request) {
 
     const parsed = await parseJson(request, settingsSchema);
     if (!parsed.success) return parsed.response;
-    const body = parsed.data;
+    const body = {
+      ...parsed.data,
+      ...(parsed.data.communityContent ? {
+        communityContent: { ...parsed.data.communityContent, updatedAt: new Date().toISOString().slice(0, 10) },
+      } : {}),
+    };
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
     
     const transaction = db.transaction((data) => {
       for (const [key, value] of Object.entries(data)) {
-        stmt.run(key, String(value ?? ''));
+        stmt.run(key, key === 'communityContent' ? JSON.stringify(value) : String(value ?? ''));
       }
     });
     transaction(body);

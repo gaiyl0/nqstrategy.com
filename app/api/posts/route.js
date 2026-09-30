@@ -38,6 +38,9 @@ async function GETHandler(request) {
       if (inserted.changes === 1) db.prepare("UPDATE posts SET views = views + 1 WHERE id = ?").run(viewId);
       const post = db.prepare("SELECT p.*, u.role as author_role, u.avatar_url FROM posts p LEFT JOIN users u ON p.author_user_id = u.id WHERE p.id = ? AND p.moderation_status='visible'").get(viewId);
       if(!post)return NextResponse.json({success:false,message:'帖子不存在或已被隐藏'},{status:404});
+      post.attachments = db.prepare(`SELECT id,kind,original_name,mime_type,size FROM post_attachments WHERE post_id=? ORDER BY id`).all(viewId).map(item => ({
+        id: item.id, kind: item.kind, name: item.original_name, mimeType: item.mime_type, size: item.size, url: `/api/post-attachments?id=${item.id}`,
+      }));
       return NextResponse.json({ success: true, post });
     }
     const order={latest:'p.is_pinned DESC,p.created_at DESC',discussed:'p.is_pinned DESC,comment_count DESC,p.created_at DESC',hot:'p.is_pinned DESC,hot_score DESC,p.created_at DESC'}[sort];
@@ -60,10 +63,27 @@ async function POSTHandler(request) {
 
     const parsed = await parseJson(request, createPostSchema);
     if (!parsed.success) return parsed.response;
-    const { title, content, category } = parsed.data;
-    const result = db.prepare('INSERT INTO posts (title, content, author, author_user_id, category) VALUES (?, ?, ?, ?, ?)')
-      .run(title, content, currentUser.username, currentUser.id, category);
-    return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) }, { status: 201 });
+    const { title, content, category, attachments } = parsed.data;
+    const referencedImages = [...content.matchAll(/!\[[^\]\n]{0,200}\]\(\/api\/post-attachments\?id=([1-9]\d*)\)/g)].map(match => Number(match[1]));
+    if (referencedImages.some(id => !attachments.includes(id))) return NextResponse.json({ success: false, message: '正文中的图片必须属于本次提交的附件' }, { status: 400 });
+    const ownedAttachments = attachments.length
+      ? db.prepare(`SELECT id,kind FROM post_attachments WHERE owner_user_id=? AND post_id IS NULL AND status IN ('clean','content_validated') AND id IN (${attachments.map(() => '?').join(',')})`).all(currentUser.id, ...attachments)
+      : [];
+    if (ownedAttachments.length !== attachments.length) return NextResponse.json({ success: false, message: '部分附件不存在、已过期或不属于当前账户，请重新上传' }, { status: 409 });
+    const imageIds = new Set(ownedAttachments.filter(item => item.kind === 'image').map(item => item.id));
+    if (referencedImages.some(id => !imageIds.has(id))) return NextResponse.json({ success: false, message: '正文图片引用无效' }, { status: 400 });
+    const create = db.transaction(() => {
+      const result = db.prepare('INSERT INTO posts (title, content, author, author_user_id, category) VALUES (?, ?, ?, ?, ?)')
+        .run(title, content, currentUser.username, currentUser.id, category);
+      const postId = Number(result.lastInsertRowid);
+      const attach = db.prepare('UPDATE post_attachments SET post_id=?,expires_at=NULL WHERE id=? AND owner_user_id=? AND post_id IS NULL');
+      for (const attachmentId of attachments) {
+        if (attach.run(postId, attachmentId, currentUser.id).changes !== 1) throw new Error('POST_ATTACHMENT_CLAIM_FAILED');
+      }
+      return postId;
+    });
+    const postId = create.immediate();
+    return NextResponse.json({ success: true, id: postId }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, message: '创建帖子失败' }, { status: 500 });
   }
@@ -99,10 +119,17 @@ async function DELETEHandler(request) {
     if (currentUser.role !== 'admin' && post.author_user_id !== currentUser.id) {
       return NextResponse.json({ success: false, message: '无权删除该帖子' }, { status: 403 });
     }
+    const attachmentRows = db.prepare('SELECT stored_name FROM post_attachments WHERE post_id = ?').all(id);
     db.transaction(() => {
+      // Detach private files before the post's foreign-key cascade; the maintenance job
+      // removes expired rows and their files without leaving public access behind.
+      db.prepare('UPDATE post_attachments SET post_id = NULL, expires_at = ? WHERE post_id = ?').run(Date.now(), id);
       db.prepare('DELETE FROM comments WHERE post_id = ?').run(id);
       db.prepare('DELETE FROM posts WHERE id = ?').run(id);
     })();
+    for (const attachment of attachmentRows) {
+      db.prepare('DELETE FROM post_attachments WHERE stored_name = ? AND post_id IS NULL AND expires_at <= ?').run(attachment.stored_name, Date.now());
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ success: false, message: '删除帖子失败' }, { status: 500 });

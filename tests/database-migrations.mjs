@@ -35,8 +35,8 @@ const concurrentPath=path.resolve('.tmp-database-migrations-concurrent.db');remo
 const worker=()=>new Promise((resolve,reject)=>{const child=spawn(process.execPath,[path.resolve('tests/database-migrations.mjs'),'--worker'],{cwd:process.cwd(),env:{...process.env,NEXUS_DB_PATH:concurrentPath,NODE_ENV:'development'},stdio:['ignore','pipe','pipe']});let stderr='';child.stderr.on('data',chunk=>stderr+=chunk);child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(new Error(`worker exit ${code}: ${stderr}`)));});
 await Promise.all([worker(),worker()]);
 const concurrent=new Database(concurrentPath,{readonly:true});
-equal(concurrent.prepare('SELECT COUNT(*) count FROM schema_migrations').get().count,3,'concurrent startup records each migration once');
-equal(concurrent.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,3,'concurrent startup reaches latest migration');
+equal(concurrent.prepare('SELECT COUNT(*) count FROM schema_migrations').get().count,5,'concurrent startup records each migration once');
+equal(concurrent.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,5,'concurrent startup reaches latest migration');
 equal(concurrent.pragma('quick_check',{simple:true}),'ok','concurrent migrated database is healthy');
 concurrent.close();remove(concurrentPath);
 console.log(`Database migration tests passed: ${assertions} assertions`);
