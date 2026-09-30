@@ -53,7 +53,7 @@ install -d -o nexus -g nexus -m 0750 "$release_dir"
 tar --extract --gzip --file "$archive" --directory "$release_dir" --no-same-owner
 chown -R nexus:nexus "$release_dir"
 
-run_as_nexus "npm ci"
+run_as_nexus "npm ci --include=dev"
 run_as_nexus "DEPLOYMENT_VERSION='$release_id' npm run build"
 run_as_nexus "npm prune --omit=dev"
 

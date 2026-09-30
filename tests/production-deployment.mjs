@@ -9,7 +9,7 @@ assert.match(packageJson.scripts['deploy:production'], /deploy-production\.ps1/)
 for (const requirement of ['git status --porcelain', 'git fetch origin', 'npm run lint', 'npm run test:all', 'git archive', 'scp', 'ssh']) {
   assert.ok(local.includes(requirement), `local deployment preflight is missing: ${requirement}`);
 }
-for (const requirement of ['flock -n', 'npm ci', 'npm run build', 'npm run backup:create', 'npm run db:migrate -- up', 'npm run db:migrate -- verify', 'npm run audit:verify', 'npm run ledger:verify', 'ln -sfn', '/api/health', '/api/reports?status=pending', 'rollback']) {
+for (const requirement of ['flock -n', 'npm ci --include=dev', 'npm run build', 'npm run backup:create', 'npm run db:migrate -- up', 'npm run db:migrate -- verify', 'npm run audit:verify', 'npm run ledger:verify', 'ln -sfn', '/api/health', '/api/reports?status=pending', 'rollback']) {
   assert.ok(remote.includes(requirement), `server deployment runner is missing: ${requirement}`);
 }
 assert.match(remote, /systemctl stop nexus-quant[\s\S]*npm run db:migrate -- up[\s\S]*systemctl start nexus-quant/);
