@@ -244,8 +244,8 @@ async function PATCHHandler(request) {
         UPDATE products SET title = ?, description = ?, price = ?, win_rate = ?,
           drawdown = ?, pairs = ?, ea_type = ?, trial_enabled=?,trial_days=?,status = 'pending'
       `;
-      const params = [body.title, body.description, body.price, `${body.metrics.winRatePercent}%`,
-        `${body.metrics.maxDrawdownPercent}%`, body.pairs, body.eaTypes.join(','),body.trialEnabled?1:0,body.trialDays||7];
+      const params = [body.title, body.description, body.price, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
+        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),body.trialEnabled?1:0,body.trialDays||7];
       if (body.logo_url) { query += ', logo_url = ?'; params.push(body.logo_url); }
       query += ' WHERE id = ?';
       params.push(id);
