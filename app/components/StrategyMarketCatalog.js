@@ -47,13 +47,13 @@ function MarketCurve({ product, compact = false, t }) {
 }
 
 function SideNavigation({ user, setRoute, setAuthModal, t }) {
-  const goProfile = () => { if (!user) setAuthModal('login'); else setRoute('profile'); };
+  const requireLogin = destination => { if (!user) setAuthModal('login'); else setRoute(destination); };
   const items = [
     [Home, t('首页','Home'), () => setRoute('home')],
     [ShieldCheck, t('策略市场','Strategy Market'), null, true],
-    [BriefcaseBusiness, t('我的策略','My Strategies'), goProfile],
+    [BriefcaseBusiness, t('我的策略','My Strategies'), () => requireLogin('profile')],
     [UploadCloud, t('发布策略','Publish Strategy'), () => user ? setRoute('upload') : setAuthModal('login')],
-    [Database, t('资产与授权','Assets & Licenses'), goProfile],
+    [Database, t('资产与授权','Assets & Licenses'), () => requireLogin('assets')],
     [MessageSquareText, t('开发者社区','Community'), () => setRoute('forum')],
     [CircleHelp, t('帮助中心','Help Center'), () => setRoute('home')],
   ];
