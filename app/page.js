@@ -137,6 +137,9 @@ export default function App() {
   const [uploadForm, setUploadForm] = useState(emptyUploadForm);
   const [logoFile, setLogoFile] = useState(null);
   const [ex4File, setEx4File] = useState(null);
+  const [reusablePrograms, setReusablePrograms] = useState([]);
+  const [reuseFileUrl, setReuseFileUrl] = useState('');
+  const [isReusingProgram, setIsReusingProgram] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState({ settings: null, statistics: null, chart: null, analysis: null });
   const [reportInfo, setReportInfo] = useState(null);
   const [isParsingReport, setIsParsingReport] = useState(false);
@@ -301,7 +304,25 @@ export default function App() {
         monthlyReturnsText: metrics.monthlyReturns.map(p => `${p.month},${p.percent}`).join('\n'),
       } : emptyMetricsForm(),
     });
-    setLogoFile(null); setEx4File(null); setReportInfo(ea.report ? { ...ea.report, metrics } : null); setEvidenceFiles({ settings: null, statistics: null, chart: null, analysis: null }); setRoute('upload');
+    setLogoFile(null); setEx4File(null); setReuseFileUrl(''); setReportInfo(ea.report ? { ...ea.report, metrics } : null); setEvidenceFiles({ settings: null, statistics: null, chart: null, analysis: null }); setRoute('upload');
+  };
+
+  const loadReusablePrograms = async () => {
+    if (user?.role !== 'admin') return setReusablePrograms([]);
+    try { const response = await apiFetch('/api/admin/program-reuse', { cache:'no-store' }); const data = await response.json(); if (response.ok && data.success) setReusablePrograms(data.programs || []); } catch {}
+  };
+
+  const reuseApprovedProgram = async (sourceUploadId) => {
+    if (!sourceUploadId) return;
+    setIsReusingProgram(true);
+    try {
+      const response = await apiFetch('/api/admin/program-reuse', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(sourceUploadId) });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || '复用程序失败');
+      setReuseFileUrl(data.upload.url); setEx4File(null);
+      showToast(`已复用已审核程序：${data.upload.originalName}（来源：${data.upload.sourceProductTitle}）`);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, '复用程序失败')}`); }
+    finally { setIsReusingProgram(false); }
   };
 
   const submitEA = async () => {
@@ -310,7 +331,7 @@ export default function App() {
     try {
       let logo_url = '', file_url = '';
       if (logoFile) logo_url = await handleFileUpload(logoFile);
-      if (ex4File) file_url = await handleFileUpload(ex4File);
+      if (reuseFileUrl) file_url = reuseFileUrl; else if (ex4File) file_url = await handleFileUpload(ex4File);
       const evidenceIds = [...(uploadForm.evidenceIds || [])];
       for (const [evidenceType, file] of Object.entries(evidenceFiles)) {
         if (!file) continue;
@@ -438,7 +459,7 @@ export default function App() {
       <main className="relative z-10 w-full flex-grow">
         {route === 'home' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
-        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
+        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
         {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent }} />}
         {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
       </main>
