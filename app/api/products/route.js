@@ -134,7 +134,7 @@ async function POSTHandler(request) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `).run(
         body.title, currentUser.username, currentUser.id, body.description, body.price,
-        `${body.metrics.winRatePercent}%`, `${body.metrics.maxDrawdownPercent}%`, body.pairs, body.eaTypes.join(','),
+        body.metrics ? `${body.metrics.winRatePercent}%` : '未披露', body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),
         body.logo_url || null, body.file_url,body.trialEnabled?1:0,body.trialDays||7,
       );
       const productId = Number(result.lastInsertRowid);
