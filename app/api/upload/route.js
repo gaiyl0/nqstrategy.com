@@ -82,8 +82,21 @@ async function POSTHandler(request) {
       const storedFileExists = existing.stored_name && fs.existsSync(storedPath(classification.kind, existing.stored_name));
       const resumable = unboundAndValid && storedFileExists;
       if (resumable) return audited(NextResponse.json({ success: true, url: existing.url, resumed: true }), 'success', 'UPLOAD_RESUMED', { kind: classification.kind, uploadId: existing.id });
+      // 封面图可以在不同策略中复用。为每个策略建立独立受控副本，避免复用同一 uploads 记录。
+      if (classification.kind === 'image' && existing.attached_product_id !== null && storedFileExists) {
+        const extension = { png: '.png', jpeg: '.jpg', webp: '.webp' }[classification.format];
+        const storedName = `${Date.now()}_${crypto.randomBytes(16).toString('hex')}${extension}`;
+        const fullPath = storedPath('image', storedName);
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.copyFileSync(storedPath('image', existing.stored_name), fullPath, fs.constants.COPYFILE_EXCL);
+        try {
+          const copied = registerUpload({ ownerUserId: currentUser.id, url: `/uploads/${storedName}`, kind: 'image', originalName,
+            size: content.length, storedName, contentSha256: contentHash, mimeType: `image/${classification.format}`, status: 'clean', expiresAt: Date.now() + ORPHAN_TTL_MS });
+          return audited(NextResponse.json({ success: true, url: `/uploads/${storedName}`, reused: true }), 'success', 'IMAGE_COPY_CREATED', { kind: 'image', sourceUploadId: existing.id, uploadId: Number(copied.lastInsertRowid) });
+        } catch (error) { fs.rmSync(fullPath, { force: true }); throw error; }
+      }
       if (unboundAndValid && !storedFileExists) db.prepare("UPDATE uploads SET deleted_at=?,status='deleted' WHERE id=? AND attached_product_id IS NULL").run(Date.now(), existing.id);
-      else return audited(NextResponse.json({ success: false, message: '相同文件已经绑定到其他提交，请选择新文件' }, { status: 409 }), 'failure', 'DUPLICATE_CONTENT_ATTACHED', { kind: classification.kind });
+      else return audited(NextResponse.json({ success: false, message: classification.kind === 'image' ? '该封面图已被其他策略使用，请更换图片或联系管理员复用' : '相同 EA 文件已经绑定到其他提交；管理员可使用“复用已审核程序文件”' }, { status: 409 }), 'failure', 'DUPLICATE_CONTENT_ATTACHED', { kind: classification.kind });
     }
 
     const scan = await malwareScan(content, { fileName: originalName, contentType: file.type || 'application/octet-stream', sha256: contentHash });
