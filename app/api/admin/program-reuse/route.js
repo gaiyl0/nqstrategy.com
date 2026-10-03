@@ -42,5 +42,5 @@ async function POSTHandler(request) {
   try { const result=db.prepare(`INSERT INTO uploads(owner_user_id,url,kind,original_name,size,stored_name,content_sha256,mime_type,status,expires_at,deleted_at) VALUES(?,?,?,?,?,?,?,?,?,?,NULL)`).run(user.id,`/private/eas/${storedName}`,'ea',source.original_name,source.size,storedName,source.content_sha256,source.mime_type||'application/octet-stream','clean',Date.now()+ORPHAN_TTL_MS); const uploadId=Number(result.lastInsertRowid);return audit(context,NextResponse.json({success:true,upload:{id:uploadId,url:`/private/eas/${storedName}`,originalName:source.original_name,sourceProductTitle:source.product_title}},{status:201}),'success','REUSED',{sourceUploadId:source.id,sourceProductId:source.product_id,uploadId,sha256:source.content_sha256}); }
   catch(error){fs.rmSync(targetPath,{force:true});throw error;}
 }
-export const GET=withApiErrors(GETHandler,{route:'/api/admin/program-reuse'});
-export const POST=withApiErrors(POSTHandler,{route:'/api/admin/program-reuse'});
+export const GET = withApiErrors(GETHandler,{route:'/api/admin/program-reuse'});
+export const POST = withApiErrors(POSTHandler,{route:'/api/admin/program-reuse'});

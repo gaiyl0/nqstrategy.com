@@ -13,15 +13,16 @@ const buttonVariants = {
 };
 
 const buttonSizes = {
-  sm: 'min-h-8 px-3 py-1.5 text-xs',
+  sm: 'min-h-10 px-3 py-1.5 text-xs',
   md: 'min-h-10 px-4 py-2 text-sm',
   lg: 'min-h-12 px-5 py-3 text-sm',
-  icon: 'h-10 w-10 p-0',
+  icon: 'h-11 w-11 p-0',
 };
 
 export function Button({ variant = 'secondary', size = 'md', loading = false, icon: Icon, className = '', children, disabled, ...props }) {
   return (
     <button
+      data-ui="button" data-variant={variant} data-size={size}
       className={join('inline-flex items-center justify-center gap-2 rounded-lg border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45', buttonVariants[variant], buttonSizes[size], className)}
       disabled={disabled || loading}
       {...props}
@@ -46,7 +47,7 @@ const badgeVariants = {
 };
 
 export function Badge({ variant = 'neutral', className = '', children }) {
-  return <span className={join('inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none', badgeVariants[variant], className)}>{children}</span>;
+  return <span className={join('inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-semibold leading-none', badgeVariants[variant], className)}>{children}</span>;
 }
 
 export function Field({ label, hint, error, required = false, className = '', children }) {
@@ -69,13 +70,13 @@ export function Field({ label, hint, error, required = false, className = '', ch
 export function Tabs({ items, value, onChange, label = 'Sections', className = '' }) {
   return (
     <div role="tablist" aria-label={label} className={join('flex gap-1 overflow-x-auto border-b border-slate-800/80', className)}>
-      {items.map(item => <button key={item.value} type="button" role="tab" aria-selected={value === item.value} onClick={() => onChange(item.value)} className={join('relative shrink-0 px-3 py-3 text-sm font-semibold transition-colors', value === item.value ? 'text-cyan-300 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-cyan-400' : 'text-slate-500 hover:text-slate-200')}>{item.label}{item.count !== undefined && <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] nq-number">{item.count}</span>}</button>)}
+      {items.map(item => <button key={item.value} type="button" role="tab" aria-selected={value === item.value} onClick={() => onChange(item.value)} className={join('relative shrink-0 px-3 py-3 text-sm font-semibold transition-colors', value === item.value ? 'text-cyan-300 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-cyan-400' : 'text-slate-400 hover:text-slate-200')}>{item.label}{item.count !== undefined && <span className="ml-2 rounded-full bg-slate-800 px-1.5 py-0.5 text-xs nq-number">{item.count}</span>}</button>)}
     </div>
   );
 }
 
 export function EmptyState({ icon: Icon = Info, title, description, action }) {
-  return <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-950/25 px-6 py-10 text-center"><div className="mb-4 rounded-xl border border-slate-700/60 bg-slate-900 p-3 text-cyan-300"><Icon className="h-5 w-5" /></div><h3 className="font-semibold text-slate-100">{title}</h3>{description && <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>}{action && <div className="mt-5">{action}</div>}</div>;
+  return <div className="nq-empty-state flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-700/60 bg-slate-950/25 px-6 py-10 text-center"><div className="mb-4 rounded-xl border border-slate-700/60 bg-slate-900 p-3 text-cyan-300"><Icon className="h-5 w-5" /></div><h3 className="font-semibold text-slate-100">{title}</h3>{description && <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">{description}</p>}{action && <div className="mt-5">{action}</div>}</div>;
 }
 
 export function Skeleton({ className = '' }) {
@@ -102,7 +103,7 @@ function Overlay({ open, onClose, labelledBy, children, side = false }) {
     const onKeyDown = event => {
       if (event.key === 'Escape') onClose?.();
       if (event.key !== 'Tab' || !contentRef.current) return;
-      const focusable = [...contentRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')];
+      const focusable = [...contentRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [href], [tabindex]:not([tabindex="-1"])')].filter(element => element.getClientRects().length > 0);
       if (!focusable.length) return;
       const first = focusable[0]; const last = focusable.at(-1);
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -114,7 +115,7 @@ function Overlay({ open, onClose, labelledBy, children, side = false }) {
     return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', onKeyDown); previous?.focus?.(); };
   }, [open, onClose]);
   if (!open) return null;
-  return <div className={join('fixed inset-0 z-[100] flex bg-black/70 backdrop-blur-sm', side ? 'justify-end' : 'items-center justify-center p-4')} onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}><div ref={contentRef} role="dialog" aria-modal="true" aria-labelledby={labelledBy} className={join('border border-slate-700/70 bg-[#0b1119] shadow-[var(--nq-shadow-dialog)]', side ? 'h-full w-full max-w-lg overflow-y-auto' : 'max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl')}>{children}</div></div>;
+  return <div className={join('fixed inset-0 z-[100] flex bg-black/70 backdrop-blur-sm', side ? 'justify-end' : 'items-center justify-center p-4')} onMouseDown={event => { if (event.target === event.currentTarget) { event.preventDefault(); onClose?.(); } }}><div ref={contentRef} role="dialog" aria-modal="true" aria-labelledby={labelledBy} className={join('border border-slate-700/70 bg-[#0b1119] shadow-[var(--nq-shadow-dialog)]', side ? 'h-full w-full max-w-lg overflow-y-auto' : 'max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl')}>{children}</div></div>;
 }
 
 function OverlayHeader({ id, title, description, onClose }) {

@@ -1,112 +1,81 @@
-import Image from 'next/image';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Code2, FileCode, Image as ImageIcon, Upload } from 'lucide-react';
+'use client';
 
-export default function UploadView({ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }) {
-  return (
-<div className="max-w-4xl mx-auto px-4 py-10 animate-in fade-in zoom-in-95 duration-300">
-  <button onClick={() => setRoute('market')} className="text-sm font-bold text-cyan-400 hover:text-cyan-300 mb-6 flex items-center gap-2 transition-colors"><ArrowLeft className="w-4 h-4" /> {t('返回市场', 'Back to Market')}</button>
-  <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
-    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-[80px] pointer-events-none"></div>
-    
-    {!['developer', 'admin'].includes(user?.role) ? (
-      <div className="text-center py-20 relative z-10">
-        <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6"><Code2 className="w-10 h-10 text-blue-400" /></div>
-        <h2 className="text-2xl font-bold text-white mb-4">{t('您当前是普通用户，无法发布策略', 'You are a Standard User, cannot publish EAs')}</h2>
-         <p className="text-zinc-500 mb-3">{t('发布 EA 需要管理员完成开发者身份审核。', 'EA publishing requires administrator approval of your developer account.')}</p>
-         <p className="text-xs text-zinc-600">{t('请联系平台管理员提交认证资料。', 'Contact the platform administrator to submit your verification details.')}</p>
-      </div>
-    ) : (
-      <>
-        <h2 className="text-3xl font-black text-white mb-2 flex items-center gap-3 relative z-10"><Upload className="text-cyan-400 w-8 h-8" /> {uploadForm.id ? t('编辑 EA 策略', 'Edit EA Strategy') : t('部署全新 EA 策略', 'Deploy New EA Strategy')}</h2>
-        <div className="space-y-8 relative z-10 mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div><label className="block text-sm font-bold text-zinc-300 mb-2">{t('策略核心名称 *', 'Strategy Core Name *')}</label><input type="text" value={uploadForm.title} onChange={e=>setUploadForm({...uploadForm, title: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3.5 text-white focus:border-cyan-500 focus:outline-none transition-colors" /></div>
-              <div>
-                <label className="block text-sm font-bold text-zinc-300 mb-3">{t('EA 交易类型配置 (多选)', 'EA Trading Types')}</label>
-                <div className="grid grid-cols-2 gap-3 bg-zinc-950 border border-zinc-800/80 p-5 rounded-2xl shadow-inner">
-                  {eaTypeOptions.map(type => {
-                    const isSelected = (uploadForm.eaTypes || []).includes(type);
-                    return (
-                      <div key={type} onClick={() => toggleEaType(type)} className="flex items-center gap-3 cursor-pointer group p-2 rounded-xl hover:bg-zinc-900/60 transition-colors">
-                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${isSelected ? 'bg-cyan-500 border-cyan-500' : 'border-zinc-600 bg-zinc-900'}`}>{isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-zinc-950" />}</div>
-                        <span className={`text-sm ${isSelected ? 'text-cyan-400 font-bold' : 'text-zinc-400'}`}>{tEaType(type)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div><label className="block text-xs font-bold text-zinc-500 mb-2">{t('测试交易品种', 'Tested Symbols')}</label><input type="text" value={uploadForm.pairs} onChange={e=>setUploadForm({...uploadForm, pairs: e.target.value})} placeholder="XAUUSD, EURUSD" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none" /></div>
-            </div>
-            <div className="space-y-6">
-              <div><label className="block text-sm font-bold text-zinc-300 mb-2">{t('策略详细运行逻辑说明', 'Detailed Logic Description')}</label><textarea value={uploadForm.description} onChange={e=>setUploadForm({...uploadForm, description: e.target.value})} rows="5" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3.5 text-white resize-none focus:border-cyan-500 focus:outline-none transition-colors"></textarea></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="relative h-36 border-2 border-dashed border-zinc-700 hover:border-cyan-500 rounded-2xl bg-zinc-950 flex flex-col items-center justify-center cursor-pointer overflow-hidden group"><input aria-label={t('更换策略头像或 Logo','Replace strategy cover or logo')} type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setLogoFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />{logoFile ? (<div className="text-center z-0"><ImageIcon className="w-8 h-8 text-cyan-400 mx-auto mb-2" /><span className="text-xs text-white bg-zinc-900 px-2 py-1 rounded truncate block">{logoFile.name}</span></div>) : uploadForm.currentLogoUrl ? (<><Image src={uploadForm.currentLogoUrl} width={144} height={144} alt={t('当前策略头像','Current strategy cover')} className="absolute inset-0 h-full w-full object-cover opacity-60" /><div className="relative z-0 rounded-lg bg-zinc-950/90 px-3 py-2 text-center text-xs font-bold text-cyan-300">{t('当前头像 · 点击更换','Current cover · click to replace')}</div></>) : (<div className="text-center z-0 text-zinc-500 group-hover:text-cyan-400"><ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" /><span className="text-xs">{t('策略头像/Logo（可选）', 'Cover / logo (optional)')}</span></div>)}</div>
-                {!uploadForm.id?<div className="relative h-36 border-2 border-dashed border-zinc-700 hover:border-emerald-500 rounded-2xl bg-zinc-950 flex flex-col items-center justify-center cursor-pointer overflow-hidden group"><input type="file" accept=".ex4,.ex5" onChange={e => { setReuseFileUrl(''); setEx4File(e.target.files[0]); }} className="absolute inset-0 opacity-0 cursor-pointer z-10" />{ex4File ? (<div className="text-center z-0"><FileCode className="w-8 h-8 text-emerald-400 mx-auto mb-2" /><span className="text-xs text-white bg-zinc-900 px-2 py-1 rounded truncate block">{ex4File.name}</span></div>) : (<div className="text-center z-0 text-zinc-500 group-hover:text-emerald-400"><FileCode className="w-8 h-8 mx-auto mb-2 opacity-50" /><span className="text-xs">{t('主程序 (.ex4/.ex5)', 'Program (.ex4/.ex5)')}</span></div>)}</div>:<div className="h-36 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-5 text-xs leading-relaxed text-violet-300">{t('已发布程序不能在产品编辑中覆盖。请到“我发布的策略”使用“提交新版本”。','Published files are immutable. Use Submit Version from My Published EAs.')}</div>}
-              </div>
-              {!uploadForm.id && user?.role === 'admin' && <div className="rounded-2xl border border-violet-400/25 bg-violet-500/5 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-bold text-violet-200">复用已审核程序文件（仅管理员）</p><p className="mt-1 text-xs text-zinc-500">为新策略创建受审计的独立安全副本；不会共享下载授权或订单。</p></div><button type="button" onClick={loadReusablePrograms} className="rounded-lg border border-violet-400/30 px-3 py-2 text-xs font-bold text-violet-200 hover:bg-violet-400/10">载入可复用版本</button></div><select value="" disabled={isReusingProgram} onChange={e=>reuseApprovedProgram(Number(e.target.value))} className="mt-3 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white"><option value="">{reuseFileUrl ? '已选择复用程序；如需更换，请重新选择' : '选择一款已上架且已审核的程序版本'}</option>{reusablePrograms.map(program=><option key={program.uploadId} value={program.uploadId}>{program.productTitle} · v{program.version} · {program.originalName}</option>)}</select>{reuseFileUrl && <p className="mt-2 text-xs font-bold text-emerald-300">✓ 已创建此新策略专用的安全程序副本</p>}</div>}
-              {!uploadForm.id&&<div className="grid grid-cols-1 gap-3 md:grid-cols-3"><input value={uploadForm.version} onChange={e=>setUploadForm({...uploadForm,version:e.target.value})} placeholder="1.0.0" className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"/><input value={uploadForm.releaseNotes} onChange={e=>setUploadForm({...uploadForm,releaseNotes:e.target.value})} placeholder={t('初始版本说明','Initial release notes')} className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"/><select value={uploadForm.upgradePolicy} onChange={e=>setUploadForm({...uploadForm,upgradePolicy:e.target.value})} className="rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"><option value="all_existing">{t('所有已有买家继承','All existing owners')}</option><option value="new_purchases_only">{t('仅发布后新买家','New purchases only')}</option></select></div>}
-              <div className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950 p-4"><label className="flex items-center gap-2 text-xs font-bold text-zinc-300"><input type="checkbox" checked={Boolean(uploadForm.trialEnabled)} onChange={e=>setUploadForm({...uploadForm,trialEnabled:e.target.checked})}/>{t('开放限时试用','Enable timed trial')}</label>{uploadForm.trialEnabled&&<input type="number" min="1" max="30" value={uploadForm.trialDays} onChange={e=>setUploadForm({...uploadForm,trialDays:e.target.value})} className="w-24 rounded-lg border border-zinc-700 bg-black px-3 py-2 text-white"/>}<span className="text-[10px] text-zinc-600">{t('天（服务器计时，最多 30 天）','days, server-timed, max 30')}</span></div>
-            </div>
-          </div>
-          <div className="rounded-3xl border border-violet-500/20 bg-violet-500/5 p-6">
-            <h3 className="font-black text-white">{t('MT5 HTML 原始回测报告（可选）', 'Original MT5 HTML Report (optional)')}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t('上传后系统自动提取指标与曲线，并可申请“MT5 报告已验证”。不上传也能提交 EA 审核和上架，但市场会标注“未提供验证资料”。', 'Upload to derive metrics and apply for MT5 report verification. You can still submit without it; the market will state that verification materials were not provided.')}</p>
-            <input type="file" accept=".htm,.html,text/html" disabled={isParsingReport} onChange={e=>handleReportUpload(e.target.files?.[0])} className="mt-4 block w-full text-xs text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-500/10 file:px-3 file:py-2 file:font-bold file:text-violet-300" />
-            {isParsingReport && <p className="mt-3 text-xs font-bold text-violet-300">{t('正在解析和验证报告…', 'Parsing and validating report…')}</p>}
-            {reportInfo && <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-300">✅ {reportInfo.originalName || t('已绑定原始报告', 'Original report attached')} · SHA-256 {reportInfo.sha256?.slice(0,16)}… · {reportInfo.metrics?.totalTrades || uploadForm.metrics.totalTrades} {t('笔交易', 'trades')}</div>}
-          </div>
-          <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-6">
-            <h3 className="font-black text-white">{t('MT5 原始回测证据（可选）', 'Original MT5 Backtest Evidence (optional)')}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t('设置、统计和净值曲线截图可作为报告验证的辅助资料。完全不提供资料时，EA 仍可进入基础审核，但收益、回撤和初始资金不会被标注为平台验证数据。', 'Screenshots support report verification. Without materials, an EA can still enter basic review, but return, drawdown, and deposit cannot be labelled as platform-verified data.')}</p>
-            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-              {[[ 'settings', t('设置页截图', 'Settings screenshot') ], [ 'statistics', t('统计页截图', 'Statistics screenshot') ], [ 'chart', t('净值曲线截图', 'Chart screenshot') ], [ 'analysis', t('后台分析截图（可选）', 'Analysis screenshot (optional)') ]].map(([key,label]) => (
-                <label key={key} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 text-xs font-bold text-zinc-400">
-                  <span className="mb-2 block">{label}</span>
-                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setEvidenceFiles(prev=>({...prev,[key]:e.target.files?.[0] || null}))} className="block w-full text-xs text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-500/10 file:px-3 file:py-2 file:font-bold file:text-emerald-400" />
-                </label>
-              ))}
-            </div>
-            {uploadForm.evidenceIds?.length > 0 && <p className="mt-3 text-[11px] text-emerald-400">{t(`已保留 ${uploadForm.evidenceIds.length} 份现有证据；选择新图片会替换相同类型。`, `${uploadForm.evidenceIds.length} existing evidence files retained; selecting a new file replaces that type.`)}</p>}
-          </div>
-          {uploadForm.reportId ? <div className="rounded-3xl border border-cyan-500/20 bg-cyan-500/5 p-6">
-            <div className="mb-5">
-              <h3 className="font-black text-white">{t('报告自动提取结果', 'Automatically Extracted Results')}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">{t('这些字段由 MT5 HTML 报告生成并锁定。若结果不正确，请重新导出报告，不要手工修改。管理员仍会对照截图复核。', 'These locked fields come from the MT5 HTML report. Re-export the report if they are incorrect. An administrator still cross-checks the screenshots.')}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              {[
-                ['initialDeposit', t('初始资金 USD', 'Initial Deposit USD')],
-                ['netProfit', t('净利润 USD', 'Net Profit USD')],
-                ['profitFactor', 'Profit Factor'],
-                ['sharpeRatio', 'Sharpe Ratio'],
-                ['maxDrawdownPercent', t('最大回撤 %', 'Max Drawdown %')],
-                ['recoveryFactor', 'Recovery Factor'],
-                ['winRatePercent', t('胜率 %', 'Win Rate %')],
-                ['totalTrades', t('交易次数', 'Total Trades')],
-              ].map(([key, label]) => (
-                <div key={key}>
-                  <label className="mb-2 block text-[11px] font-bold text-zinc-500">{label}</label>
-                  <input type="number" readOnly value={uploadForm.metrics[key]} placeholder={t('等待报告', 'Awaiting report')} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 font-mono text-zinc-300 outline-none read-only:cursor-not-allowed" />
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-3">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"><div className="text-xs font-bold text-zinc-400">{t('净值曲线', 'Equity Curve')}</div><div className="mt-2 text-2xl font-black text-emerald-400">{parseMetricRows(uploadForm.metrics.equityCurveText, 'value').length}</div><div className="text-[10px] text-zinc-600">{t('自动生成数据点', 'generated points')}</div></div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"><div className="text-xs font-bold text-zinc-400">{t('回撤曲线', 'Drawdown Curve')}</div><div className="mt-2 text-2xl font-black text-red-400">{parseMetricRows(uploadForm.metrics.drawdownCurveText, 'percent').length}</div><div className="text-[10px] text-zinc-600">{t('自动生成数据点', 'generated points')}</div></div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"><div className="text-xs font-bold text-zinc-400">{t('月度收益', 'Monthly Returns')}</div><div className="mt-2 text-2xl font-black text-cyan-400">{parseMetricRows(uploadForm.metrics.monthlyReturnsText, 'percent').length}</div><div className="text-[10px] text-zinc-600">{t('自动生成月份', 'generated months')}</div></div>
-            </div>
-          </div> : <div className="flex gap-3 rounded-3xl border border-amber-400/25 bg-amber-400/5 p-5 text-xs leading-6 text-amber-100"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300"/><div><strong className="block text-sm">{t('未提供验证资料', 'No verification materials')}</strong>{t('该 EA 可提交基础审核并上架；市场会隐藏未经报告验证的收益、回撤与初始资金，并向用户清晰说明数据未披露。', 'This EA can enter basic review and be listed. The market will hide unverified returns, drawdown, and initial deposit, and clearly state that data has not been disclosed.')}</div></div>}
-          <div className="flex items-center gap-4 pt-8 border-t border-zinc-800/80">
-            <div className="w-1/3"><label className="block text-xs font-bold text-zinc-500 mb-2">{t('发售价格 (USD)', 'Price (USD)')}</label><input type="number" value={uploadForm.price} onChange={e=>setUploadForm({...uploadForm, price: e.target.value})} placeholder={t('留空免费', 'Blank for Free')} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 text-emerald-400 font-bold text-lg focus:border-cyan-500 focus:outline-none shadow-inner" /></div>
-            <button onClick={submitEA} disabled={isSubmitting} className="flex-1 h-[76px] mt-6 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-xl text-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
-              {isSubmitting ? t('处理中...', 'Processing...') : <><Upload className="w-6 h-6" /> {uploadForm.id ? t('保存修改并重新审核', 'Save & Submit Review') : t('部署上链并提交审核', 'Deploy & Submit')}</>}
-            </button>
-          </div>
-        </div>
-      </>
-    )}
-  </div>
-</div>
-  );
+import { useRef, useState } from 'react';
+import Image from 'next/image';
+import { ArrowLeft, Upload } from 'lucide-react';
+import './upload-view.css';
+
+function Section({ number, title, hint, children }) {
+  return <section id={`ea-section-${number}`} className="ea-upload-section" aria-labelledby={`ea-heading-${number}`}><header><span className="ea-upload-number">0{number}</span><div><h2 id={`ea-heading-${number}`}>{title}</h2><p>{hint}</p></div></header>{children}</section>;
+}
+function Field({ id, label, hint, error, children }) {
+  return <div className="ea-upload-field"><label htmlFor={id}>{label}</label>{children}{hint && <p id={`${id}-hint`}>{hint}</p>}{error && <p id={`${id}-error`} className="ea-upload-error">{error}</p>}</div>;
+}
+
+export default function UploadView({ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }) {
+  const [errors, setErrors] = useState({});
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const formRef = useRef(null);
+  const editing = Boolean(uploadForm.id);
+  const busy = isSubmitting || isParsingReport || isReusingProgram;
+  const update = (key, value) => { setUploadForm(prev => ({ ...prev, [key]: value })); setErrors(prev => ({ ...prev, [`ea-${key}`]: undefined })); };
+  const props = id => ({ id, 'aria-invalid': Boolean(errors[id]), 'aria-describedby': `${id}-hint${errors[id] ? ` ${id}-error` : ''}` });
+  const hasEvidence = (uploadForm.evidenceIds?.length || 0) > 0 || Object.values(evidenceFiles || {}).some(Boolean);
+  const titles = [t('基础信息', 'Basic information'), t('程序与版本', 'Program & version'), t('可选验证资料', 'Optional verification'), t('定价与提交', 'Price & submission')];
+  const onSubmit = event => {
+    event.preventDefault();
+    if (busy) return;
+    const next = {};
+    if (!uploadForm.title?.trim()) next['ea-title'] = t('请填写策略名称。', 'Enter a strategy name.');
+    if (!editing) {
+      if (!ex4File && !reuseFileUrl) next['ea-program'] = t('请选择 EX4 / EX5 程序，或由管理员复用已审核程序。', 'Choose an EX4 / EX5 program, or reuse an approved program as an administrator.');
+      if (!/^[0-9]+(?:\.[0-9]+){1,3}(?:-[0-9A-Za-z.-]+)?$/.test(uploadForm.version || '')) next['ea-version'] = t('请输入有效版本号，例如 1.0.0。', 'Enter a valid version, such as 1.0.0.');
+      if ((uploadForm.releaseNotes || '').trim().length < 3) next['ea-releaseNotes'] = t('版本说明至少填写 3 个字符。', 'Release notes need at least 3 characters.');
+    }
+    const price = String(uploadForm.price ?? '').trim();
+    if (price && (!/^(0|[1-9]\d*)(\.\d{1,2})?$/.test(price) || Number(price) > 1000000)) next['ea-price'] = t('价格须为 0–1,000,000 USD，最多两位小数。', 'Price must be 0–1,000,000 USD, with at most two decimal places.');
+    if (uploadForm.trialEnabled && (!Number.isInteger(Number(uploadForm.trialDays)) || Number(uploadForm.trialDays) < 1 || Number(uploadForm.trialDays) > 30)) next['ea-trialDays'] = t('试用天数须为 1–30 的整数。', 'Trial duration must be an integer from 1 to 30 days.');
+    setErrors(next);
+    if (Object.keys(next).length) { formRef.current?.querySelector(`#${Object.keys(next)[0]}`)?.focus(); return; }
+    submitEA();
+  };
+  return <div className="ea-upload-page">
+    <button type="button" disabled={isSubmitting} onClick={() => setRoute('market')} className="ea-upload-back"><ArrowLeft size={16} />{t('返回市场', 'Back to market')}</button>
+    <div className="ea-upload-hero"><p>MT4 / MT5 · EA</p><h1>{editing ? t('编辑 EA 策略', 'Edit EA strategy') : t('发布 EA 策略', 'Publish EA strategy')}</h1><p>{t('填写策略信息并提交审核。报告与截图为可选资料；审核通过后在市场展示。', 'Submit your strategy for review. Reports and screenshots are optional; approved strategies appear in the market.')}</p></div>
+    {!['developer', 'admin'].includes(user?.role) ? <section className="ea-upload-section"><h2>{t('发布策略需要开发者身份', 'Developer approval required')}</h2><p>{t('请联系平台管理员提交认证资料，完成开发者身份审核。', 'Contact the platform administrator for developer account approval.')}</p></section> : <>
+      <nav className="ea-upload-nav" aria-label={t('发布表单分区', 'Publishing form sections')}>{titles.map((title, i) => <a key={title} href={`#ea-section-${i + 1}`}>0{i + 1} · {title}</a>)}</nav>
+      <form ref={formRef} onSubmit={onSubmit} noValidate aria-busy={busy}>
+        {Object.values(errors).some(Boolean) && <div role="alert" className="ea-upload-errors"><strong>{t('请完善以下信息后提交：', 'Complete the following fields:')}</strong>{Object.entries(errors).filter(([, value]) => value).map(([id, value]) => <button key={id} type="button" onClick={() => formRef.current?.querySelector(`#${id}`)?.focus()}>{value}</button>)}</div>}
+        <fieldset disabled={isSubmitting} className="ea-upload-fields">
+          <Section number={1} title={titles[0]} hint={t('让用户了解策略用途、交易品种与运行逻辑。', 'Describe the strategy, symbols, and trading logic.')}>
+            <Field id="ea-title" label={t('策略名称 *', 'Strategy name *')} hint={t('最多 120 个字符，名称应便于识别。', 'Up to 120 characters; use a recognizable name.')} error={errors['ea-title']}><input {...props('ea-title')} value={uploadForm.title} maxLength={120} required onChange={e => update('title', e.target.value)} /></Field>
+            <div className="ea-upload-grid"><Field id="ea-pairs" label={t('交易品种', 'Trading symbols')} hint={t('填写实际支持的品种，例如 XAUUSD、EURUSD。', 'List supported symbols, for example XAUUSD, EURUSD.')}><input {...props('ea-pairs')} value={uploadForm.pairs} maxLength={100} onChange={e => update('pairs', e.target.value)} placeholder="XAUUSD, EURUSD" /></Field>
+              <Field id="ea-logo" label={t('策略头像 / Logo（可选）', 'Strategy cover / logo (optional)')} hint={t('PNG、JPEG 或 WebP；编辑时可以再次更换。', 'PNG, JPEG or WebP; you can replace it when editing.')}><div className="ea-upload-logo">{uploadForm.currentLogoUrl && <Image src={uploadForm.currentLogoUrl} width={64} height={64} alt={t('当前策略头像', 'Current strategy cover')} />}<input {...props('ea-logo')} type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setLogoFile(e.target.files?.[0] || null)} /></div>{logoFile && <p className="ea-upload-filename">{logoFile.name}</p>}</Field></div>
+            <fieldset className="ea-upload-types"><legend>{t('策略类型（可多选）', 'Strategy types (multiple choices)')}</legend><div>{eaTypeOptions.map(type => <label key={type}><input type="checkbox" checked={(uploadForm.eaTypes || []).includes(type)} onChange={() => toggleEaType(type)} />{tEaType(type)}</label>)}</div></fieldset>
+            <Field id="ea-description" label={t('运行逻辑与风险说明', 'Trading logic & risks')} hint={t('说明入场、出场、仓位管理及可能失效的环境；最多 10,000 字符。', 'Explain entries, exits, sizing, and failure conditions; up to 10,000 characters.')}><textarea {...props('ea-description')} rows={5} maxLength={10000} value={uploadForm.description} onChange={e => update('description', e.target.value)} /></Field>
+          </Section>
+          <Section number={2} title={titles[1]} hint={t('程序会经过安全检查，版本与买家升级规则单独记录。', 'Programs undergo security checks; version and upgrade rules are recorded separately.')}>
+            {editing ? <p className="ea-upload-notice">{t('当前编辑仅修改策略资料。已发布程序不能覆盖；请从个人中心“我发布的策略”提交新版本。', 'This editor updates strategy information. Published programs cannot be overwritten; submit a new version from My Published EAs in your profile.')}</p> : <>
+              <Field id="ea-program" label={t('EA 主程序 *', 'EA program *')} hint={t('选择编译后的 .ex4 / .ex5；文件仍需通过安全扫描与服务端验证。', 'Choose a compiled .ex4 / .ex5; security scanning and server validation remain required.')} error={errors['ea-program']}><input {...props('ea-program')} type="file" disabled={isReusingProgram} accept=".ex4,.ex5" onChange={e => { setReuseFileUrl(''); setEx4File(e.target.files?.[0] || null); setErrors(prev => ({ ...prev, 'ea-program': undefined })); }} />{ex4File && <p className="ea-upload-filename">{ex4File.name}</p>}</Field>
+              {user.role === 'admin' && <div className="ea-upload-reuse"><div className="ea-upload-reuse-header"><strong>{t('复用已审核程序（仅管理员）', 'Reuse an approved program (admin only)')}</strong><button type="button" disabled={loadingPrograms || isReusingProgram} onClick={async () => { setLoadingPrograms(true); try { await loadReusablePrograms(); } finally { setLoadingPrograms(false); } }}>{loadingPrograms ? t('载入中…', 'Loading…') : t('载入可复用版本', 'Load approved versions')}</button></div><p>{t('为新策略创建独立安全副本，保留来源审计；订单和授权独立管理。', 'Creates an independent, audited copy; orders and licenses remain separate.')}</p><label htmlFor="ea-reuse">{t('选择已审核版本', 'Choose an approved version')}</label><select id="ea-reuse" value="" disabled={isReusingProgram || loadingPrograms} onChange={e => { if (e.target.value) reuseApprovedProgram(Number(e.target.value)); }}><option value="">{t('请选择程序版本', 'Select a program version')}</option>{reusablePrograms.map(program => <option key={program.uploadId} value={program.uploadId}>{program.productTitle} · v{program.version} · {program.originalName}</option>)}</select><p role="status">{isReusingProgram ? t('正在创建安全副本…', 'Creating a secure copy…') : reuseFileUrl ? t(`已复用：${reuseProgramInfo?.originalName || '已审核程序'}。`, `Reused: ${reuseProgramInfo?.originalName || 'approved program'}.`) : t('尚未选择复用文件；也可以直接上传新程序。', 'No reused file selected; you can upload a new program instead.')}</p></div>}
+              <div className="ea-upload-grid"><Field id="ea-version" label={t('初始版本号 *', 'Initial version *')} hint={t('例如 1.0.0 或 1.0.0-beta；最多 40 字符。', 'For example 1.0.0 or 1.0.0-beta; up to 40 characters.')} error={errors['ea-version']}><input {...props('ea-version')} value={uploadForm.version} maxLength={40} onChange={e => update('version', e.target.value)} required /></Field><Field id="ea-upgradePolicy" label={t('版本升级授权规则 *', 'Version upgrade policy *')} hint={t('决定此版本向哪些买家提供授权。', 'Determines which buyers receive access to this version.')}><select {...props('ea-upgradePolicy')} value={uploadForm.upgradePolicy} onChange={e => update('upgradePolicy', e.target.value)}><option value="all_existing">{t('所有已有买家继承', 'All existing owners')}</option><option value="new_purchases_only">{t('仅发布后新买家', 'New purchases only')}</option></select></Field></div>
+              <Field id="ea-releaseNotes" label={t('初始版本说明 *', 'Initial release notes *')} hint={t('说明功能与适用环境，3–5,000 个字符。', 'Describe features and supported environment, 3–5,000 characters.')} error={errors['ea-releaseNotes']}><textarea {...props('ea-releaseNotes')} rows={3} value={uploadForm.releaseNotes} maxLength={5000} required onChange={e => update('releaseNotes', e.target.value)} /></Field>
+            </>}
+          </Section>
+          <Section number={3} title={titles[2]} hint={t('不上传报告也能提交审核；资料提供情况会向用户披露。', 'You may submit without a report; available verification materials are disclosed to users.')}>
+            <Field id="ea-report" label={t('MT5 HTML 原始回测报告（可选）', 'Original MT5 HTML report (optional)')} hint={t('上传 .htm / .html，自动提取指标与曲线。解析成功不代表策略已经通过认证。', 'Upload .htm / .html to extract metrics and curves. Successful parsing does not mean the strategy is certified.')}><input {...props('ea-report')} type="file" accept=".htm,.html,text/html" disabled={isParsingReport} onChange={e => handleReportUpload(e.target.files?.[0])} /></Field>
+            <p role="status" className="ea-upload-filename">{isParsingReport ? t('正在解析和验证报告…', 'Parsing and validating report…') : reportInfo ? `${reportInfo.originalName || t('已绑定原始报告', 'Original report attached')} · SHA-256 ${reportInfo.sha256?.slice(0, 16) || '—'} · ${reportInfo.metrics?.totalTrades ?? uploadForm.metrics.totalTrades} ${t('笔交易', 'trades')}` : t('尚未上传报告。', 'No report uploaded.')}</p>
+            <div className="ea-upload-grid">{[['settings', t('设置页截图（可选）', 'Settings screenshot (optional)')], ['statistics', t('统计页截图（可选）', 'Statistics screenshot (optional)')], ['chart', t('净值曲线截图（可选）', 'Equity screenshot (optional)')], ['analysis', t('后台分析截图（可选）', 'Analysis screenshot (optional)')]].map(([key, label]) => <Field key={key} id={`ea-evidence-${key}`} label={label} hint="PNG / JPEG / WebP"><input id={`ea-evidence-${key}`} aria-describedby={`ea-evidence-${key}-hint`} type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setEvidenceFiles(prev => ({ ...prev, [key]: e.target.files?.[0] || null }))} />{evidenceFiles?.[key] && <p className="ea-upload-filename">{evidenceFiles[key].name}</p>}</Field>)}</div>
+            {uploadForm.evidenceIds?.length > 0 && <p>{t(`已保留 ${uploadForm.evidenceIds.length} 份现有证据；新图片会替换相同类型。`, `${uploadForm.evidenceIds.length} existing evidence files retained; new images replace the same type.`)}</p>}
+            {uploadForm.reportId ? <div className="ea-upload-results"><h3>{t('报告自动提取结果 · 只读', 'Extracted report metrics · read only')}</h3><p>{t('如结果不正确，请重新导出报告；管理员将在审核时复核。', 'Re-export an incorrect report; an administrator will review the results.')}</p><div className="ea-upload-metrics">{[['initialDeposit', t('初始资金 USD', 'Initial deposit USD')], ['netProfit', t('净利润 USD', 'Net profit USD')], ['profitFactor', 'Profit Factor'], ['sharpeRatio', 'Sharpe Ratio'], ['maxDrawdownPercent', t('最大回撤 %', 'Max drawdown %')], ['recoveryFactor', 'Recovery Factor'], ['winRatePercent', t('胜率 %', 'Win rate %')], ['totalTrades', t('交易次数', 'Total trades')]].map(([key, label]) => <Field key={key} id={`ea-metric-${key}`} label={label}><input id={`ea-metric-${key}`} readOnly value={uploadForm.metrics[key] ?? ''} /></Field>)}</div><p>{t('自动生成：', 'Generated: ')}{parseMetricRows(uploadForm.metrics.equityCurveText, 'value').length} {t('个净值点', 'equity points')} · {parseMetricRows(uploadForm.metrics.drawdownCurveText, 'percent').length} {t('个回撤点', 'drawdown points')} · {parseMetricRows(uploadForm.metrics.monthlyReturnsText, 'percent').length} {t('个月收益', 'monthly returns')}</p></div> : <div className="ea-upload-disclosure"><strong>{hasEvidence ? t('已提供截图，尚未提供原始报告', 'Screenshots provided; no original report') : t('未提供验证资料', 'No verification materials')}</strong><p>{t('仍可提交基础审核。收益、回撤与初始资金将显示为未披露；不会用手工数字替代已验证数据。', 'You can still submit for basic review. Returns, drawdown and initial deposit remain undisclosed; manual figures do not replace verified data.')}</p></div>}
+          </Section>
+          <Section number={4} title={titles[3]} hint={t('核对价格与试用规则，再将策略提交审核。', 'Check pricing and trial rules before submitting for review.')}>
+            <div className="ea-upload-grid"><Field id="ea-price" label={t('发售价格（USD）', 'Price (USD)')} hint={t('留空或填 0 为免费；最多两位小数。', 'Blank or 0 means free; at most two decimal places.')} error={errors['ea-price']}><input {...props('ea-price')} type="number" min="0" max="1000000" step="0.01" value={uploadForm.price} onChange={e => update('price', e.target.value)} placeholder="0.00" /></Field><div className="ea-upload-field"><label className="ea-upload-trial"><input type="checkbox" checked={Boolean(uploadForm.trialEnabled)} onChange={e => update('trialEnabled', e.target.checked)} />{t('开放限时试用', 'Enable timed trial')}</label>{uploadForm.trialEnabled && <Field id="ea-trialDays" label={t('试用天数', 'Trial days')} hint={t('服务器计时，1–30 天。', 'Server-timed, 1–30 days.')} error={errors['ea-trialDays']}><input {...props('ea-trialDays')} type="number" min="1" max="30" step="1" value={uploadForm.trialDays} onChange={e => update('trialDays', e.target.value)} /></Field>}</div></div>
+            <p className="ea-upload-notice">{t('提交后进入管理员审核队列。资料完整度与策略认证分别审核，基础审核通过不等于表现已经验证。', 'Submission enters the administrator review queue. Listing approval and performance verification are separate checks.')}</p>
+            <div className="ea-upload-submit"><p aria-live="polite">{busy ? t('请等待当前处理完成。', 'Please wait for processing to finish.') : t('报告可选 · 审核后展示', 'Report optional · listing after review')}</p><button type="submit" disabled={busy}><Upload size={18} />{isSubmitting ? t('正在提交…', 'Submitting…') : editing ? t('保存修改并重新审核', 'Save & submit for review') : t('提交审核', 'Submit for review')}</button></div>
+          </Section>
+        </fieldset>
+      </form>
+    </>}
+  </div>;
 }

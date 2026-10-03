@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ApiError, apiErrorMessage } from '@/lib/api-client';
 
 const LANGUAGE_EVENT = 'nexus-language-change';
 const MARKET_QUERY_KEYS = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'];
+const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload'];
 
 const subscribeLanguage = (callback) => {
   window.addEventListener('storage', callback);
@@ -37,8 +38,10 @@ export function useAppRoute() {
       const params = new URLSearchParams(window.location.search);
       const hasMarketState = MARKET_QUERY_KEYS.some((key) => params.has(key));
       const savedRoute = sessionStorage.getItem('nexus_route');
-      if (hasMarketState) setRouteInternal('market');
-      else if (savedRoute) setRouteInternal(savedRoute);
+      const destination = APP_ROUTES.includes(params.get('route')) ? params.get('route')
+        : hasMarketState ? 'market' : APP_ROUTES.includes(savedRoute) ? savedRoute : 'home';
+      setRouteInternal(destination);
+      sessionStorage.setItem('nexus_route', destination);
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -46,15 +49,39 @@ export function useAppRoute() {
   const setRoute = useCallback((newRoute) => {
     setRouteInternal(newRoute);
     sessionStorage.setItem('nexus_route', newRoute);
-    if (newRoute !== 'market') {
+    {
       const params = new URLSearchParams(window.location.search);
-      MARKET_QUERY_KEYS.forEach((key) => params.delete(key));
+      if (params.has('route')) params.set('route', newRoute);
+      if (newRoute !== 'forum') params.delete('post');
+      if (newRoute !== 'market') MARKET_QUERY_KEYS.forEach((key) => params.delete(key));
       const query = params.toString();
       window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
     }
   }, []);
 
   return { route, setRoute };
+}
+
+export function useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute }) {
+  const openedPost = useRef(null);
+  useEffect(() => {
+    if (!authReady || user || !['profile', 'assets'].includes(route)) return;
+    const frame = requestAnimationFrame(() => { setRoute('home'); setAuthModal('login'); });
+    return () => cancelAnimationFrame(frame);
+  }, [authReady, user, route, setRoute, setAuthModal]);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('auth') !== 'login') return;
+    const frame = requestAnimationFrame(() => setAuthModal('login'));
+    return () => cancelAnimationFrame(frame);
+  }, [setAuthModal]);
+  useEffect(() => {
+    if (route !== 'forum') return;
+    const id = new URLSearchParams(window.location.search).get('post');
+    const post = forumPosts.find(item => String(item.id) === id);
+    if (!post || openedPost.current === id) return;
+    const frame = requestAnimationFrame(() => { openedPost.current = id; void openPostDetail(post); });
+    return () => cancelAnimationFrame(frame);
+  }, [route, forumPosts, openPostDetail]);
 }
 
 export function useToast() {

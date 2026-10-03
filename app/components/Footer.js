@@ -1,42 +1,56 @@
 "use client";
-import React from 'react';
-import { Activity, Mail, FileText, Shield, Lock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Activity, Mail, FileText, Shield, Lock, CircleHelp } from 'lucide-react';
+
+function FooterGroup({ title, children }) {
+  const [desktop, setDesktop] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const update = () => { setDesktop(media.matches); setExpanded(false); };
+    update(); media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  return <details className="footer-group" open={desktop || expanded} onToggle={event => { if (!desktop) setExpanded(event.currentTarget.open); }}><summary onClick={event => { if (desktop) event.preventDefault(); }}>{title}<span aria-hidden="true">＋</span></summary>{children}</details>;
+}
 
 export default function Footer({ siteSettings, setRoute, setForumView, t }) {
+  const risk = t('高风险警告：外汇保证金与差价合约 (CFD) 交易具有极高的风险，可能导致您损失全部投资本金。历史数据不代表未来收益。', 'High Risk Warning: Margin trading in Forex and CFDs carries a high level of risk and may result in the loss of all your investment principal. Historical data does not represent future returns.');
   return (
-    <footer className="w-full border-t border-zinc-900 bg-zinc-950 pt-16 pb-8 mt-auto z-10 relative">
+    <footer className="editorial-footer nq-readable w-full border-t border-zinc-900 bg-zinc-950 pt-16 pb-8 mt-auto z-10 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+        <div className="footer-columns grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Activity className="text-zinc-950 w-4 h-4" /></div>
               <span className="font-extrabold text-xl text-white tracking-tight">{siteSettings?.siteName || 'Nexus Quant'}</span>
             </div>
-            <p className="text-sm text-zinc-500 leading-relaxed max-w-sm">
-              {t('全球顶尖的量化算法交易与极客开发者平台。融合 MQL5 底层架构与 ONNX AI 推理模型，致力于为机构级交易员提供安全、透明、高效的自动化盈利解决方案。', 'The world\'s leading quantitative algorithmic trading and geek developer platform. Integrating MQL5 architecture with ONNX AI inference models to provide institutional traders with secure, transparent, and efficient automated profitability solutions.')}
+            <p className="text-sm text-zinc-400 leading-relaxed max-w-sm">
+              {t('面向 MT5 EA、XAUUSD 黄金与外汇自动交易的策略研究和开发者社区。查看资料披露、比较策略风险，交流使用与开发经验。', 'A strategy research and developer community for MT5 EAs, XAUUSD gold and forex automation. Review disclosed evidence, compare risks and exchange experience.')}
             </p>
           </div>
-          <div>
-            <h4 className="text-white font-bold mb-4">{t('平台生态', 'Ecosystem')}</h4>
-            <ul className="space-y-2 text-sm text-zinc-500">
+          <FooterGroup title={t('平台生态', 'Ecosystem')}>
+            <ul className="space-y-2 text-sm text-zinc-400">
               <li><button onClick={() => setRoute('market')} className="hover:text-cyan-400 transition-colors">{t('EA 策略市场', 'EA Strategy Market')}</button></li>
               <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('极客开发者社区', 'Geek Developer Community')}</button></li>
-              <li><button className="hover:text-cyan-400 transition-colors">{t('机构版 API 接入', 'Institutional API Access')}</button></li>
-              <li><button className="hover:text-cyan-400 transition-colors">{t('MQL5 深度学习实验室', 'MQL5 Deep Learning Lab')}</button></li>
+              <li><span>{t('机构版 API 接入', 'Institutional API Access')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
+              <li><span>{t('MQL5 深度学习实验室', 'MQL5 Deep Learning Lab')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
             </ul>
-          </div>
-          <div>
-            <h4 className="text-white font-bold mb-4">{t('支持与服务', 'Support & Services')}</h4>
-            <ul className="space-y-2 text-sm text-zinc-500">
-              <li className="flex items-center gap-2 hover:text-cyan-400 cursor-pointer"><Mail className="w-4 h-4" /> {siteSettings?.contactEmail || 'admin@nexusquant.com'}</li>
-              <li className="flex items-center gap-2 hover:text-cyan-400 cursor-pointer"><FileText className="w-4 h-4" /> {t('隐私政策 (Privacy Policy)', 'Privacy Policy')}</li>
-              <li className="flex items-center gap-2 hover:text-cyan-400 cursor-pointer"><Shield className="w-4 h-4" /> {t('服务条款 (Terms of Service)', 'Terms of Service')}</li>
-              <li className="flex items-center gap-2 hover:text-cyan-400 cursor-pointer"><Lock className="w-4 h-4" /> {t('资金安全与风险披露', 'Funds Security & Risk Disclosure')}</li>
+          </FooterGroup>
+          <FooterGroup title={t('支持与服务', 'Support & Services')}>
+            <ul className="space-y-2 text-sm text-zinc-400">
+              <li><a href={`mailto:${siteSettings?.contactEmail || 'admin@nexusquant.com'}`} className="flex items-center gap-2 break-all hover:text-cyan-400"><Mail className="h-4 w-4 shrink-0" />{siteSettings?.contactEmail || 'admin@nexusquant.com'}</a></li>
+              <li><Link href="/help" className="flex items-center gap-2 hover:text-cyan-400"><CircleHelp className="h-4 w-4 shrink-0" />{t('帮助中心', 'Help Center')}</Link></li>
+              <li><Link href="/privacy" className="flex items-center gap-2 hover:text-cyan-400"><FileText className="h-4 w-4 shrink-0" />{t('隐私政策说明', 'Privacy information')}</Link></li>
+              <li><Link href="/terms" className="flex items-center gap-2 hover:text-cyan-400"><Shield className="h-4 w-4 shrink-0" />{t('服务条款说明', 'Service terms information')}</Link></li>
+              <li><Link href="/risk-disclosure" className="flex items-center gap-2 hover:text-cyan-400"><Lock className="h-4 w-4 shrink-0" />{t('资金安全与风险披露', 'Funds Security & Risk Disclosure')}</Link></li>
             </ul>
-          </div>
+          </FooterGroup>
         </div>
-        <div className="pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-600">
-          <p>{t('高风险警告：外汇保证金与差价合约 (CFD) 交易具有极高的风险，可能导致您损失全部投资本金。历史数据不代表未来收益。', 'High Risk Warning: Margin trading in Forex and CFDs carries a high level of risk and may result in the loss of all your investment principal. Historical data does not represent future returns.')}</p>
+        <nav className="footer-quick-links" aria-label={t('必要支持入口','Essential support links')}><Link href="/help">{t('帮助中心','Help Center')}</Link><Link href="/risk-disclosure">{t('风险披露','Risk disclosure')}</Link></nav>
+        <div className="footer-bottom pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-400">
+          <p className="footer-desktop-risk">{risk}</p><details className="footer-mobile-risk"><summary>{t('交易风险说明','Trading risk information')}<span aria-hidden="true">＋</span></summary><p>{risk}</p></details>
           <p className="shrink-0">&copy; {new Date().getFullYear()} {siteSettings?.siteName || 'Nexus Quant'}. All rights reserved.</p>
         </div>
       </div>

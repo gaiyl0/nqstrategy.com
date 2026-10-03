@@ -8,9 +8,10 @@ const kit = fs.readFileSync(path.join(root, 'app', 'components', 'ui', 'UiKit.js
 const market = [
   fs.readFileSync(path.join(root, 'app', 'components', 'MarketView.js'), 'utf8'),
   fs.readFileSync(path.join(root, 'app', 'components', 'StrategyMarketCatalog.js'), 'utf8'),
+  fs.readFileSync(path.join(root, 'app', 'components', 'MarketFilters.js'), 'utf8'),
 ].join('\n');
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
-const forum = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');
+const forum = ['ForumView.js', 'CommunityResources.js'].map(file => fs.readFileSync(path.join(root, 'app', 'components', file), 'utf8')).join('\n');
 const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
 const productReview = fs.readFileSync(path.join(root, 'app', 'tianwei', 'ProductReviewWorkspace.js'), 'utf8');

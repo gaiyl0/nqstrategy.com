@@ -11,7 +11,7 @@ if(process.argv[2]==='--worker'){
 
 const remove=(base)=>{for(const suffix of ['', '-wal', '-shm']){try{fs.rmSync(`${base}${suffix}`);}catch{}}};
 const testPath=path.resolve('.tmp-database-migrations-test.db');remove(testPath);
-const {migrationSourceChecksums,runMigrations,verifyMigrations}=await import('../lib/migrations.js');
+const {migrations,migrationSourceChecksums,runMigrations,verifyMigrations}=await import('../lib/migrations.js');
 const db=new Database(testPath);db.pragma('foreign_keys=ON');
 let assertions=0;const equal=(actual,expected,message)=>{assert.deepEqual(actual,expected,message);assertions+=1;};
 const checksumFixture=`export const checksum = '${'a'.repeat(64)}';\nexport const name = 'portable';\n`;
@@ -37,8 +37,8 @@ const concurrentPath=path.resolve('.tmp-database-migrations-concurrent.db');remo
 const worker=()=>new Promise((resolve,reject)=>{const child=spawn(process.execPath,[path.resolve('tests/database-migrations.mjs'),'--worker'],{cwd:process.cwd(),env:{...process.env,NEXUS_DB_PATH:concurrentPath,NODE_ENV:'development'},stdio:['ignore','pipe','pipe']});let stderr='';child.stderr.on('data',chunk=>stderr+=chunk);child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(new Error(`worker exit ${code}: ${stderr}`)));});
 await Promise.all([worker(),worker()]);
 const concurrent=new Database(concurrentPath,{readonly:true});
-equal(concurrent.prepare('SELECT COUNT(*) count FROM schema_migrations').get().count,6,'concurrent startup records each migration once');
-equal(concurrent.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,6,'concurrent startup reaches latest migration');
+equal(concurrent.prepare('SELECT COUNT(*) count FROM schema_migrations').get().count,migrations.length,'concurrent startup records each migration once');
+equal(concurrent.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,migrations.at(-1).version,'concurrent startup reaches latest migration');
 equal(concurrent.pragma('quick_check',{simple:true}),'ok','concurrent migrated database is healthy');
 concurrent.close();remove(concurrentPath);
 console.log(`Database migration tests passed: ${assertions} assertions`);

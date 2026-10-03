@@ -1,4 +1,7 @@
 import "./globals.css";
+import db from '@/lib/db';
+import { connection } from 'next/server';
+import DesignProvider from './components/DesignProvider';
 import { InteractionProvider } from './components/ui/UiKit';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_ORIGINS?.split(',')[0] || 'https://nqstrategy.com';
@@ -14,10 +17,12 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  await connection();
+  const initialDesigns = Object.fromEntries(db.prepare("SELECT key,value FROM settings WHERE key IN ('frontendDesign','adminDesign')").all().map(row => [row.key, row.value]));
   return (
     <html lang="zh-CN">
-      <body className="bg-zinc-950 text-zinc-300"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'WebSite', name:'Nexus Quant', url:siteUrl, inLanguage:'zh-CN', description:'MT5 EA 量化策略、XAUUSD 黄金与外汇自动交易研究平台。' }).replace(/</g, '\\u003c') }} /><InteractionProvider>{children}</InteractionProvider></body>
+      <body className="bg-zinc-950 text-zinc-300"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'WebSite', name:'Nexus Quant', url:siteUrl, inLanguage:'zh-CN', description:'MT5 EA 量化策略、XAUUSD 黄金与外汇自动交易研究平台。' }).replace(/</g, '\\u003c') }} /><DesignProvider initialDesigns={initialDesigns}><InteractionProvider>{children}</InteractionProvider></DesignProvider></body>
     </html>
   );
 }

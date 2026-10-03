@@ -33,6 +33,25 @@ function AvatarPicker({ currentUrl, username, setAvatarFile, t }) {
 }
 
 export default function AppOverlays({ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }) {
+  const authDialogRef = useRef(null);
+  const authOpen = Boolean(authModal);
+  useEffect(() => {
+    if (!authOpen) return undefined;
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    const onKeyDown = event => {
+      if (event.key === 'Escape') { setAuthModal(null); setSentCode(null); }
+      if (event.key !== 'Tab') return;
+      const controls = [...(authDialogRef.current?.querySelectorAll('button:not([disabled]), input:not([disabled])') || [])].filter(el => el.getClientRects().length);
+      const first = controls[0], last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    const frame = requestAnimationFrame(() => authDialogRef.current?.querySelector('button')?.focus());
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('keydown', onKeyDown); document.body.style.overflow = overflow; previous?.focus?.(); };
+  }, [authOpen, setAuthModal, setSentCode]);
   return (
     <>
 {versionModal&&<div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-4"><div role="dialog" aria-modal="true" aria-labelledby="version-dialog-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-violet-500/30 bg-zinc-950 p-7 shadow-2xl"><div className="flex items-center justify-between"><h3 id="version-dialog-title" className="text-xl font-black text-white">{t('提交新版本','Submit New Version')} · {versionModal.title}</h3><button aria-label={t('关闭','Close')} onClick={()=>setVersionModal(null)} className="text-zinc-500 hover:text-white"><X/></button></div><div className="mt-6 space-y-4"><input value={versionForm.version} onChange={e=>setVersionForm({...versionForm,version:e.target.value})} placeholder="1.1.0" className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"/><textarea value={versionForm.releaseNotes} onChange={e=>setVersionForm({...versionForm,releaseNotes:e.target.value})} rows="5" placeholder={t('本版本更新日志','Release notes')} className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"/><select value={versionForm.upgradePolicy} onChange={e=>setVersionForm({...versionForm,upgradePolicy:e.target.value})} className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 text-white"><option value="all_existing">{t('所有已有买家免费继承','All existing owners inherit')}</option><option value="new_purchases_only">{t('仅版本发布后的新买家','Only purchases after release')}</option></select><input type="file" accept=".ex4,.ex5" onChange={e=>setVersionFile(e.target.files?.[0]||null)} className="block w-full text-xs text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-500/10 file:px-3 file:py-2 file:font-bold file:text-violet-300"/><button onClick={submitVersion} disabled={isVersionSubmitting} className="w-full rounded-xl bg-violet-600 py-3 font-black text-white disabled:opacity-50">{isVersionSubmitting?t('提交中…','Submitting…'):t('提交管理员审核','Submit for Review')}</button></div></div></div>}
@@ -92,11 +111,11 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
 {/* 登录、注册与找回密码弹窗 */}
 {authModal && (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in-95">
-    <div role="dialog" aria-modal="true" className="max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-3xl max-w-sm w-full p-8 relative shadow-2xl">
+    <div ref={authDialogRef} role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" className="max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-3xl max-w-sm w-full p-8 relative shadow-2xl">
       <button aria-label={t('关闭','Close')} onClick={() => { setAuthModal(null); setSentCode(null); }} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><X className="w-5 h-5" /></button>
       <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20 mb-6 mx-auto"><Shield className="w-6 h-6 text-cyan-400" /></div>
       
-      <h3 className="text-2xl font-black text-white mb-6 text-center">
+      <h3 id="auth-dialog-title" className="text-2xl font-black text-white mb-6 text-center">
         {authModal === 'login' && t('登入 Nexus Quant', 'Login to Nexus Quant')}
         {authModal === 'register' && t('创建极客账户', 'Create Account')}
         {authModal === 'forgot' && t('找回登录密码', 'Reset Password')}
@@ -132,9 +151,9 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
             <div className="flex justify-between items-center mb-1.5">
               <label className="text-xs font-bold text-zinc-400">{t('安全密码', 'Password')}</label>
               {authModal === 'login' && (
-                <span onClick={() => { setAuthModal('forgot'); setResetForm({ email: authForm.email || '', code: '', newPassword: '' }); }} className="text-xs text-cyan-400 hover:underline cursor-pointer">
+                <button type="button" onClick={() => { setAuthModal('forgot'); setResetForm({ email: authForm.email || '', code: '', newPassword: '' }); }} className="text-xs text-cyan-400 hover:underline cursor-pointer">
                   {t('忘记密码？', 'Forgot password?')}
-                </span>
+                </button>
               )}
             </div>
             <input type="password" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" />
@@ -171,13 +190,13 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
 
       <div className="mt-6 text-center text-sm text-zinc-500">
         {authModal === 'login' && (
-          <>{t('没有账户？ ', 'No account? ')}<span onClick={() => { setAuthModal('register'); setSentCode(null); }} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">{t('免费注册', 'Register')}</span></>
+          <>{t('没有账户？ ', 'No account? ')}<button type="button" onClick={() => { setAuthModal('register'); setSentCode(null); }} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">{t('免费注册', 'Register')}</button></>
         )}
         {authModal === 'register' && (
-          <>{t('已有账户？ ', 'Have an account? ')}<span onClick={() => { setAuthModal('login'); setSentCode(null); }} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">{t('直接登录', 'Login')}</span></>
+          <>{t('已有账户？ ', 'Have an account? ')}<button type="button" onClick={() => { setAuthModal('login'); setSentCode(null); }} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">{t('直接登录', 'Login')}</button></>
         )}
         {authModal === 'forgot' && (
-          <span onClick={() => setAuthModal('login')} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">&larr; {t('想起密码？返回登录', 'Back to Login')}</span>
+          <button type="button" onClick={() => setAuthModal('login')} className="text-cyan-400 font-bold cursor-pointer hover:text-cyan-300">&larr; {t('想起密码？返回登录', 'Back to Login')}</button>
         )}
       </div>
     </div>

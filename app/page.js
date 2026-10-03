@@ -1,5 +1,8 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+
+import EditorialHome from './components/EditorialHome';
+import { useDesign } from './components/DesignProvider';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
@@ -17,7 +20,7 @@ import UploadView from './components/UploadView';
 import ForumView from './components/ForumView';
 import ProfileView from './components/ProfileView';
 import AppOverlays from './components/AppOverlays';
-import { useAppRoute, useLanguage, useToast } from './hooks/useAppShell';
+import { useAppRoute, useLanguage, useToast, useTopicEntry } from './hooks/useAppShell';
 import { useInteraction } from './components/ui/UiKit';
 
 const emptyMetricsForm = () => ({
@@ -57,6 +60,7 @@ export default function App() {
   const router = useRouter();
   const { lang, toggleLang, t } = useLanguage();
   const { route, setRoute } = useAppRoute();
+  const design = useDesign();
   const { toastMsg, showToast } = useToast();
 
   const tEaType = (zh) => { const dict = { '马丁格尔': 'Martingale', '网格': 'Grid', '套汇': 'Arbitrage', '锁仓': 'Hedging', '超短线': 'Scalping', '新闻': 'News', '趋势': 'Trend', '等级交易': 'Level Trading', '神经网络': 'Neural Net', '多货币': 'Multi-Currency' }; return lang === 'en' ? (dict[zh] || zh) : zh; };
@@ -74,6 +78,7 @@ export default function App() {
   };
 
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
   const [authModal, setAuthModal] = useState(null); 
@@ -139,6 +144,8 @@ export default function App() {
   const [ex4File, setEx4File] = useState(null);
   const [reusablePrograms, setReusablePrograms] = useState([]);
   const [reuseFileUrl, setReuseFileUrl] = useState('');
+  const [reuseProgramInfo, setReuseProgramInfo] = useState(null);
+  const submissionLock = useRef(false);
   const [isReusingProgram, setIsReusingProgram] = useState(false);
   const [evidenceFiles, setEvidenceFiles] = useState({ settings: null, statistics: null, chart: null, analysis: null });
   const [reportInfo, setReportInfo] = useState(null);
@@ -154,6 +161,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('全部');
   const [forumView, setForumView] = useState('list'); 
   const [selectedPost, setSelectedPost] = useState(null);
+  const postDetailRequest = useRef(0);
   const [newPost, setNewPost] = useState({ title: '', category: '官方公告', content: '', attachments: [] });
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState('');
@@ -263,7 +271,8 @@ export default function App() {
     apiFetch('/api/auth/me', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setUser(data.success ? data.user : null))
-      .catch(() => setUser(null));
+      .catch(() => setUser(null))
+      .finally(() => setAuthReady(true));
     apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
     apiFetch(`/api/posts?category=${encodeURIComponent('全部')}&sort=latest`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); });
     apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); });
@@ -309,24 +318,26 @@ export default function App() {
 
   const loadReusablePrograms = async () => {
     if (user?.role !== 'admin') return setReusablePrograms([]);
-    try { const response = await apiFetch('/api/admin/program-reuse', { cache:'no-store' }); const data = await response.json(); if (response.ok && data.success) setReusablePrograms(data.programs || []); } catch {}
+    try { const response = await apiFetch('/api/admin/program-reuse', { cache:'no-store' }); const data = await response.json(); if (!response.ok || !data.success) throw new Error(data.message || '载入可复用版本失败'); setReusablePrograms(data.programs || []); if (!data.programs?.length) showToast(t('暂无可复用的已审核版本', 'No approved versions available for reuse')); } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('载入失败，请重试', 'Loading failed; please retry'))}`); }
   };
 
   const reuseApprovedProgram = async (sourceUploadId) => {
-    if (!sourceUploadId) return;
+    if (!sourceUploadId || user?.role !== 'admin' || isReusingProgram || submissionLock.current) return;
     setIsReusingProgram(true);
     try {
       const response = await apiFetch('/api/admin/program-reuse', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(sourceUploadId) });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || '复用程序失败');
-      setReuseFileUrl(data.upload.url); setEx4File(null);
+      setReuseFileUrl(data.upload.url); setReuseProgramInfo({originalName:data.upload.originalName}); setEx4File(null);
       showToast(`已复用已审核程序：${data.upload.originalName}（来源：${data.upload.sourceProductTitle}）`);
     } catch (error) { showToast(`❌ ${apiErrorMessage(error, '复用程序失败')}`); }
     finally { setIsReusingProgram(false); }
   };
 
   const submitEA = async () => {
+    if (submissionLock.current || isParsingReport || isReusingProgram) return;
     if(!uploadForm.title) return showToast(t('请输入名称', 'Enter title'));
+    submissionLock.current = true;
     setIsSubmitting(true);
     try {
       let logo_url = '', file_url = '';
@@ -344,7 +355,7 @@ export default function App() {
         evidenceIds.push(evidenceData.evidence.id);
       }
       const { currentLogoUrl, ...formPayload } = uploadForm;
-      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0 };
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0, trialDays: uploadForm.trialEnabled ? uploadForm.trialDays : 7 };
       // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
       if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
       else delete payload.metrics;
@@ -353,12 +364,14 @@ export default function App() {
       if (!res.ok || !data.success) throw new Error(data.message || '策略保存失败');
       showToast(uploadForm.id ? t('🎉 EA 修改成功！已重新进入审核队列。', '🎉 EA Updated! In review.') : t('🎉 EA 发布成功！已进入审核队列。', '🎉 EA Published! In review.'));
       setUploadForm(emptyUploadForm());
+      setLogoFile(null); setEx4File(null); setReuseFileUrl(''); setReuseProgramInfo(null);
       setEvidenceFiles({ settings: null, statistics: null, chart: null, analysis: null });
       setReportInfo(null);
       setRoute('profile'); fetchProducts();
     } catch (error) {
       showToast('❌ ' + (error.message || t('上传失败', 'Upload failed')));
     } finally {
+      submissionLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -417,10 +430,18 @@ export default function App() {
     } catch (error) { showToast(error?.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
   };
 
-  const openPostDetail = async (post) => { 
-    setSelectedPost(post); setForumView('detail'); setComments([]); apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' });
-    const res = await apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments);
-  };
+  const openPostDetail = useCallback(async (post) => {
+    const request = ++postDetailRequest.current;
+    setRoute('forum'); setSelectedPost(post); setForumView('detail'); setComments([]);
+    try {
+      const responses = await Promise.all([apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' }), apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' })]);
+      const [detail, replies] = await Promise.all(responses.map(response => response.json()));
+      if (request !== postDetailRequest.current) return;
+      if (detail.success && detail.post) setSelectedPost(detail.post);
+      if (replies.success) setComments(replies.comments);
+    } catch (error) { if (request === postDetailRequest.current) showToast(apiErrorMessage(error)); }
+  }, [setRoute, showToast]);
+  useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute });
 
   const submitComment = async () => {
     if (!user) return setAuthModal('login');
@@ -452,14 +473,15 @@ export default function App() {
   const myBadge = user ? getUserTitle(myPostCount, myEAs.length, user.role) : null;
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-zinc-950 pb-14 text-zinc-300 font-sans selection:bg-cyan-500/30 lg:pb-0">
+    <div className="editorial-app-shell min-h-screen flex flex-col justify-between bg-zinc-950 pb-14 text-zinc-300 font-sans selection:bg-cyan-500/30 lg:pb-0">
       
       <AppHeader {...{ router, siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }} />
 
-      <main className="relative z-10 w-full flex-grow">
-        {route === 'home' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
+      <main className={`relative w-full flex-grow ${route === 'forum' && forumView === 'create' ? 'z-20' : 'z-10'}`}>
+        {route === 'home' && design === 'editorial' && <EditorialHome {...{ setRoute, siteSettings, products, forumPosts, user, setAuthModal, openPostDetail, t }} />}
+        {route === 'home' && design === 'classic' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
-        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
+        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
         {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent }} />}
         {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
         {route === 'assets' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}

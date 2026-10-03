@@ -9,6 +9,8 @@ export default function sitemap() {
     { url: base, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${base}/ea-strategies`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/xauusd-gold-ea`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${base}/help`, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${base}/risk-disclosure`, changeFrequency: 'monthly', priority: 0.3 },
     ...products.map(product => ({
       url: `${base}/market/${encodeURIComponent(product.slug)}`,
       lastModified: new Date(product.created_at),

@@ -12,7 +12,8 @@ const walk = (directory) => fs.readdirSync(directory, { withFileTypes: true }).f
 const appFiles = walk(path.join(root, 'app')).filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file));
 const appSource = appFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 const overlays = read('app/components/AppOverlays.js');
-const market = read('app/components/MarketView.js');
+const detail = read('app/components/StrategyDetail.js');
+const market = read('app/components/MarketView.js') + detail;
 const metrics = read('app/components/StrategyMetrics.js');
 const sharePage = read('app/market/[slug]/page.js');
 const evidenceRoute = read('app/api/evidence/route.js');
@@ -25,7 +26,9 @@ assert.match(overlays, /URL\.revokeObjectURL\(previewUrlRef\.current\)/, 'avatar
 assert.match(overlays, /accept="image\/png,image\/jpeg,image\/webp"/, 'avatar input must match server image formats');
 assert.match(uploadView, /accept="image\/png,image\/jpeg,image\/webp"/, 'product logo input must match server image formats');
 assert.doesNotMatch(market, /<Image[^>]+unoptimized/, 'public market logos should use Next image optimization');
-assert.match(sharePage, /sizes="\(max-width: 767px\) calc\(100vw - 2rem\), 180px"/, 'responsive share image sizes are required');
+assert.match(sharePage, /PublicProductDetail/, 'share page must use the shared product detail composition');
+assert.match(read('app/market/[slug]/PublicProductDetail.js'), /StrategyDetail/, 'public product details must reuse the logo sizing policy');
+assert.match(detail, /sizes="80px"/, 'shared detail logos must declare their bounded rendered size');
 assert.match(metrics, /item\.previewUrl[^>]+unoptimized/, 'access-controlled evidence previews must bypass the optimizer because it does not forward authorization headers');
 assert.match(metrics, /sizes="\(max-width: 767px\) calc\(100vw - 2rem\), 50vw"/, 'evidence previews need responsive sizing');
 assert.doesNotMatch(nextConfig, /remotePatterns|domains\s*:/, 'remote image origins must stay closed until an explicit allowlist is approved');

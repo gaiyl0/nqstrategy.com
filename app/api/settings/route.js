@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 // 定义安全白名单：仅这些公开展示字段允许下发给普通访客
 const PUBLIC_SETTINGS_KEYS = new Set([
-  'siteName', 'contactEmail', 'primaryColor',
+  'siteName', 'contactEmail', 'primaryColor', 'frontendDesign', 'adminDesign', 'homeModules', 'featuredRotationSeconds', 'featuredAutoRotate', 'homeHeroTitle', 'homeHeroDescription', 'homeArticleCount',
   'usdtAddress', 'btcAddress', 'ethAddress',
   'broker1Name', 'broker1Desc', 'broker1Link',
   'broker2Name', 'broker2Desc', 'broker2Link',
@@ -21,8 +21,8 @@ const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([
   'wechatPaySetupEnabled', 'wechatPayMchId', 'wechatPayAppId', 'wechatPayNotifyUrl', 'wechatPayCertificateSerial',
   'alipaySetupEnabled', 'alipayAppId', 'alipaySellerId', 'alipayNotifyUrl', 'alipayGateway',
 ]);
-const BOOLEAN_SETTINGS_KEYS = new Set(['exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
-const JSON_SETTINGS_KEYS = new Set(['communityContent', 'featuredProductIds']);
+const BOOLEAN_SETTINGS_KEYS = new Set(['featuredAutoRotate', 'exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
+const JSON_SETTINGS_KEYS = new Set(['communityContent', 'featuredProductIds', 'homeModules']);
 const PAYMENT_SECRET_STATUS = {
   wechatPayApiV3KeyConfigured: 'WECHAT_PAY_API_V3_KEY',
   wechatPayMerchantPrivateKeyConfigured: 'WECHAT_PAY_MERCHANT_PRIVATE_KEY',
@@ -46,6 +46,9 @@ async function GETHandler() {
       if ((isAdmin && ADMIN_SETTINGS_KEYS.has(row.key)) || PUBLIC_SETTINGS_KEYS.has(row.key)) {
         settings[row.key] = row.key === 'communityContent'
           ? normalizeCommunityContent(row.value) || DEFAULT_COMMUNITY_CONTENT
+          : row.key === 'homeModules'
+            ? (() => { try { const items = JSON.parse(row.value); return Array.isArray(items) ? items : []; } catch { return []; } })()
+          : ['featuredRotationSeconds','homeArticleCount'].includes(row.key) ? Number(row.value)
           : row.key === 'featuredProductIds'
             ? (() => { try { const ids=JSON.parse(row.value); return Array.isArray(ids) ? ids.map(Number).filter(Number.isInteger).slice(0,3) : []; } catch { return []; } })()
           : BOOLEAN_SETTINGS_KEYS.has(row.key)

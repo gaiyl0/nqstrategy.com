@@ -53,7 +53,7 @@ export const localizeAdminValue = (value, lang) => {
 export function AdminLocale({ lang, children }) {
   const visit = node => {
     if (typeof node === 'string') return localizeAdminValue(node, lang);
-    if (Array.isArray(node)) return node.map(visit);
+    if (Array.isArray(node)) return React.Children.map(node, visit);
     if (!React.isValidElement(node)) return node;
     const props = { ...node.props };
     for (const key of ['placeholder', 'title', 'aria-label']) {
