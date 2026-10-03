@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Activity, Mail, FileText, Shield, Lock, CircleHelp } from 'lucide-react';
+import { Activity, Mail, FileText, Shield, Lock, CircleHelp, Send } from 'lucide-react';
 
 function FooterGroup({ title, children }) {
   const [desktop, setDesktop] = useState(false);
@@ -13,6 +13,14 @@ function FooterGroup({ title, children }) {
     return () => media.removeEventListener('change', update);
   }, []);
   return <details className="footer-group" open={desktop || expanded} onToggle={event => { if (!desktop) setExpanded(event.currentTarget.open); }}><summary onClick={event => { if (desktop) event.preventDefault(); }}>{title}<span aria-hidden="true">＋</span></summary>{children}</details>;
+}
+
+function SocialLinks({ siteSettings, t }) {
+  const links = [
+    ['socialXUrl', 'X', <svg key="x" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-5-7.6L5.2 22H2l7.4-8.5L.8 2h6.5l4.6 7zM17.9 20h1.7L6.4 4H4.6z" /></svg>],
+    ['telegramGroupUrl', t('Telegram 群组', 'Telegram group'), <Send key="telegram" className="h-4 w-4" aria-hidden="true" />],
+  ];
+  return <div className="mt-5 flex flex-wrap gap-3">{links.filter(([key]) => siteSettings?.[key]).map(([key, label, icon]) => <a key={key} href={siteSettings[key]} target="_blank" rel="noopener noreferrer" aria-label={label} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 hover:text-cyan-400">{icon}<span>{label}</span></a>)}</div>;
 }
 
 export default function Footer({ siteSettings, setRoute, setForumView, t }) {
@@ -29,6 +37,7 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
             <p className="text-sm text-zinc-400 leading-relaxed max-w-sm">
               {t('面向 MT5 EA、XAUUSD 黄金与外汇自动交易的策略研究和开发者社区。查看资料披露、比较策略风险，交流使用与开发经验。', 'A strategy research and developer community for MT5 EAs, XAUUSD gold and forex automation. Review disclosed evidence, compare risks and exchange experience.')}
             </p>
+            <SocialLinks siteSettings={siteSettings} t={t} />
           </div>
           <FooterGroup title={t('平台生态', 'Ecosystem')}>
             <ul className="space-y-2 text-sm text-zinc-400">

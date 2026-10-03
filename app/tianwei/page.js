@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   // 完整补齐所有设置字段，修复界面残缺
   const [settings, setSettings] = useState({ 
     frontendDesign: 'classic', adminDesign: 'classic', featuredRotationSeconds: 6, featuredAutoRotate: true, homeArticleCount: 4,
-    siteName: '', primaryColor: '#22d3ee', contactEmail: '', 
+    siteName: '', primaryColor: '#22d3ee', contactEmail: '', socialXUrl: '', telegramGroupUrl: '',
     usdtAddress: '', btcAddress: '', ethAddress: '', 
     smtpHost: '', smtpUser: '', smtpPass: '',
     broker1Name: '', broker1Desc: '', broker1Link: '', 
@@ -265,19 +265,19 @@ export default function AdminDashboard() {
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
     ['communityStrategies', `策略类型速览 (${settings.communityContent?.strategies?.length || 0}/8)`, TrendingUp],
-    ['settings', '网站信息与邮件', Settings], ['appearance','主题与布局', Settings], ['homeModules','首页模块配置', LayoutDashboard], ['advertising','广告位配置', Globe2], ['featured','精选 EA 配置', TrendingUp], ['communityCategories','社区栏目配置', Hash], ['walletSettings','收款钱包', Wallet],
+    ['settings', '网站信息与邮件', Settings], ['contactLinks', '页脚与社交联系', Globe2], ['appearance','主题与布局', Settings], ['homeModules','首页模块配置', LayoutDashboard], ['advertising','广告位配置', Globe2], ['featured','精选 EA 配置', TrendingUp], ['communityCategories','社区栏目配置', Hash], ['walletSettings','收款钱包', Wallet],
   ];
 
   const navigationGroups = [
     ['运营概览', ['dashboard']],
-    ['站点与外观', ['settings','appearance','homeModules','featured','advertising']],
+    ['站点与外观', ['settings','contactLinks','appearance','homeModules','featured','advertising']],
     ['内容与社区', ['communityCategories','communityContent','communityDocs','communityStrategies','reports']],
     ['策略与认证', ['products','licenses']],
     ['交易与收入', ['orders','paymentSettings','walletSettings','withdrawals']],
     ['用户与权限', ['users']],
     ['推广与统计', ['analytics']],
   ];
-  const settingsTabs = ['settings','appearance','homeModules','featured','advertising','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
+  const settingsTabs = ['settings','contactLinks','appearance','homeModules','featured','advertising','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
   return (
     <AdminLocale lang={lang}><div className="editorial-admin-shell min-h-screen bg-[#060c13] text-zinc-300 relative">
       <header className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-3 sm:px-5 backdrop-blur-xl">
@@ -306,12 +306,12 @@ export default function AdminDashboard() {
         
         {activeTab === 'analytics' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/55 p-4"><div><h2 className="font-bold text-white">访问流量与广告效果</h2><p className="mt-1 text-xs leading-5 text-slate-500">蜘蛛依据 User-Agent 识别，属于疑似分类；访客只保存不可逆哈希，不保存完整 IP。</p></div><div className="flex items-center gap-2"><select value={analyticsDays} onChange={event=>{setAnalyticsDays(Number(event.target.value));setAnalyticsVisitPage(1);setAnalyticsClickPage(1);}} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"><option value={7}>最近 7 天</option><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option><option value={365}>最近 365 天</option></select><Button size="sm" onClick={()=>fetchAnalytics(analyticsDays)}>刷新</Button></div></div>
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/55 p-4"><div><h2 className="font-bold text-white">访问流量与广告效果</h2><p className="mt-1 text-xs leading-5 text-slate-500">蜘蛛依据 User-Agent 识别，属于疑似分类；非蜘蛛请求不等于真实用户，包含重复浏览、后台访问和未识别的自动扫描。匿名来源仅为估算，不保存完整 IP。</p></div><div className="flex items-center gap-2"><select value={analyticsDays} onChange={event=>{setAnalyticsDays(Number(event.target.value));setAnalyticsVisitPage(1);setAnalyticsClickPage(1);}} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"><option value={7}>最近 7 天</option><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option><option value={365}>最近 365 天</option></select><Button size="sm" onClick={()=>fetchAnalytics(analyticsDays)}>刷新</Button></div></div>
 
             {!analytics ? <Panel className="p-10 text-center text-sm text-slate-500">正在读取访问统计……</Panel> : <>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
                 ['总页面访问',analytics.visitSummary?.totalVisits||0,Globe2,'含用户与疑似蜘蛛','primary'],
-                ['用户访问',analytics.visitSummary?.humanVisits||0,Users,`约 ${analytics.visitSummary?.uniqueHumanVisitors||0} 位匿名访客`,'success'],
+                ['非蜘蛛请求',analytics.visitSummary?.humanVisits||0,Users,`约 ${analytics.visitSummary?.uniqueHumanVisitors||0} 个匿名来源（非精确人数）`,'success'],
                 ['蜘蛛访问',analytics.visitSummary?.botVisits||0,Bot,'依据 User-Agent 分类','warning'],
                 ['广告有效点击',analytics.adSummary?.humanClicks||0,MousePointerClick,`${analytics.adSummary?.uniqueHumanClickers||0} 位匿名点击者`,'primary'],
               ].map(([label,value,Icon,hint,tone],index)=><Panel key={`analytics-metric-${label}-${index}`} className="p-5"><div className="flex items-start justify-between"><div><p className="text-xs text-slate-500">{label}</p><p className="nq-number mt-2 text-3xl font-black text-white">{Number(value).toLocaleString()}</p></div><span className="rounded-lg border border-slate-700 bg-slate-800/70 p-3"><Icon className="h-5 w-5 text-cyan-300"/></span></div><div className="mt-4"><Badge variant={tone}>{hint}</Badge></div></Panel>)}</div>
@@ -326,6 +326,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
+        {activeTab === 'contactLinks' && <Panel className="space-y-5 p-6"><h2 className="text-lg font-bold">页脚与社交联系</h2><p className="text-sm leading-6 text-slate-500">填写公开联系方式并保存配置后，前台所有页脚同步显示。X 与 Telegram 留空时隐藏对应入口。</p><Field label="X 账号链接"><input type="url" maxLength={500} value={settings.socialXUrl || ''} placeholder="https://x.com/你的账号" onChange={event => setSettings({ ...settings, socialXUrl: event.target.value })} /></Field><Field label="Telegram 群组链接"><input type="url" maxLength={500} value={settings.telegramGroupUrl || ''} placeholder="https://t.me/你的群组或邀请链接" onChange={event => setSettings({ ...settings, telegramGroupUrl: event.target.value })} /></Field><Field label="公开联系邮箱"><input type="email" maxLength={254} value={settings.contactEmail || ''} placeholder="contact@example.com" onChange={event => setSettings({ ...settings, contactEmail: event.target.value })} /></Field><p className="text-xs leading-6 text-slate-500">邮箱与网站信息页面共用同一设置。链接在新窗口打开；这里只配置公开信息，不填写密码或支付密钥。</p></Panel>}
         {activeTab === 'paymentSettings' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-6 text-sm leading-6 text-amber-100">

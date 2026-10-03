@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 // 定义安全白名单：仅这些公开展示字段允许下发给普通访客
 const PUBLIC_SETTINGS_KEYS = new Set([
-  'siteName', 'contactEmail', 'primaryColor', 'frontendDesign', 'adminDesign', 'homeModules', 'featuredRotationSeconds', 'featuredAutoRotate', 'homeHeroTitle', 'homeHeroDescription', 'homeArticleCount',
+  'siteName', 'contactEmail', 'socialXUrl', 'telegramGroupUrl', 'primaryColor', 'frontendDesign', 'adminDesign', 'homeModules', 'featuredRotationSeconds', 'featuredAutoRotate', 'homeHeroTitle', 'homeHeroDescription', 'homeArticleCount',
   'usdtAddress', 'btcAddress', 'ethAddress',
   'broker1Name', 'broker1Desc', 'broker1Link',
   'broker2Name', 'broker2Desc', 'broker2Link',

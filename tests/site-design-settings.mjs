@@ -23,3 +23,14 @@ for (const invalid of [
 ]) assert.equal(settingsSchema.safeParse(invalid).success, false, JSON.stringify(invalid));
 assert.equal(settingsSchema.safeParse({ featuredAutoRotate: false, featuredRotationSeconds: 3, homeArticleCount: 12 }).success, true);
 console.log('Site design settings passed: independent themes, legacy compatibility, module order and input limits');
+
+for (const value of [
+  {socialXUrl:'https://x.com/nexus',telegramGroupUrl:'https://t.me/+invite',contactEmail:'contact@example.com'},
+  {socialXUrl:'',telegramGroupUrl:''},
+]) assert.equal(settingsSchema.safeParse(value).success,true);
+for (const value of [
+  {socialXUrl:'javascript:alert(1)'},{socialXUrl:'https://x.com.evil.test/nexus'},
+  {socialXUrl:'https://attacker@x.com/nexus'},{telegramGroupUrl:'http://t.me/nexus'},
+  {telegramGroupUrl:'https://example.com/nexus'},
+]) assert.equal(settingsSchema.safeParse(value).success,false);
+console.log('Footer contact validation passed: allowed platforms, empty links, protocol and credential boundaries');
