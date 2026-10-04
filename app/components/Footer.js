@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Mt5DownloadLink } from './Mt5Download';
 import { Activity, Mail, FileText, Shield, Lock, CircleHelp, Send } from 'lucide-react';
 
 function FooterGroup({ title, children }) {
@@ -50,6 +51,7 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
           <FooterGroup title={t('支持与服务', 'Support & Services')}>
             <ul className="space-y-2 text-sm text-zinc-400">
               <li><a href={`mailto:${siteSettings?.contactEmail || 'admin@nexusquant.com'}`} className="flex items-center gap-2 break-all hover:text-cyan-400"><Mail className="h-4 w-4 shrink-0" />{siteSettings?.contactEmail || 'admin@nexusquant.com'}</a></li>
+              <li><Mt5DownloadLink settings={siteSettings} t={t}/></li>
               <li><Link href="/help" className="flex items-center gap-2 hover:text-cyan-400"><CircleHelp className="h-4 w-4 shrink-0" />{t('帮助中心', 'Help Center')}</Link></li>
               <li><Link href="/privacy" className="flex items-center gap-2 hover:text-cyan-400"><FileText className="h-4 w-4 shrink-0" />{t('隐私政策说明', 'Privacy information')}</Link></li>
               <li><Link href="/terms" className="flex items-center gap-2 hover:text-cyan-400"><Shield className="h-4 w-4 shrink-0" />{t('服务条款说明', 'Service terms information')}</Link></li>

@@ -15,13 +15,13 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'broker2Name', 'broker2Desc', 'broker2Link',
   'broker3Name', 'broker3Desc', 'broker3Link',
   'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl', 'featuredProductIds',
-  'forumCategories', 'communityContent', 'forumNewsEnabled', 'forumStrategyOverviewEnabled'
+  'mt5DownloadEnabled', 'mt5DownloadUrl', 'mt5DownloadLabel', 'mt5DownloadDescription', 'forumCategories', 'communityContent', 'forumNewsEnabled', 'forumStrategyOverviewEnabled'
 ]);
 const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([
   'wechatPaySetupEnabled', 'wechatPayMchId', 'wechatPayAppId', 'wechatPayNotifyUrl', 'wechatPayCertificateSerial',
   'alipaySetupEnabled', 'alipayAppId', 'alipaySellerId', 'alipayNotifyUrl', 'alipayGateway',
 ]);
-const BOOLEAN_SETTINGS_KEYS = new Set(['forumNewsEnabled', 'forumStrategyOverviewEnabled', 'featuredAutoRotate', 'exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
+const BOOLEAN_SETTINGS_KEYS = new Set(['mt5DownloadEnabled', 'forumNewsEnabled', 'forumStrategyOverviewEnabled', 'featuredAutoRotate', 'exchangeAdEnabled', 'wechatPaySetupEnabled', 'alipaySetupEnabled']);
 const JSON_SETTINGS_KEYS = new Set(['communityContent', 'featuredProductIds', 'homeModules']);
 const PAYMENT_SECRET_STATUS = {
   wechatPayApiV3KeyConfigured: 'WECHAT_PAY_API_V3_KEY',

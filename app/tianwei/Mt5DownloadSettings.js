@@ -1,0 +1,9 @@
+import { Field, Panel } from '@/app/components/ui/UiKit';
+import { MT5_PACKAGE, resolveMt5Download } from '@/lib/mt5-download';
+import { Mt5DownloadLink } from '@/app/components/Mt5Download';
+
+export default function Mt5DownloadSettings({ settings, setSettings }) {
+  const update = (key, value) => setSettings(previous => ({ ...previous, [key]: value }));
+  return <Panel className="space-y-5 p-5 sm:p-6"><h2 className="text-lg font-bold">MT5 软件下载配置</h2><p className="text-sm leading-7 text-slate-500">首页、MT5 使用指南、帮助中心和页脚共用这里的设置。保存后生效；关闭不会删除服务器上的程序包。</p><label className="flex min-h-11 items-center gap-3 text-sm font-semibold"><input type="checkbox" checked={settings.mt5DownloadEnabled !== false} onChange={event => update('mt5DownloadEnabled', event.target.checked)}/>开启 MT5 下载入口</label><Field label="MT5 下载地址" hint="支持 /downloads/ 下的 ZIP 或外部 HTTPS 地址；留空隐藏入口。"><input value={settings.mt5DownloadUrl ?? MT5_PACKAGE.url} maxLength={500} onChange={event => update('mt5DownloadUrl', event.target.value)}/></Field><Field label="MT5 下载按钮文字"><input value={settings.mt5DownloadLabel ?? MT5_PACKAGE.label} maxLength={80} onChange={event => update('mt5DownloadLabel', event.target.value)}/></Field><Field label="MT5 下载说明"><textarea value={settings.mt5DownloadDescription ?? MT5_PACKAGE.description} rows={3} maxLength={400} onChange={event => update('mt5DownloadDescription', event.target.value)}/></Field><div className="rounded-xl border border-slate-700 p-4"><h3 className="mb-3 text-sm font-bold">入口预览</h3>{resolveMt5Download(settings) ? <Mt5DownloadLink settings={settings}/> : <p className="text-sm text-slate-500">下载入口已关闭或地址为空/无效。</p>}<p className="mt-3 text-sm leading-7 text-slate-500">当前站内包：TMGM MT5 Windows x64 · {MT5_PACKAGE.version} · {(MT5_PACKAGE.bytes/1024/1024).toFixed(1)} MiB。文件校验值仅在使用此站内包时展示。</p></div></Panel>;
+}
+

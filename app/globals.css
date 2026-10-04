@@ -522,3 +522,7 @@ header.sticky .nq-primary-nav .nq-nav-item[aria-current=page]:hover{background:#
 @media(prefers-reduced-motion:reduce){.forum-switch-track>span{transition:none}}
 
 .admin-content .forum-module-switch{min-height:44px}
+
+.mt5-download-link{display:inline-flex;min-height:44px;align-items:center;justify-content:center;gap:8px;border:1px solid #25bdbb60;border-radius:8px;padding:10px 14px;color:#73e2dc;background:#178e8a18;font-size:14px;font-weight:600;line-height:1.5;transition:background-color .15s}.mt5-download-link:hover{background:#178e8a35}.mt5-download-link:focus-visible{outline:2px solid #29bcb4;outline-offset:3px}[data-design=editorial] .mt5-download-link{color:#087a73;background:#e1f5f0;border-color:#9ed6ca}[data-design=editorial] .mt5-download-link:hover{background:#cceee6}.mt5-download-panel{scroll-margin-top:84px}.editorial-topic:has(.mt5-download-link){flex-wrap:wrap;gap:16px}.editorial-topic .mt5-download-link{flex-shrink:0}footer .mt5-download-link{justify-content:flex-start;padding:6px 0;border:0;background:transparent;color:inherit}footer .mt5-download-link:hover{color:#64e4d6}
+
+.editorial-topic:has(.mt5-download-link)>a:first-child{flex-basis:100%}

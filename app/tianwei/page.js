@@ -10,6 +10,7 @@ import { AdminLocale, localizeAdminValue } from './admin-locale';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
 import ProductReviewWorkspace from './ProductReviewWorkspace';
 import AppearanceSettings from './AppearanceSettings';
+import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
 
 const COMMUNITY_EDITOR_SECTIONS = [
@@ -265,19 +266,19 @@ export default function AdminDashboard() {
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
     ['communityStrategies', `策略类型速览 (${settings.communityContent?.strategies?.length || 0}/8)`, TrendingUp],
-    ['settings', '网站信息与邮件', Settings], ['contactLinks', '页脚与社交联系', Globe2], ['appearance','主题与布局', Settings], ['homeModules','首页模块配置', LayoutDashboard], ['advertising','广告位配置', Globe2], ['featured','精选 EA 配置', TrendingUp], ['forumModules','论坛展示模块', LayoutDashboard], ['communityCategories','论坛栏目配置', Hash], ['walletSettings','收款钱包', Wallet],
+    ['settings', '网站信息与邮件', Settings], ['contactLinks', '页脚与社交联系', Globe2], ['appearance','主题与布局', Settings], ['homeModules','首页模块配置', LayoutDashboard], ['advertising','广告位配置', Globe2], ['featured','精选 EA 配置', TrendingUp], ['mt5Downloads','MT5 软件下载', Box], ['forumModules','论坛展示模块', LayoutDashboard], ['communityCategories','论坛栏目配置', Hash], ['walletSettings','收款钱包', Wallet],
   ];
 
   const navigationGroups = [
     ['运营概览', ['dashboard']],
     ['站点与外观', ['settings','contactLinks','appearance','homeModules','featured','advertising']],
-    ['内容与社区', ['forumModules','communityCategories','communityContent','communityDocs','communityStrategies','reports']],
+    ['内容与社区', ['mt5Downloads','forumModules','communityCategories','communityContent','communityDocs','communityStrategies','reports']],
     ['策略与认证', ['products','licenses']],
     ['交易与收入', ['orders','paymentSettings','walletSettings','withdrawals']],
     ['用户与权限', ['users']],
     ['推广与统计', ['analytics']],
   ];
-  const settingsTabs = ['settings','contactLinks','appearance','homeModules','featured','advertising','forumModules','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
+  const settingsTabs = ['settings','contactLinks','appearance','homeModules','featured','advertising','mt5Downloads','forumModules','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
   return (
     <AdminLocale lang={lang}><div className="editorial-admin-shell min-h-screen bg-[#060c13] text-zinc-300 relative">
       <header className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-3 sm:px-5 backdrop-blur-xl">
@@ -361,6 +362,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
+        {activeTab === 'mt5Downloads' && <Mt5DownloadSettings settings={settings} setSettings={setSettings}/>}
         {activeTab === 'forumModules' && <Panel className="space-y-5 p-5 sm:p-6"><h2 className="text-lg font-bold">论坛首页模块开关</h2><p className="text-sm leading-6 text-slate-500">分别控制论坛讨论列表顶部的两个模块。关闭只隐藏展示，已保存的内容不会删除，文档和策略研究资料仍可访问。更改后点击“保存配置”生效。</p>{[['forumNewsEnabled','市场简报 · 重要新闻','显示管理员配置的新闻摘要与来源链接。'],['forumStrategyOverviewEnabled','策略类型速览','显示可展开的网格、趋势等策略研究摘要。']].map(([key,label,description]) => <div key={key} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-700 p-4"><div><h3 className="text-base font-semibold">{label}</h3><p className="mt-2 text-sm text-slate-500">{description}</p></div><button type="button" role="switch" aria-label={label} aria-checked={settings[key] !== false} onClick={() => setSettings({...settings,[key]:settings[key] === false})} className="forum-module-switch"><span className="forum-switch-track"><span/></span><span>{settings[key] !== false ? '已开启' : '已关闭'}</span></button></div>)}</Panel>}
 
         {['appearance','homeModules'].includes(activeTab) && <AppearanceSettings settings={settings} setSettings={setSettings} products={productList} tab={activeTab}/>}

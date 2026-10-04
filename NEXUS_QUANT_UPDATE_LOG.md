@@ -1475,3 +1475,11 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 服务器Next16.3.8生产构建成功、迁移7/7且无待执行项，quick_check=ok、外键违规0；539条签名审计有效，2条钱包交易账本验证通过。生产运行依赖30包audit报告0漏洞；开发依赖仍提示5项high，不宣称完整依赖无漏洞。切换初次健康轮询短暂连接失败，随后重试ready，发布器最终成功，服务active。
 - 生产浏览器6组通过：首页/论坛×390/1440/1920px，使用实际线上帖子与设置，不拦截业务API、不发布测试文章。验证正确CSS、无整页横向溢出及运行时错误、论坛12条分页/真实总数、搜索无结果与恢复、桌面左右栏、当前设置对应的新闻/速览显示及导航悬停。公开接口分页合同、非法页码400、设置读取、HTTPS健康ready和后台页面资源200通过。后台开关真实保存/权限边界沿用本轮隔离库验收，线上未修改用户配置。截图/结果位于忽略目录.tmp-ui-design/production-forum-*。
 - 使用入口：https://nqstrategy.com 顶部“论坛”；管理员 https://nqstrategy.com/tianwei →内容与社区→论坛展示模块，两个开关独立保存。未配置时默认保持显示，不擅自关闭模块。发布后最终readlink确认cedf45036053、systemctl active、HTTPS健康ready。更新日志同步桌面并验证SHA-256一致。
+
+### 2026-10-04：TMGM MT5 程序包与统一下载入口发布准备
+
+- 用户授权从本机 TMGM MT5 Terminal 整理程序包并上传供用户下载。白名单保留 terminal64.exe、MetaEditor64.exe、metatester64.exe、Terminal.ico、经纪商 Config/servers.dat 与 terminal.lic，附 Start-MT5.cmd（/portable）、中英文说明和原文件 SHA256SUMS。三个程序 Build 6230 的 MetaQuotes 数字签名均有效；不包含账户信息、AppData 数据、个人 EA、历史、日志。此包为已安装客户端整理的 Windows x64 解压运行包，并非官方安装向导；首次启动可能联网初始化/更新。
+- ZIP 125631858 字节（119.8 MiB），9 个白名单文件，CRC 校验通过，原程序复制前后哈希一致；隔离副本可启动并初始化数据目录，未进行账户登录或交易测试。SHA-256：dc2c47cb32c3a69aed891218dfcb4ae6799745623cfa8b13dd4a9af428706053。文件仅位于忽略目录和服务器，不提交 GitHub。
+- 下载地址 https://nqstrategy.com/downloads/tmgm-mt5-windows-x64-build6230.zip，持久保存 /var/www/nexus-downloads，Nginx 独立 alias、禁用列表、attachment/nosniff、支持断点续传。备份旧 Nginx 与 ZIP 到 /var/backups/nexus-quant/download-tmgm-build6230。nginx -t/reload、HTTPS HEAD 200/正确长度、Range 206、目录访问 403、完整公网下载与原 ZIP 哈希一致均通过。
+- 首页 MT5 指南/资料入口、MT5 资料页、帮助中心与页脚共用下载配置。后台“内容与社区→MT5 软件下载”支持开关、下载地址、按钮文字与说明；站内包展示版本/大小/校验值/操作步骤，自定义链接不沿用包校验值。仅管理员可保存，网址限制站内 ZIP 或无账户密码的 HTTPS。缺省使用本次上传包，不修改已有主题或收款配置。
+- 验收：新增下载配置测试通过，完整36个测试脚本通过，修改源码 ESLint 与最终 Next16.3.8 生产构建通过。14组隔离库浏览器/API 场景覆盖两主题×手机/桌面×首页/指南/帮助中心、后台真实保存关闭后全部隐藏、自定义地址和匿名写入403，无整页横向溢出。初轮发现 Field 多子元素导致新增配置页渲染失败，改用 hint 参数后重新构建并通过最终浏览器检查。生产发布与实测结果后续追加；微信/支付宝接入及测试订单删除仍未完成。

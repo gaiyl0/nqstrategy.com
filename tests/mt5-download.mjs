@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { MT5_PACKAGE, resolveMt5Download, isSafeMt5DownloadUrl } from '../lib/mt5-download.js';
+import { settingsSchema } from '../lib/validation.js';
+assert.equal(resolveMt5Download({}).url,MT5_PACKAGE.url);
+assert.equal(resolveMt5Download({mt5DownloadEnabled:false}),null);
+assert.equal(resolveMt5Download({mt5DownloadUrl:''}),null);
+assert.equal(resolveMt5Download({mt5DownloadUrl:'javascript:alert(1)'}),null);
+assert.equal(resolveMt5Download({mt5DownloadUrl:'https://example.com/setup.exe',mt5DownloadLabel:'新程序'}).label,'新程序');
+assert.equal(resolveMt5Download({mt5DownloadUrl:'https://example.com/setup.exe'}).sha256,undefined,'custom source must not reuse local package checksum');
+for(const url of['/downloads/../secret.zip','/downloads/%2e%2e/private.zip','//evil.test/a.zip','http://example.com/a.zip','https://user:pass@example.com/a.zip','/private/eas/a.zip'])assert.equal(isSafeMt5DownloadUrl(url),false,url);
+for(const url of[MT5_PACKAGE.url,'https://example.com/a.exe'])assert.equal(isSafeMt5DownloadUrl(url),true,url);
+assert.equal(settingsSchema.safeParse({mt5DownloadEnabled:false,mt5DownloadUrl:MT5_PACKAGE.url,mt5DownloadLabel:'下载',mt5DownloadDescription:'说明'}).success,true);
+assert.equal(settingsSchema.safeParse({mt5DownloadEnabled:'false'}).success,false);
+assert.equal(settingsSchema.safeParse({mt5DownloadUrl:'javascript:alert(1)'}).success,false);
+assert.equal(settingsSchema.safeParse({mt5DownloadLabel:'x'.repeat(81)}).success,false);
+console.log('MT5 download tests passed: defaults, disabled/empty links, custom metadata, URL boundaries and settings schema');
