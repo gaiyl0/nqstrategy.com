@@ -1483,3 +1483,10 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 下载地址 https://nqstrategy.com/downloads/tmgm-mt5-windows-x64-build6230.zip，持久保存 /var/www/nexus-downloads，Nginx 独立 alias、禁用列表、attachment/nosniff、支持断点续传。备份旧 Nginx 与 ZIP 到 /var/backups/nexus-quant/download-tmgm-build6230。nginx -t/reload、HTTPS HEAD 200/正确长度、Range 206、目录访问 403、完整公网下载与原 ZIP 哈希一致均通过。
 - 首页 MT5 指南/资料入口、MT5 资料页、帮助中心与页脚共用下载配置。后台“内容与社区→MT5 软件下载”支持开关、下载地址、按钮文字与说明；站内包展示版本/大小/校验值/操作步骤，自定义链接不沿用包校验值。仅管理员可保存，网址限制站内 ZIP 或无账户密码的 HTTPS。缺省使用本次上传包，不修改已有主题或收款配置。
 - 验收：新增下载配置测试通过，完整36个测试脚本通过，修改源码 ESLint 与最终 Next16.3.8 生产构建通过。14组隔离库浏览器/API 场景覆盖两主题×手机/桌面×首页/指南/帮助中心、后台真实保存关闭后全部隐藏、自定义地址和匿名写入403，无整页横向溢出。初轮发现 Field 多子元素导致新增配置页渲染失败，改用 hint 参数后重新构建并通过最终浏览器检查。生产发布与实测结果后续追加；微信/支付宝接入及测试订单删除仍未完成。
+
+### 2026-10-04：TMGM MT5 下载更新已上线并完成生产验收
+
+- 发布提交 ea32ceb166f27ca3cccec04f18638c7cb543c35d 推送 GitHub main，服务器 current=/opt/nexus-quant/releases/ea32ceb166f2，服务 active、HTTPS 健康 ready；上一版本 cedf45036053 保留回滚。预发布数据库/上传/运行配置备份 /var/backups/nexus-quant/predeploy-ea32ceb166f2，下载包与 Nginx 单独备份 download-tmgm-build6230，不依赖代码 release。
+- 服务器生产构建成功，迁移7/7无待执行、quick_check=ok、外键违规0；554条签名审计与2条钱包交易账本验证通过。生产运行依赖30包 audit 0漏洞，开发依赖仍报告5项high，不宣称全部依赖无漏洞。切换初次健康轮询连接失败后自动重试成功，发布器最终 ready。
+- 生产6组浏览器检查通过：首页、MT5指南、帮助中心×390/1440px，真实线上接口与当前主题，全部主内容/页脚下载链接正确，无整页横向溢出或浏览器运行时错误，指南校验值与文件一致；已目视检查手机指南下载模块排版。公网 HEAD200/文件长度125631858/attachment、Range206/32字节、校验文本200、目录403复验通过；服务器最终ZIP SHA-256与本机一致。完整公网ZIP下载哈希验收已在发布前完成，页面发布未替换文件。线上未更改用户已有配置、策略或订单。
+- 用户入口：首页 MT5 使用指南中的下载按钮，https://nqstrategy.com/ea-strategies 下载与启动 MT5，帮助中心及页脚；管理员后台→内容与社区→MT5软件下载，保存开关/URL/按钮文字/说明。Windows x64需完整解压可写目录后运行 Start-MT5.cmd。日志同步桌面，哈希一致；支付接入/测试订单删除保持待完成状态。
