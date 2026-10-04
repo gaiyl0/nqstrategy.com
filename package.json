@@ -24,6 +24,7 @@
     "test:licensing": "node tests/licensing.mjs",
     "test:strategy-comparison": "node tests/strategy-comparison.mjs",
     "test:social": "node tests/social.mjs",
+    "test:forum-catalog": "node tests/forum-catalog.mjs",
     "test:market-catalog": "node tests/market-catalog.mjs",
     "test:content-moderation": "node tests/content-moderation.mjs",
     "test:payment-config": "node tests/payment-config.mjs",

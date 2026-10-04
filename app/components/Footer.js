@@ -42,7 +42,7 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
           <FooterGroup title={t('平台生态', 'Ecosystem')}>
             <ul className="space-y-2 text-sm text-zinc-400">
               <li><button onClick={() => setRoute('market')} className="hover:text-cyan-400 transition-colors">{t('EA 策略市场', 'EA Strategy Market')}</button></li>
-              <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('极客开发者社区', 'Geek Developer Community')}</button></li>
+              <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('量化策略论坛', 'Quant Forum')}</button></li>
               <li><span>{t('机构版 API 接入', 'Institutional API Access')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
               <li><span>{t('MQL5 深度学习实验室', 'MQL5 Deep Learning Lab')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
             </ul>

@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nexus-forum-test-'));
+process.env.NEXUS_DB_PATH=path.join(directory,'test.db');
+const {default:db}=await import('../lib/db.js');
+const {listForumPosts}=await import('../lib/forum-catalog.js');
+const {forumListQuerySchema,settingsSchema}=await import('../lib/validation.js');
+let assertions=0;const eq=(actual,expected,message)=>{assert.deepEqual(actual,expected,message);assertions++;};
+try {
+ db.prepare('DELETE FROM posts').run();
+ const insert=db.prepare("INSERT INTO posts(title,content,author,category,created_at,views,is_pinned,moderation_status) VALUES(?,?,? ,?,'2026-10-01',?,?,?)");
+ const ids=[];
+ for(let i=1;i<=25;i++)ids.push(Number(insert.run(`讨论 ${i}`,i===1?'独有搜索内容 100% _tag \\path':'研究风险',i===2?'独有作者':'研究作者',i%2?'XAUUSD 策略':'MQL5 开发',i,i===1?1:0,'visible').lastInsertRowid));
+ insert.run('隐藏搜索内容','独有搜索内容','隐藏作者','XAUUSD 策略',10000,1,'hidden');
+ const first=listForumPosts({}),second=listForumPosts({page:2}),last=listForumPosts({page:3});
+ eq(first.pagination,{page:1,pageSize:12,total:25,totalPages:3},'server count and limit');eq(first.posts.length,12,'first page');eq(second.posts.length,12,'second page');eq(last.posts.length,1,'last page remainder');
+ eq(new Set([...first.posts,...second.posts,...last.posts].map(p=>p.id)).size,25,'no omissions or duplicate pages');eq(first.posts[0].id,ids[0],'pinned first');eq(first.posts[1].id,ids[24],'stable id tie breaker');eq(listForumPosts({page:99}).pagination.page,3,'out of bounds clamps');
+ eq(listForumPosts({q:'独有搜索内容'}).posts.map(p=>p.id),[ids[0]],'content search and hidden excluded');eq(listForumPosts({q:'独有作者'}).posts.map(p=>p.id),[ids[1]],'search finds author outside first page');
+ for(const q of ['100%','_tag','\\path'])eq(listForumPosts({q}).pagination.total,1,'literal LIKE metacharacter '+q);
+ eq(listForumPosts({category:'XAUUSD 策略'}).pagination.total,13,'category count');eq(listForumPosts({q:'没有结果'}).pagination,{page:1,pageSize:12,total:0,totalPages:1},'empty state');
+ db.prepare("INSERT INTO comments(post_id,author,content,moderation_status) VALUES(?,'reader','valid','visible')").run(ids[1]);
+ db.prepare("INSERT INTO comments(post_id,author,content,moderation_status) VALUES(?,'reader','hidden','hidden')").run(ids[1]);
+ eq(listForumPosts({sort:'discussed'}).posts[1].id,ids[1],'most discussed sorting');eq(listForumPosts({q:'独有作者'}).posts[0].comment_count,1,'hidden replies not counted');eq(listForumPosts({sort:'hot'}).posts[1].id,ids[24],'popular sorting');
+ for(const input of [{page:0},{page:1.5},{page:'bad'},{pageSize:37},{q:'x'.repeat(201)}])eq(forumListQuerySchema.safeParse(input).success,false,'invalid query rejected');
+ eq(forumListQuerySchema.parse({}),{page:1,pageSize:12,q:''},'defaults');
+ eq(settingsSchema.safeParse({forumNewsEnabled:false,forumStrategyOverviewEnabled:true}).success,true,'module booleans accepted');eq(settingsSchema.safeParse({forumNewsEnabled:'false'}).success,false,'string toggles rejected');
+ console.log(`Forum catalog tests passed: ${assertions} assertions`);
+} finally {db.close();fs.rmSync(directory,{recursive:true,force:true});}

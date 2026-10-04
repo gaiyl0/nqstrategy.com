@@ -5,7 +5,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
   const mobileItems = [
     ['home', t('首页', 'Home'), Home, () => setRoute('home')],
     ['market', t('市场', 'Market'), Store, () => setRoute('market')],
-    ['forum', t('社区', 'Community'), MessageSquare, () => { setRoute('forum'); setForumView('list'); }],
+    ['forum', t('论坛', 'Forum'), MessageSquare, () => { setRoute('forum'); setForumView('list'); }],
     ['profile', t('我的', 'Profile'), UserIcon, () => user ? setRoute('profile') : setAuthModal('login')],
   ];
   return <>
@@ -15,11 +15,11 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
       <div className="w-8 h-8 shrink-0 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)]"><Activity className="text-zinc-950 w-5 h-5" /></div>
       <span title={siteSettings?.siteName || 'Nexus Quant'} className="truncate font-extrabold text-base tracking-tight text-white sm:text-xl">{siteSettings?.siteName || 'Nexus Quant'}</span>
     </button>
-    <nav className="hidden lg:flex items-center space-x-8 text-sm font-medium">
-      <button onClick={() => setRoute('home')} className={`transition-colors ${route === 'home' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('首页概览', 'Dashboard')}</button>
-      <button onClick={() => setRoute('market')} className={`transition-colors ${route === 'market' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('策略市场', 'EA Market')}</button>
-      <button onClick={() => { setRoute('forum'); setForumView('list'); }} className={`transition-colors ${route === 'forum' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('开发者社区', 'Community')}</button>
-      <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('profile'); }} className={`transition-colors ${route === 'profile' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('个人中心', 'Profile')}</button>
+    <nav className="nq-primary-nav hidden lg:flex items-center gap-2 text-sm font-medium">
+      <button onClick={() => setRoute('home')} aria-current={route === 'home' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'home' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('首页概览', 'Dashboard')}</button>
+      <button onClick={() => setRoute('market')} aria-current={route === 'market' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'market' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('策略市场', 'EA Market')}</button>
+      <button onClick={() => { setRoute('forum'); setForumView('list'); }} aria-current={route === 'forum' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'forum' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('论坛', 'Forum')}</button>
+      <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('profile'); }} aria-current={route === 'profile' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'profile' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('个人中心', 'Profile')}</button>
       {user?.role === 'admin' && (<a href="/tianwei" target="_blank" rel="noopener noreferrer" className="rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-400 hover:bg-amber-500/20">{t('后台管理', 'Admin Panel')}</a>)}
     </nav>
     <div className="relative flex shrink-0 items-center gap-2 sm:gap-4">

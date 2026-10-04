@@ -48,12 +48,12 @@ for (const landmark of ['ProfileNav', 'AssetTable', 'Licenses', 'BindingDrawer',
 assert.match(profile, /Trading passwords and exchange API secrets are not accepted/, 'profile binding drawer must disclose the credential boundary');
 assert.doesNotMatch(profile, /placeholder=["'](?:API Key|API Secret)/, 'profile must not collect exchange API credentials');
 assert.doesNotMatch(profile, /Math\.random/, 'profile must not generate synthetic portfolio data');
-for (const landmark of ['ForumNavigation', 'CommunityHero', 'PostCard', 'CommunityAside', 'Current result set']) {
+for (const landmark of ['ForumNavigation', 'CommunityHero', 'PostCard', 'CommunityAside', 'This page']) {
   assert.match(forum, new RegExp(landmark), `community visual composition is missing ${landmark}`);
 }
 assert.match(forum, /post\.views/, 'community view totals must come from post data');
 assert.match(forum, /post\.comment_count/, 'community reply totals must come from post data');
-assert.match(forum, /Statistics cover only the currently loaded and filtered results/, 'community statistics must disclose their scope');
+assert.match(forum, /Authors, views and replies cover this page only/, 'community statistics must disclose their scope');
 for (const source of [
   'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm',
   'https://www.bls.gov/news.release/archives/cpi_09112026.htm',

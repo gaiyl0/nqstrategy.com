@@ -156,7 +156,14 @@ export default function App() {
   const [versionFile,setVersionFile]=useState(null);
   const [isVersionSubmitting,setIsVersionSubmitting]=useState(false);
 
+  const [homeForumPosts, setHomeForumPosts] = useState([]);
+  const [homeForumTotal, setHomeForumTotal] = useState(0);
   const [forumPosts, setForumPosts] = useState([]);
+  const [forumPagination, setForumPagination] = useState({ page: 1, pageSize: 12, total: 0, totalPages: 1 });
+  const [forumQuery, setForumQuery] = useState('');
+  const [forumLoading, setForumLoading] = useState(false);
+  const [forumError, setForumError] = useState('');
+  const forumRequest = useRef(0);
   const [forumSort, setForumSort] = useState('latest');
   const [activeCategory, setActiveCategory] = useState('全部');
   const [forumView, setForumView] = useState('list'); 
@@ -243,7 +250,7 @@ export default function App() {
       if (avatarFile) avatar_url = await handleFileUpload(avatarFile);
       const res = await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password, ...(profileForm.password?{currentPassword:profileForm.currentPassword}:{}) }) });
       const data = await res.json();
-      if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(); fetchMyOrders(); } else showToast('❌ ' + data.message);
+      if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); fetchMyOrders(); } else showToast('❌ ' + data.message);
     } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('资料更新失败', 'Profile update failed'))}`); }
     finally { setIsProfileUpdating(false); }
   };
@@ -262,7 +269,17 @@ export default function App() {
   };
 
   const fetchProducts = () => { apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
-  const fetchForumPosts = (cat = '全部', sort = forumSort) => { apiFetch(`/api/posts?category=${encodeURIComponent(cat)}&sort=${sort}`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); }); };
+  const fetchForumPosts = useCallback(async (cat = '全部', sort = 'latest', page = 1, query = '') => {
+    const requestId = ++forumRequest.current; setForumLoading(true); setForumError('');
+    try {
+      const data = await (await apiFetch(`/api/posts?${new URLSearchParams({ category: cat, sort, page: String(page), pageSize: '12', q: query })}`, { cache: 'no-store' })).json();
+      if (requestId !== forumRequest.current) return;
+      if (!data.success) throw new Error(data.message || '读取帖子失败');
+      if (cat === '全部' && sort === 'latest' && page === 1 && !query) { setHomeForumPosts(data.posts); setHomeForumTotal(data.pagination?.total ?? data.posts.length); }
+      setForumPosts(data.posts); setForumPagination(data.pagination || { page: 1, pageSize: 12, total: data.posts.length, totalPages: 1 });
+    } catch (error) { if (requestId === forumRequest.current) { setForumPosts([]); setForumError(apiErrorMessage(error)); } }
+    finally { if (requestId === forumRequest.current) setForumLoading(false); }
+  }, []);
   const fetchMyOrders = async () => { if (user) { try { const res = await apiFetch(`/api/orders`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (error) { showToast(`❌ ${apiErrorMessage(error)}`); } } };
   const fetchMyLicenses=async()=>{if(user){try{const response=await apiFetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
   const fetchMySocial=async()=>{if(user){try{const response=await apiFetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
@@ -274,9 +291,9 @@ export default function App() {
       .catch(() => setUser(null))
       .finally(() => setAuthReady(true));
     apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => setSiteSettings(data));
-    apiFetch(`/api/posts?category=${encodeURIComponent('全部')}&sort=latest`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setForumPosts(data.posts); });
+    fetchForumPosts('全部', 'latest', 1, '');
     apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); });
-  }, []);
+  }, [fetchForumPosts]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -426,7 +443,7 @@ export default function App() {
       const response = await apiFetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, attachments: (newPost.attachments || []).map(file => file.id), category: newPost.category || categories[1] }) });
       const result = await response.json();
       if (!response.ok || !result.success) { showToast(result.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
-      showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory); setNewPost({ title: '', category: categories[1], content: '', attachments: [] }); return true;
+      showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory, forumSort, 1, forumQuery); setNewPost({ title: '', category: categories[1], content: '', attachments: [] }); return true;
     } catch (error) { showToast(error?.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
   };
 
@@ -453,9 +470,9 @@ export default function App() {
     setIsCommenting(false);
   };
 
-  const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!await confirmAction({title:t('永久删除帖子','Delete post permanently'),noticeTitle:t('帖子和关联讨论将受到影响','The post and related discussion will be affected'),notice:t('删除后普通用户将无法继续查看该帖子。','Users will no longer be able to view this post after deletion.'),confirmLabel:t('删除帖子','Delete post')})) return; await apiFetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory); };
+  const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!await confirmAction({title:t('永久删除帖子','Delete post permanently'),noticeTitle:t('帖子和关联讨论将受到影响','The post and related discussion will be affected'),notice:t('删除后普通用户将无法继续查看该帖子。','Users will no longer be able to view this post after deletion.'),confirmLabel:t('删除帖子','Delete post')})) return; await apiFetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); };
   const handleDeleteComment = async (id) => { if(!await confirmAction({title:t('删除评论','Delete comment'),noticeTitle:t('确认管理操作','Confirm moderation action'),notice:t('这条评论将从当前讨论中移除。','This comment will be removed from the discussion.'),confirmLabel:t('删除评论','Delete comment')})) return; await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
-  const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await apiFetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory); };
+  const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await apiFetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); };
   const handlePinComment = async (id, is_pinned) => { await apiFetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
   const handleReport = async (targetType, targetId) => {
     if (!user) return setAuthModal('login');
@@ -478,11 +495,11 @@ export default function App() {
       <AppHeader {...{ router, siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }} />
 
       <main className={`relative w-full flex-grow ${route === 'forum' && forumView === 'create' ? 'z-20' : 'z-10'}`}>
-        {route === 'home' && design === 'editorial' && <EditorialHome {...{ setRoute, siteSettings, products, forumPosts, user, setAuthModal, openPostDetail, t }} />}
-        {route === 'home' && design === 'classic' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={forumPosts} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
+        {route === 'home' && design === 'editorial' && <EditorialHome {...{ setRoute, siteSettings, products, forumPosts: homeForumPosts, user, setAuthModal, openPostDetail, t }} />}
+        {route === 'home' && design === 'classic' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={products} forumPosts={homeForumPosts} forumTotal={homeForumTotal} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handleStartTrial={handleStartTrial} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
-        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent }} />}
+        {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
         {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
         {route === 'assets' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
       </main>

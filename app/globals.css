@@ -507,3 +507,18 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 .admin-content button { min-height:40px; }
 .admin-content :is(input:not([type="checkbox"]):not([type="radio"]),select) { min-height:40px; }
 @media(max-width:767px) { .admin-content button,.footer-group ul :is(a,button) { min-height:44px; } }
+
+/* Primary navigation feedback independent of theme surface overrides. */
+header.sticky .nq-primary-nav .nq-nav-item{position:relative;min-height:44px;padding:10px 12px;border-radius:8px;color:#bed0df;background:transparent;transition:background-color .15s,color .15s;white-space:nowrap}
+header.sticky .nq-primary-nav .nq-nav-item:hover{background:#20b3ad24;color:#8cfff0}
+header.sticky .nq-primary-nav .nq-nav-item[aria-current=page]{color:#75f2e4;background:#20b3ad16}
+header.sticky .nq-primary-nav .nq-nav-item[aria-current=page]::after{content:'';position:absolute;height:2px;bottom:3px;left:12px;right:12px;background:#2bc9b9;border-radius:2px}
+header.sticky .nq-primary-nav :is(button,a):focus-visible{outline:2px solid #68e6d5;outline-offset:3px}
+
+header.sticky .nq-primary-nav .nq-nav-item[aria-current=page]:hover{background:#20b3ad30;color:#a0fff3}
+
+/* Admin forum switches must load independently of the public forum bundle. */
+.forum-module-switch{display:inline-flex;min-height:44px;gap:12px;align-items:center;padding:8px;font-size:14px;font-weight:600;border-radius:8px}.forum-switch-track{display:block;width:44px;height:24px;background:#64748b;border-radius:999px;padding:3px}.forum-switch-track>span{display:block;width:18px;height:18px;background:white;border-radius:50%;transition:transform .15s}.forum-module-switch[aria-checked=true] .forum-switch-track{background:#0c948c}.forum-module-switch[aria-checked=true] .forum-switch-track>span{transform:translateX(20px)}.forum-module-switch:hover{background:#0c948c18}.forum-module-switch:focus-visible{outline:2px solid #20b3ad;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.forum-switch-track>span{transition:none}}
+
+.admin-content .forum-module-switch{min-height:44px}
