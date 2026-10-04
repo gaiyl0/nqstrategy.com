@@ -10,7 +10,11 @@ const walk = (directory) => fs.readdirSync(directory, { withFileTypes: true }).f
 });
 
 const appFiles = walk(path.join(root, 'app')).filter((file) => /\.(?:js|jsx|ts|tsx)$/.test(file));
-const appSource = appFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+const socialImagePath = path.join(root,'app','components','SocialImage.js');
+const appSource = appFiles.filter(file=>file!==socialImagePath).map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+const socialImageSource = fs.readFileSync(socialImagePath,'utf8');
+assert.match(socialImageSource,/from 'next\/og'/,'the raw image exception is only for server-side ImageResponse rendering');
+assert.doesNotMatch(socialImageSource,/['"]use client['"]/,'share image renderer must never become a browser component');
 const overlays = read('app/components/AppOverlays.js');
 const detail = read('app/components/StrategyDetail.js');
 const market = read('app/components/MarketView.js') + detail;

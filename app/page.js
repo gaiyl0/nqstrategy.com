@@ -449,12 +449,12 @@ export default function App() {
 
   const openPostDetail = useCallback(async (post) => {
     const request = ++postDetailRequest.current;
-    setRoute('forum'); setSelectedPost(post); setForumView('detail'); setComments([]);
+    setRoute('forum'); setSelectedPost(post.title ? post : null); setForumView(post.title ? 'detail' : 'list'); setComments([]);
     try {
       const responses = await Promise.all([apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' }), apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' })]);
       const [detail, replies] = await Promise.all(responses.map(response => response.json()));
       if (request !== postDetailRequest.current) return;
-      if (detail.success && detail.post) setSelectedPost(detail.post);
+      if (detail.success && detail.post) { setSelectedPost(detail.post); setForumView('detail'); }
       if (replies.success) setComments(replies.comments);
     } catch (error) { if (request === postDetailRequest.current) showToast(apiErrorMessage(error)); }
   }, [setRoute, showToast]);

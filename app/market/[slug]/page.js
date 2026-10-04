@@ -6,6 +6,7 @@ import {getPublicProductBySlug} from '@/lib/public-product';
 import PublicProductDetail from './PublicProductDetail';
 import TopicPageFrame from '@/app/components/TopicPageFrame';
 import {publicSiteSettings} from '@/lib/topic-pages';
+import {shareMetadata} from '@/lib/share-content.mjs';
 
 export const dynamic='force-dynamic';
 
@@ -16,7 +17,7 @@ export async function generateMetadata({params}){
   const product=getPublicProductBySlug(slug);
   if(!product)return {title:'策略不存在 | Nexus Quant',robots:{index:false,follow:false}};
   const path=`/market/${product.slug}`;
-  return {title:`${product.title} | Nexus Quant`,description:description(product),alternates:{canonical:path},openGraph:{type:'website',title:product.title,description:description(product),url:path,images:product.logo_url?[{url:product.logo_url,alt:product.title}]:[]},twitter:{card:product.logo_url?'summary_large_image':'summary',title:product.title,description:description(product),images:product.logo_url?[product.logo_url]:[]}};
+  return shareMetadata({title:product.title,description:description(product),path,image:`/api/share-image?type=strategy&id=${encodeURIComponent(product.slug)}`});
 }
 
 export default async function ProductPage({params}){

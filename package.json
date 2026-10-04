@@ -55,7 +55,8 @@
     "backup:restore": "node scripts/backup-maintenance.mjs restore",
     "backup:drill": "node scripts/backup-maintenance.mjs drill",
     "deploy:production": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
-    "test:production-deployment": "node tests/production-deployment.mjs"
+    "test:production-deployment": "node tests/production-deployment.mjs",
+    "test:share-pages": "node tests/share-pages.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

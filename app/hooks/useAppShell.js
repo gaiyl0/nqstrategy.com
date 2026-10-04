@@ -77,8 +77,8 @@ export function useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal,
   useEffect(() => {
     if (route !== 'forum') return;
     const id = new URLSearchParams(window.location.search).get('post');
-    const post = forumPosts.find(item => String(item.id) === id);
-    if (!post || openedPost.current === id) return;
+    if (!id || !/^[1-9]\d*$/.test(id) || openedPost.current === id) return;
+    const post = forumPosts.find(item => String(item.id) === id) || { id: Number(id) };
     const frame = requestAnimationFrame(() => { openedPost.current = id; void openPostDetail(post); });
     return () => cancelAnimationFrame(frame);
   }, [route, forumPosts, openPostDetail]);
