@@ -1509,3 +1509,10 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 
 - 首次发布 eb4d4eafa2701e5721ee51b39fafe8abb2947f9e 成功，current=eb4d4eafa270，服务ready；备份predeploy-eb4d4eafa270，迁移/审计/账本通过。公网验收先遇到本机Cloudflare LAX链路完整响应超时，服务器侧同一文章封面200、876437字节、约0.30秒；通过已有SSH代理复验后发现实际中文策略路由404，英文策略及其X/Telegram元数据200。
 - 本地复现并定位路由参数仍为百分号编码，原public-product只接受已解码slug。增加单次URI解码与原有Unicode slug校验，长度限制1152，拒绝错误编码、路径分隔符及双重编码；不改变数据库slug。隔离库中文原文/编码链接都从404恢复200。新增8项边界断言后分享测试35项及原slug9项通过，ESLint和生产构建通过；再次验证分享布局/封面与权限边界后发布修正版本，最终线上结果后续记录。
+
+### 2026-10-04：策略与论坛文章分享已正式上线并完成验收
+
+- 最终运行提交 c26b60a123105ba7951a2533e2e27c343bdf5a37 已推送GitHub main，current=/opt/nexus-quant/releases/c26b60a12310，服务active、HTTPS健康ready。修正版备份 /var/backups/nexus-quant/predeploy-c26b60a12310，前一版本eb4d4eafa270及更新前ea32ceb166f2可恢复。生产构建成功、迁移7/7无待执行、quick_check=ok、外键违规0，565条签名审计及2条钱包交易账本验证通过。生产30包audit0漏洞，开发依赖仍5项high；启动切换初次连接失败自动重试后ready。
+- 最终生产6组真实页面验收通过：TianWei_V1.46、中文手动控制面板无报告策略、黄金回撤文章×390/1440px。当前真实主题/数据，无整页横向溢出、CSS失败或运行时错误；X/Telegram按钮参数正确，复制链接可用，有报告展示真实摘要，无报告不展示指标，文章目录及正文可读。实际站内中文链接已恢复200。
+- 三张真实1200×630 PNG封面200且可完整读取；X Twitterbot与TelegramBot对三页共6组抓取均200，title、canonical、大图metadata正确。缺失文章/封面404、robots公开封面允许例外/API禁抓规则、文章sitemap、健康ready通过。对真实文章分享封面和手机页面进行目视检查。未登录社交账号、未发送帖子或群消息，平台缓存及最终卡片样式由平台决定；生产浏览器使用验收Bot UA，未发布测试内容或修改用户配置/策略/订单。
+- 可用链接：https://nqstrategy.com/market/tianwei-v1-46-18；https://nqstrategy.com/forum/11。策略和论坛详情上/下方均提供分享到X、分享到Telegram、复制链接、更多分享；公开文章自动获得 /forum/{id} 独立链接。最终隔离库11场景与中文原文/编码链接200复验通过，原37测试脚本通过，随后新增解码边界使分享断言增至35，slug9项及最终ESLint/构建通过。截图/JSON保存在忽略目录.tmp-ui-design/production-sharing-*和production-share-*，本地夹具文章/策略/报告已移除，未影响真实本地库。日志同步桌面并验证哈希一致，支付接入及测试订单删除仍待完成。
