@@ -3,12 +3,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {articleSummary,articleHeadings,shareLinks,shareMetadata} from '../lib/share-content.mjs';
+import {decodeProductSlug} from '../lib/product-slug.mjs';
 const directory=fs.mkdtempSync(path.join(os.tmpdir(),'nexus-share-test-'));
 process.env.NEXUS_DB_PATH=path.join(directory,'test.db');
 const {default:db}=await import('../lib/db.js');
 const {getPublicPost}=await import('../lib/public-post.js');
 let count=0;const eq=(a,b)=>{assert.deepEqual(a,b);count++};
 try {
+  eq(decodeProductSlug(encodeURIComponent('手动控制面板-21')),'手动控制面板-21');
+  eq(decodeProductSlug('手动控制面板-21'),'手动控制面板-21');
+  for(const invalid of ['%ZZ','%2Fetc','%252Fetc','../private',null,'a'.repeat(1200)])eq(decodeProductSlug(invalid),null);
   eq(articleSummary('## 黄金\n\n**回撤** ![图片](/api/post-attachments?id=1)\n[资料](https://example.com)'),'黄金 回撤 资料');
   eq(articleSummary('a'.repeat(200)).length,160);
   eq(articleSummary('研究摘要\n<script>alert(1)</script>'),'研究摘要');
