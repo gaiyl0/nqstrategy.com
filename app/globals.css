@@ -460,6 +460,21 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-ui="button"][data-variant="primary"] { min-height:44px; }
 [data-ui="button"][data-size="icon"] { min-width:44px; min-height:44px; }
 .footer-group { min-width:0; }
+.editorial-footer .footer-contact-links { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:24px; }
+.editorial-footer .footer-contact-link { display:inline-flex; align-items:center; gap:8px; min-height:44px; max-width:100%; padding:10px 13px; border:1px solid #345064; border-radius:10px; background:#10253880; color:#d5e5ef; font-size:14px; line-height:1.5; transition:background-color .15s,border-color .15s; }
+.editorial-footer .footer-contact-link svg { flex-shrink:0; color:inherit; }
+.editorial-footer .footer-contact-link span { color:inherit; }
+.editorial-footer .footer-contact-email span { overflow-wrap:anywhere; min-width:0; }
+.editorial-footer .footer-contact-link:hover { background:#143b48; border-color:#39b9b0; color:#99f1e4; }
+.editorial-footer .footer-link-list { display:grid; gap:4px; margin:0; padding:0; list-style:none; }
+.editorial-footer .footer-link-list > li > :is(a,button,span) { display:flex; align-items:center; gap:8px; min-height:44px; padding:8px 0; line-height:1.5; }
+.editorial-footer .footer-link-list > li > span { flex-wrap:wrap; }
+.editorial-footer .footer-link-list .footer-coming-soon { flex-shrink:0; margin:0; }
+.editorial-footer .footer-link-list svg { width:16px; height:16px; flex-shrink:0; }
+.editorial-footer .footer-link-list :is(a,button):hover { color:#99f1e4; }
+.editorial-footer .footer-link-list :is(a,button):hover svg { color:inherit; }
+.editorial-footer .footer-link-list .mt5-download-link { justify-content:flex-start; min-height:44px; padding:8px 0; color:#c3d4e0; background:transparent; border:0; border-radius:0; font-weight:400; }
+.editorial-footer .footer-link-list .mt5-download-link:hover { color:#99f1e4; background:transparent; }
 .footer-group > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; list-style:none; font-weight:700; color:#f1f5f9; margin-bottom:12px; }
 .footer-group summary::-webkit-details-marker,.footer-mobile-risk summary::-webkit-details-marker { display:none; }
 .footer-group ul :is(a,button) { display:flex; min-height:40px; align-items:center; }

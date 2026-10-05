@@ -21,7 +21,11 @@ function SocialLinks({ siteSettings, t }) {
     ['socialXUrl', 'X', <svg key="x" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-5-7.6L5.2 22H2l7.4-8.5L.8 2h6.5l4.6 7zM17.9 20h1.7L6.4 4H4.6z" /></svg>],
     ['telegramGroupUrl', t('Telegram 群组', 'Telegram group'), <Send key="telegram" className="h-4 w-4" aria-hidden="true" />],
   ];
-  return <div className="mt-5 flex flex-wrap gap-3">{links.filter(([key]) => siteSettings?.[key]).map(([key, label, icon]) => <a key={key} href={siteSettings[key]} target="_blank" rel="noopener noreferrer" aria-label={label} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-zinc-700 px-3 text-sm text-zinc-300 hover:text-cyan-400">{icon}<span>{label}</span></a>)}</div>;
+  const email = siteSettings?.contactEmail || 'admin@nexusquant.com';
+  return <nav className="footer-contact-links" aria-label={t('社交与联系', 'Social & contact')}>
+    {links.filter(([key]) => siteSettings?.[key]).map(([key, label, icon]) => <a key={key} href={siteSettings[key]} target="_blank" rel="noopener noreferrer" aria-label={label} className="footer-contact-link">{icon}<span>{label}</span></a>)}
+    <a href={`mailto:${email}`} className="footer-contact-link footer-contact-email"><Mail className="h-4 w-4" aria-hidden="true"/><span>{email}</span></a>
+  </nav>;
 }
 
 export default function Footer({ siteSettings, setRoute, setForumView, t }) {
@@ -41,7 +45,7 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
             <SocialLinks siteSettings={siteSettings} t={t} />
           </div>
           <FooterGroup title={t('平台生态', 'Ecosystem')}>
-            <ul className="space-y-2 text-sm text-zinc-400">
+            <ul className="footer-link-list text-sm text-zinc-400">
               <li><button onClick={() => setRoute('market')} className="hover:text-cyan-400 transition-colors">{t('EA 策略市场', 'EA Strategy Market')}</button></li>
               <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('量化策略论坛', 'Quant Forum')}</button></li>
               <li><span>{t('机构版 API 接入', 'Institutional API Access')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
@@ -49,13 +53,12 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
             </ul>
           </FooterGroup>
           <FooterGroup title={t('支持与服务', 'Support & Services')}>
-            <ul className="space-y-2 text-sm text-zinc-400">
-              <li><a href={`mailto:${siteSettings?.contactEmail || 'admin@nexusquant.com'}`} className="flex items-center gap-2 break-all hover:text-cyan-400"><Mail className="h-4 w-4 shrink-0" />{siteSettings?.contactEmail || 'admin@nexusquant.com'}</a></li>
-              <li><Mt5DownloadLink settings={siteSettings} t={t}/></li>
+            <ul className="footer-link-list text-sm text-zinc-400">
               <li><Link href="/help" className="flex items-center gap-2 hover:text-cyan-400"><CircleHelp className="h-4 w-4 shrink-0" />{t('帮助中心', 'Help Center')}</Link></li>
               <li><Link href="/privacy" className="flex items-center gap-2 hover:text-cyan-400"><FileText className="h-4 w-4 shrink-0" />{t('隐私政策说明', 'Privacy information')}</Link></li>
               <li><Link href="/terms" className="flex items-center gap-2 hover:text-cyan-400"><Shield className="h-4 w-4 shrink-0" />{t('服务条款说明', 'Service terms information')}</Link></li>
               <li><Link href="/risk-disclosure" className="flex items-center gap-2 hover:text-cyan-400"><Lock className="h-4 w-4 shrink-0" />{t('资金安全与风险披露', 'Funds Security & Risk Disclosure')}</Link></li>
+              <li><Mt5DownloadLink settings={siteSettings} t={t}/></li>
             </ul>
           </FooterGroup>
         </div>
