@@ -56,6 +56,7 @@ export function useAppRoute() {
       if (newRoute !== 'market') MARKET_QUERY_KEYS.forEach((key) => params.delete(key));
       const query = params.toString();
       window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+      window.dispatchEvent(new Event('nexus-route-change'));
     }
   }, []);
 

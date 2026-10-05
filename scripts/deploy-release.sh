@@ -54,9 +54,10 @@ tar --extract --gzip --file "$archive" --directory "$release_dir" --no-same-owne
 chown -R nexus:nexus "$release_dir"
 
 run_as_nexus "npm ci --include=dev"
-# 构建在隔离发布目录中完成；迁移仍在备份后、停服窗口内执行。
-# Next 会在构建时加载路由模块，明确允许待迁移状态，避免构建提前触碰生产数据库。
-run_as_nexus "NEXUS_AUTO_MIGRATE=1 DEPLOYMENT_VERSION='$release_id' npm run build"
+# Next loads database modules during build. Use a separate database so schema
+# changes cannot run against the live database before its backup is captured.
+run_as_nexus "NEXUS_DB_PATH='$release_dir/.build-data.db' NEXUS_AUTO_MIGRATE=1 DEPLOYMENT_VERSION='$release_id' npm run build"
+rm -f "$release_dir/.build-data.db" "$release_dir/.build-data.db-wal" "$release_dir/.build-data.db-shm"
 run_as_nexus "npm prune --omit=dev"
 
 if [[ -d "$runtime_root/public/uploads" ]]; then
@@ -71,7 +72,12 @@ chown -h nexus:nexus "$release_dir/storage"
 
 run_as_nexus "npm run db:migrate -- status"
 if [[ -e "$backup_dir" ]]; then echo "Backup destination already exists: $backup_dir" >&2; exit 4; fi
-run_as_nexus "npm run backup:create -- '$backup_dir'"
+if [[ -n "$old_release" && -d "$old_release" ]]; then
+  # The previous release validates its own schema, including before an upgrade.
+  runuser -u nexus -- bash -c "set -a; source '$environment_file'; set +a; cd '$old_release'; npm run backup:create -- '$backup_dir'"
+else
+  run_as_nexus "npm run backup:create -- '$backup_dir'"
+fi
 backup_created=1
 
 downtime_started=1

@@ -3,10 +3,11 @@ import { allowedCorsOrigin, verifyCsrfRequest } from './lib/csrf-config.mjs';
 import { createSecurityContext, writeAudit } from './lib/security';
 import { isTrackablePageRequest, recordSiteVisit } from './lib/site-analytics';
 
-export function proxy(request) {
+export function proxy(request, event) {
   if (!request.nextUrl.pathname.startsWith('/api/')) {
     if (isTrackablePageRequest(request)) {
-      try { recordSiteVisit(request); } catch { /* Analytics failure must not block a page response. */ }
+      const tracking=recordSiteVisit(request).catch(()=>{});
+      if(event)event.waitUntil(tracking);
     }
     return NextResponse.next();
   }

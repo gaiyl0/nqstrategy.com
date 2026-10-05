@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import VisitConfirmation from './VisitConfirmation';
 
 const DesignContext = createContext('classic');
 export const useDesign = () => useContext(DesignContext);
@@ -17,5 +18,5 @@ export default function DesignProvider({ initialDesigns, children }) {
   }, []);
   const selected = pathname?.startsWith('/tianwei') ? designs.adminDesign : designs.frontendDesign;
   const design = selected === 'editorial' ? 'editorial' : 'classic';
-  return <DesignContext.Provider value={design}><div data-design={design} className="nq-design-root">{children}</div></DesignContext.Provider>;
+  return <DesignContext.Provider value={design}><div data-design={design} className="nq-design-root"><VisitConfirmation />{children}</div></DesignContext.Provider>;
 }

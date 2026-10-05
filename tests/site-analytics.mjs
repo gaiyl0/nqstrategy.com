@@ -1,57 +1,67 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-
-const databasePath = path.resolve('.tmp-site-analytics-test.db');
-for (const suffix of ['', '-wal', '-shm']) { try { fs.rmSync(`${databasePath}${suffix}`); } catch {} }
-process.env.NEXUS_DB_PATH = databasePath;
-process.env.NODE_ENV = 'development';
-process.env.JWT_SECRET = 'site-analytics-test-secret-0123456789abcdef';
-
-const { default: db } = await import('../lib/db.js');
-const { getSiteAnalytics, isTrackablePageRequest, recordAdClick, recordSiteVisit } = await import('../lib/site-analytics.js');
-
-const request = ({ path: pathname = '/', userAgent = 'Mozilla/5.0', accept = 'text/html', destination = 'document', referrer = '' } = {}) => ({
-  method: 'GET',
-  nextUrl: { pathname },
-  headers: new Headers({
-    accept,
-    'sec-fetch-dest': destination,
-    'user-agent': userAgent,
-    ...(referrer ? { referer: referrer } : {}),
-  }),
-});
-
-const human = request({ path: '/market', referrer: 'https://search.example/results?q=nexus' });
-const spider = request({ path: '/robots.txt', userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', accept: 'text/plain', destination: '' });
-assert.equal(isTrackablePageRequest(human), true);
-assert.equal(isTrackablePageRequest(spider), true);
-assert.equal(isTrackablePageRequest(request({ path: '/logo.png', accept: 'image/png', destination: 'image' })), false);
-
-recordSiteVisit(human);
-recordSiteVisit(spider);
-recordAdClick(human, new URL('https://exchange.example/partner'));
-
-const analytics = getSiteAnalytics({ days: 30, limit: 20 });
-assert.equal(analytics.visitSummary.totalVisits, 2);
-assert.equal(analytics.visitSummary.humanVisits, 1);
-assert.equal(analytics.visitSummary.botVisits, 1);
-assert.equal(analytics.botBreakdown[0].name, 'Googlebot');
-assert.equal(analytics.adSummary.totalClicks, 1);
-assert.equal(analytics.adSummary.humanClicks, 1);
-assert.equal(analytics.recentClicks[0].destinationHost, 'exchange.example');
-assert.equal(analytics.recentVisits.some(item => item.path === '/robots.txt' && item.isBot === 1), true);
-assert.equal(db.prepare('SELECT 1 FROM pragma_table_info(\'site_visit_events\') WHERE name=\'visitor_hash\'').get()[1], 1);
-
-const proxy = fs.readFileSync(path.resolve('proxy.js'), 'utf8');
-const adRoute = fs.readFileSync(path.resolve('app/api/analytics/ad-click/route.js'), 'utf8');
-const admin = fs.readFileSync(path.resolve('app/tianwei/page.js'), 'utf8');
-assert.match(proxy, /recordSiteVisit\(request\)/, 'page requests must be recorded in the server proxy');
-assert.match(adRoute, /SELECT value FROM settings WHERE key='exchangeAdUrl'/, 'redirect destination must come from server settings');
-assert.doesNotMatch(adRoute, /searchParams.*(?:url|target|destination)/, 'click endpoint must not accept a client-controlled redirect destination');
-assert.match(admin, /访问与广告统计/, 'admin must expose the analytics view');
-assert.match(admin, /User-Agent/, 'admin must disclose bot classification semantics');
-
-db.close();
-for (const suffix of ['', '-wal', '-shm']) { try { fs.rmSync(`${databasePath}${suffix}`); } catch {} }
-console.log('Site analytics tests passed: document visits, bot classification, privacy hashing, admin reporting, and controlled ad redirects');
+const databasePath=path.resolve('.tmp-site-analytics-test.db');
+for(const suffix of ['', '-wal','-shm'])try{fs.rmSync(databasePath+suffix);}catch{}
+process.env.NEXUS_DB_PATH=databasePath;process.env.NODE_ENV='development';
+process.env.JWT_SECRET='site-analytics-test-secret-0123456789abcdef';
+process.env.TRUSTED_PROXY_MODE='nginx';process.env.TRUSTED_PROXY_SHARED_SECRET='analytics-test-proxy-secret-0123456789';process.env.RATE_LIMIT_BACKEND='sqlite';process.env.DEPLOYMENT_TOPOLOGY='single-instance';
+const {default:db}=await import('../lib/db.js');
+const {getSiteAnalytics,isTrackablePageRequest,recordSiteVisit,recordAdClick,issueVisitProof,confirmBrowserVisit,validAnalyticsPath}=await import('../lib/site-analytics.js');
+const {agentType,newVisitor,readSigned,cookieVisitor,verifyCrawler}=await import('../lib/analytics-confidence.mjs');
+let assertions=0;const equal=(a,b)=>{assert.deepEqual(a,b);assertions++;};
+const ua='Mozilla/5.0 AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36';
+const now=Date.now();const cookie=newVisitor(now);const visitor=readSigned(cookie);
+const req=({pathname='/',userAgent=ua,visitorCookie=cookie,extra={}}={})=>({method:'GET',nextUrl:{pathname},headers:new Headers({accept:'text/html','sec-fetch-dest':'document','user-agent':userAgent,cookie:'nq_visitor='+visitorCookie,'x-real-ip':'127.0.0.1','x-nexus-proxy-secret':process.env.TRUSTED_PROXY_SHARED_SECRET,...extra})});
+try {
+ equal(agentType('curl/8.0').excluded,true);equal(agentType('Mozilla/5.0 NexusQuantVerificationBot/1.0').excluded,true);equal(agentType('').excluded,true);equal(agentType(ua).browser,true);
+ equal(agentType('Mozilla/5.0 Googlebot/2.1').name,'Googlebot');
+ equal(validAnalyticsPath('/tianwei'),false);equal(validAnalyticsPath('/.env'),false);equal(validAnalyticsPath('/forum/99999999'),false);equal(validAnalyticsPath('/robots.txt'),false);equal(validAnalyticsPath('/robots.txt',true),true);equal(validAnalyticsPath('/?route=market'),true);equal(validAnalyticsPath('/?route=upload'),false);
+ equal(isTrackablePageRequest(req()),true);equal(isTrackablePageRequest(req({extra:{'sec-fetch-dest':'image',accept:'image/png'}})),false);
+ equal(isTrackablePageRequest(req({userAgent:'Googlebot/2.1',extra:{'sec-fetch-dest':'',accept:'*/*'}})),true);
+ equal(await recordSiteVisit(req()),false);equal(await recordSiteVisit(req({userAgent:'curl/8.0'})),false);equal(await recordSiteVisit(req({userAgent:'Googlebot/2.1',pathname:'/tianwei'})),false);
+ const human=req({extra:{referer:'https://search.example/results?q=private'}});
+ const proof=issueVisitProof(human,'/',visitor,now);
+ equal(!!proof,true);equal(issueVisitProof(human,'/.env',visitor,now),null);
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:false},now+1000),false);
+ equal(confirmBrowserVisit(human,{proof,visible:false,webdriver:false},now+6000),false);
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:true},now+6000),false);
+ equal(confirmBrowserVisit(human,{proof:proof+'a',visible:true,webdriver:false},now+6000),false);
+ equal(confirmBrowserVisit(req({visitorCookie:newVisitor()}),{proof,visible:true,webdriver:false},now+6000),false);
+ equal(confirmBrowserVisit(req({userAgent:ua+' changed'}),{proof,visible:true,webdriver:false},now+6000),false);
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:false},now+121000),false);
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:false},now+6000),true);
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:false},now+6000),false);
+ const secondProof=issueVisitProof(human,'/',visitor,now);
+ equal(confirmBrowserVisit(human,{proof:secondProof,visible:true,webdriver:false},now+6000),false);
+ db.prepare("UPDATE site_visit_events SET occurred_at=occurred_at-31000 WHERE traffic_kind='browser'").run();
+ equal(confirmBrowserVisit(human,{proof,visible:true,webdriver:false},now+6000),false); // proof cannot replay even after dedup interval
+ equal(confirmBrowserVisit(human,{proof:secondProof,visible:true,webdriver:false},now+6000),true);
+ equal(cookieVisitor(req({visitorCookie:'unsigned'})),null);
+ equal(await recordSiteVisit(req({userAgent:'Googlebot/2.1',pathname:'/robots.txt'})),true); // false claim -> diagnostic only
+ equal(await recordSiteVisit(req({userAgent:'Googlebot/2.1',pathname:'/robots.txt'})),false);
+ equal(await recordSiteVisit(req({userAgent:'Googlebot/2.1',extra:{'next-router-prefetch':'1'}})),false);
+ const mock=(host,addresses)=>({reverse:async()=>[host],resolve4:async()=>addresses,resolve6:async()=>addresses});
+ equal(await verifyCrawler('66.249.66.1','Googlebot',mock('crawl-66-249-66-1.googlebot.com',['66.249.66.1'])),true);
+ equal(await verifyCrawler('66.249.66.1','Googlebot',mock('googlebot.com.evil.test',['66.249.66.1'])),false);
+ equal(await verifyCrawler('66.249.66.1','Googlebot',mock('crawl.googlebot.com',['1.2.3.4'])),false);
+ equal(await verifyCrawler('13.66.139.0','Bingbot',mock('msnbot.search.msn.com',['13.66.139.0'])),true);
+ equal(await verifyCrawler('1.2.3.4','SemrushBot',mock('foo.example',['1.2.3.4'])),false);
+ equal(await verifyCrawler('not-ip','Googlebot',mock('crawl.googlebot.com',[])),false);
+ equal(await verifyCrawler('2001:4860:4801::1','Googlebot',mock('geo-crawl.geo.googlebot.com',['2001:4860:4801:0:0:0:0:1'])),true);
+ equal(await verifyCrawler('66.249.66.1','Googlebot',{reverse:async()=>{throw new Error('DNS unavailable');}}),false);
+ db.prepare("INSERT INTO site_visit_events(visitor_hash,path,is_bot,bot_name,occurred_at,traffic_kind) VALUES(?,'/robots.txt',1,'Googlebot',?,'spider')").run('a'.repeat(64),now);
+ db.prepare("INSERT INTO site_visit_events(visitor_hash,path,is_bot,occurred_at) VALUES(?,'/legacy',0,?)").run('b'.repeat(64),now);
+ equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://exchange.example/partner'),true);
+ equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://exchange.example/partner'),false);
+ equal(await recordAdClick(req({visitorCookie:newVisitor()}),'https://unconfirmed.example/partner'),false);
+ equal(await recordAdClick(req(),'https://admin.example/partner',true),false);
+ const stats=getSiteAnalytics({days:30,limit:10,visitPage:999,clickPage:999});
+ equal(stats.visitSummary.totalVisits,3);equal(stats.visitSummary.humanVisits,2);equal(stats.visitSummary.botVisits,1);equal(stats.visitSummary.uniqueHumanVisitors,1);
+ equal(stats.excludedSummary.legacyVisits,1);equal(stats.excludedSummary.unknownVisits,1);equal(stats.excludedSummary.unknownClicks,1);
+ equal(stats.recentVisits.length,3);equal(stats.visitPagination.page,1);equal(stats.adSummary.humanClicks,1);equal(stats.recentClicks.length,1);equal(stats.botBreakdown[0].name,'Googlebot');
+ equal(stats.recentVisits.find(x=>x.trafficKind==='browser').referrerHost,'search.example');
+ equal(db.prepare('SELECT count(*) n FROM pragma_table_info(\'site_visit_events\') WHERE name=\'ip\'').get().n,0);
+ const adRoute=fs.readFileSync('app/api/analytics/ad-click/route.js','utf8');assert.doesNotMatch(adRoute,/searchParams.*(?:url|target|destination)/);assertions++;
+ console.log(`Site analytics confidence passed ${assertions} assertions: signed browser proof, replay/dedup, exclusions, DNS authenticity, historical segregation, pagination and ad clicks.`);
+} finally {db.close();for(const suffix of ['', '-wal','-shm'])try{fs.rmSync(databasePath+suffix);}catch{}}
