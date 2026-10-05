@@ -14,7 +14,7 @@ const PUBLIC_SETTINGS_KEYS = new Set([
   'broker1Name', 'broker1Desc', 'broker1Link',
   'broker2Name', 'broker2Desc', 'broker2Link',
   'broker3Name', 'broker3Desc', 'broker3Link',
-  'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl', 'featuredProductIds',
+  'exchangeAdEnabled', 'exchangeAdTitle', 'exchangeAdDescription', 'exchangeAdCta', 'exchangeAdUrl', 'exchangeAdCta2', 'exchangeAdUrl2', 'featuredProductIds',
   'mt5DownloadEnabled', 'mt5DownloadUrl', 'mt5DownloadLabel', 'mt5DownloadDescription', 'forumCategories', 'communityContent', 'forumNewsEnabled', 'forumStrategyOverviewEnabled'
 ]);
 const PAYMENT_CHANNEL_SETTINGS_KEYS = new Set([

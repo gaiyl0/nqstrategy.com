@@ -41,4 +41,15 @@ equal(concurrent.prepare('SELECT COUNT(*) count FROM schema_migrations').get().c
 equal(concurrent.prepare('SELECT MAX(version) version FROM schema_migrations').get().version,migrations.at(-1).version,'concurrent startup reaches latest migration');
 equal(concurrent.pragma('quick_check',{simple:true}),'ok','concurrent migrated database is healthy');
 concurrent.close();remove(concurrentPath);
+
+const adUpgradePath=path.resolve('.tmp-database-ad-upgrade-test.db');remove(adUpgradePath);
+const adUpgrade=new Database(adUpgradePath);adUpgrade.pragma('foreign_keys=ON');
+runMigrations(adUpgrade,{plan:migrations.slice(0,-1)});
+adUpgrade.prepare("INSERT INTO ad_click_events(slot,visitor_hash,destination_host,occurred_at,traffic_kind) VALUES('exchange_home',?,?,?,'browser')").run('a'.repeat(64),'first.example',Date.now());
+equal(runMigrations(adUpgrade).currentVersion,9,'advertisement schema upgrades from the deployed version');
+equal(adUpgrade.prepare("SELECT slot,destination_host FROM ad_click_events WHERE id=1").get(),{slot:'exchange_home',destination_host:'first.example'},'existing click history survives the upgrade');
+adUpgrade.prepare("INSERT INTO ad_click_events(slot,visitor_hash,destination_host,occurred_at,traffic_kind) VALUES('exchange_home_2',?,?,?,'browser')").run('b'.repeat(64),'second.example',Date.now());
+equal(adUpgrade.prepare("SELECT count(*) n FROM ad_click_events").get().n,2,'second button can record a distinct click');
+equal(adUpgrade.pragma('quick_check',{simple:true}),'ok','upgraded advertisement table remains healthy');
+adUpgrade.close();remove(adUpgradePath);
 console.log(`Database migration tests passed: ${assertions} assertions`);

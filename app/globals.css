@@ -162,6 +162,10 @@ select:focus-visible,
 .editorial-article-cover.gold { background: linear-gradient(120deg,#785d28,#c7a86a); }
 .editorial-article-cover span { font-size: 12px; }
 .editorial-link-button { background: #139c91; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; }
+.editorial-ad-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.editorial-ad-actions .editorial-link-button { min-height:44px; display:inline-flex; align-items:center; justify-content:center; }
+.editorial-ad-actions .editorial-link-button-secondary { background:#122c40; border:1px solid #8dedde80; }
+.editorial-ad-actions .editorial-link-button-secondary:hover { background:#1d4355; }
 [data-design="editorial"] .editorial-community-banner { background:linear-gradient(115deg,#fff7e4,#f2e5c6); border-color:#e8d8b7; }
 [data-design="editorial"] .editorial-profile-cover { background: #e5eff0; padding: 24px; border-radius:16px; }
 [data-design="editorial"] .editorial-admin-nav { background: #101c2c !important; }
@@ -267,6 +271,7 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design="editorial"] .editorial-footer button:hover { color:#71e3d8; }
 @container (max-width:640px) {
   .editorial-home .editorial-sponsor-banner { padding:22px; }
+  .editorial-home .editorial-sponsor-banner .editorial-ad-actions { width:100%; }
   .editorial-home .editorial-sponsor-banner .editorial-link-button { width:100%; text-align:center; }
 }
 

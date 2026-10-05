@@ -54,12 +54,15 @@ try {
  db.prepare("INSERT INTO site_visit_events(visitor_hash,path,is_bot,occurred_at) VALUES(?,'/legacy',0,?)").run('b'.repeat(64),now);
  equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://exchange.example/partner'),true);
  equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://exchange.example/partner'),false);
+ equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://second.example/partner',false,'exchange_home_2'),true);
+ equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://second.example/partner',false,'exchange_home_2'),false);
+ equal(await recordAdClick(req({extra:{'sec-fetch-user':'?1'}}),'https://third.example/partner',false,'exchange_home_3'),false);
  equal(await recordAdClick(req({visitorCookie:newVisitor()}),'https://unconfirmed.example/partner'),false);
  equal(await recordAdClick(req(),'https://admin.example/partner',true),false);
  const stats=getSiteAnalytics({days:30,limit:10,visitPage:999,clickPage:999});
  equal(stats.visitSummary.totalVisits,3);equal(stats.visitSummary.humanVisits,2);equal(stats.visitSummary.botVisits,1);equal(stats.visitSummary.uniqueHumanVisitors,1);
  equal(stats.excludedSummary.legacyVisits,1);equal(stats.excludedSummary.unknownVisits,1);equal(stats.excludedSummary.unknownClicks,1);
- equal(stats.recentVisits.length,3);equal(stats.visitPagination.page,1);equal(stats.adSummary.humanClicks,1);equal(stats.recentClicks.length,1);equal(stats.botBreakdown[0].name,'Googlebot');
+ equal(stats.recentVisits.length,3);equal(stats.visitPagination.page,1);equal(stats.adSummary.humanClicks,2);equal(stats.recentClicks.length,2);equal(new Set(stats.recentClicks.map(item=>item.slot)),new Set(['exchange_home','exchange_home_2']));equal(stats.botBreakdown[0].name,'Googlebot');
  equal(stats.recentVisits.find(x=>x.trafficKind==='browser').referrerHost,'search.example');
  equal(db.prepare('SELECT count(*) n FROM pragma_table_info(\'site_visit_events\') WHERE name=\'ip\'').get().n,0);
  const adRoute=fs.readFileSync('app/api/analytics/ad-click/route.js','utf8');assert.doesNotMatch(adRoute,/searchParams.*(?:url|target|destination)/);assertions++;

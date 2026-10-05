@@ -16,12 +16,16 @@ const validAd = {
   exchangeAdDescription: 'A configurable exchange partner message.',
   exchangeAdCta: 'Learn more',
   exchangeAdUrl: 'https://exchange.example/partner',
+  exchangeAdCta2: 'Open details',
+  exchangeAdUrl2: 'https://second.example/partner',
 };
 assert.equal(settingsSchema.safeParse(validAd).success, true);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdUrl: 'javascript:alert(1)' }).success, false);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdTitle: 'x'.repeat(101) }).success, false);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdDescription: 'x'.repeat(301) }).success, false);
 assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdCta: 'x'.repeat(41) }).success, false);
+assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdUrl2: 'javascript:alert(1)' }).success, false);
+assert.equal(settingsSchema.safeParse({ ...validAd, exchangeAdCta2: 'x'.repeat(41) }).success, false);
 assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 2, 3] }).success, true, 'three selected homepage strategies must validate');
 assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 1] }).success, false, 'featured strategies cannot be duplicated');
 assert.equal(settingsSchema.safeParse({ featuredProductIds: [1, 2, 3, 4] }).success, false, 'featured strategies are limited to three slots');
@@ -39,6 +43,8 @@ assert.match(route, /getSessionUser\(\)/, 'settings writes must retain server-si
 assert.match(home, /adEnabled&&adTitle&&adDescription/, 'the ad appears only when enabled and configured with required copy');
 assert.match(home, /safeExchangeAdUrl/, 'homepage must validate whether an ad destination is configured');
 assert.match(home, /href="\/api\/analytics\/ad-click"/, 'homepage ad clicks must pass through the server-side counter');
+assert.match(home, /href="\/api\/analytics\/ad-click\?button=2"/, 'second button must pass through its own server-side slot');
+assert.match(fs.readFileSync(path.join(root,'app','components','EditorialHome.js'),'utf8'), /href="\/api\/analytics\/ad-click\?button=2"/, 'editorial theme must render the second button');
 assert.match(home, /rel="noopener noreferrer sponsored"/, 'external sponsor links must be isolated and marked sponsored');
 assert.match(home, /featuredProductIds/, 'homepage must consume administrator-selected featured strategies');
 assert.match(home, /setInterval/, 'homepage feature area must rotate configured strategies');
