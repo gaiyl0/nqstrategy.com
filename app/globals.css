@@ -162,9 +162,10 @@ select:focus-visible,
 .editorial-article-cover.gold { background: linear-gradient(120deg,#785d28,#c7a86a); }
 .editorial-article-cover span { font-size: 12px; }
 .editorial-link-button { background: #139c91; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; font-weight:600; }
-.editorial-ad-actions { display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; }
+.editorial-ad-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; max-width:560px; margin-top:20px; align-items:start; gap:12px; }
+.editorial-ad-actions:has(> :only-child) { grid-template-columns:minmax(0,280px); }
 .editorial-ad-option { display:flex; min-width:0; flex-direction:column; align-items:stretch; gap:6px; text-align:center; }
-.editorial-ad-actions .editorial-link-button { min-height:48px; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+.editorial-ad-actions .editorial-link-button { min-height:52px; width:100%; display:inline-flex; align-items:center; justify-content:center; text-align:center; line-height:1.4; overflow-wrap:anywhere; }
 .editorial-ad-note { color:#c9dce6; font-size:12px; font-weight:600; line-height:1.5; }
 .editorial-ad-actions .editorial-link-button-secondary { background:#122c40; border:1px solid #8dedde80; }
 .editorial-ad-actions .editorial-link-button-secondary:hover { background:#1d4355; }
@@ -249,13 +250,12 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design="editorial"] .editorial-profile-security { background:#fffffff5; border-color:#ffffff80; box-shadow:0 6px 22px #07152518; }
 [data-design="editorial"] .editorial-sponsor-banner {
   background:linear-gradient(90deg,#051525b0,#05152520),url("/images/editorial/sponsor-globe.webp") center/cover;
-  border-color:#c4a56850; max-width:1040px; min-height:220px; margin-inline:auto; padding:28px;
-  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:24px;
+  border-color:#c4a56850; max-width:1040px; margin-inline:auto; padding:28px;
   box-shadow:0 8px 26px #14253615;
 }
-[data-design="editorial"] .editorial-sponsor-copy { flex:1 1 420px; min-width:0; }
+[data-design="editorial"] .editorial-sponsor-copy { min-width:0; }
 [data-design="editorial"] .editorial-sponsor-banner h2 { color:#fff2cf; line-height:1.6; }
-[data-design="editorial"] .editorial-sponsor-banner p { color:#d2e0e9; max-width:560px; line-height:1.8; }
+[data-design="editorial"] .editorial-sponsor-banner p { color:#d2e0e9; max-width:850px; line-height:1.8; }
 [data-design="editorial"] .editorial-sponsor-banner .editorial-link-button { flex-shrink:0; border:1px solid #8dedde80; box-shadow:0 5px 20px #07152550; }
 [data-design="editorial"] .editorial-sponsor-banner .editorial-link-button:hover { background:#087d74; }
 [data-design="editorial"] .editorial-sponsor-banner .editorial-ad-note { color:#e1edf2; }
@@ -275,17 +275,11 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design="editorial"] .editorial-footer :where(h4,:is([class^="font-bold"],[class*=" font-bold"])) { color:#f0f6fa; }
 [data-design="editorial"] .editorial-footer :is([class^="border-zinc"],[class*=" border-zinc"]) { border-color:#314455; }
 [data-design="editorial"] .editorial-footer button:hover { color:#71e3d8; }
-@container (max-width:900px) {
-  .editorial-home .editorial-sponsor-banner .editorial-ad-actions { width:100%; }
-}
 @container (max-width:640px) {
   .editorial-home .editorial-sponsor-banner { padding:22px; }
-  .editorial-home .editorial-sponsor-banner .editorial-ad-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .editorial-home .editorial-sponsor-banner .editorial-ad-actions { margin-top:18px; gap:9px; }
   .editorial-home .editorial-sponsor-banner .editorial-ad-option { min-width:0; }
-  .editorial-home .editorial-sponsor-banner .editorial-link-button { width:100%; text-align:center; }
-}
-@container (max-width:520px) {
-  .editorial-home .editorial-sponsor-banner .editorial-ad-actions { grid-template-columns:minmax(0,1fr); }
+  .editorial-home .editorial-sponsor-banner .editorial-link-button { min-height:66px; padding:8px; font-size:13px; }
 }
 
 [data-design="editorial"] .editorial-sponsor-banner > div > span { color:#ffe3a0; background:#b9832528; border-color:#c49a5555; }
