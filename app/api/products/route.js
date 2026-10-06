@@ -116,6 +116,7 @@ async function POSTHandler(request) {
     const parsed = await parseJson(request, createProductSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
+    if (body.trialEnabled) return NextResponse.json({success:false,message:'限时试用尚无独立程序与到期校验，暂不能开启'},{status:409});
     if (body.reportId) verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
 
     const eaUpload = findOwnedUpload(body.file_url, currentUser.id, 'ea');
@@ -135,7 +136,7 @@ async function POSTHandler(request) {
       `).run(
         body.title, currentUser.username, currentUser.id, body.description, body.price,
         body.metrics ? `${body.metrics.winRatePercent}%` : '未披露', body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),
-        body.logo_url || null, body.file_url,body.trialEnabled?1:0,body.trialDays||7,
+        body.logo_url || null, body.file_url,0,7,
       );
       const productId = Number(result.lastInsertRowid);
       db.prepare('UPDATE products SET slug=? WHERE id=?').run(productSlug(body.title,productId),productId);
@@ -180,6 +181,7 @@ async function PATCHHandler(request) {
     const parsed = await parseJson(request, productPatchSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
+    if (body.trialEnabled) return NextResponse.json({success:false,message:'限时试用尚无独立程序与到期校验，暂不能开启'},{status:409});
     const id = body.id;
 
     const existing = db.prepare('SELECT * FROM products WHERE id = ? AND deleted_at IS NULL').get(id);
@@ -245,7 +247,7 @@ async function PATCHHandler(request) {
           drawdown = ?, pairs = ?, ea_type = ?, trial_enabled=?,trial_days=?,status = 'pending'
       `;
       const params = [body.title, body.description, body.price, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
-        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),body.trialEnabled?1:0,body.trialDays||7];
+        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),0,7];
       if (body.logo_url) { query += ', logo_url = ?'; params.push(body.logo_url); }
       query += ' WHERE id = ?';
       params.push(id);

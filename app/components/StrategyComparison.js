@@ -28,7 +28,7 @@ export default function StrategyComparison({ products, onRemove, onClose, t }) {
     [t('初始资金', 'Initial deposit'), product => `$${format(product.metrics?.initialDeposit)}`],
     [t('净利润（仅同资金与区间可比）', 'Net profit (comparable only with same capital and period)'), product => `$${format(product.metrics?.netProfit)}`],
     [t('价格', 'Price'), product => Number(product.price) === 0 ? t('免费', 'Free') : `$${format(product.price)}`],
-    [t('试用', 'Trial'), product => product.trial_enabled ? `${product.trial_days} ${t('天', 'days')}` : t('无', 'No')],
+    [t('试用', 'Trial'), product => product.trial_enabled ? t('准备中', 'In preparation') : t('无', 'No')],
   ];
 
   return <div className="rounded-3xl border border-cyan-500/30 bg-zinc-950 p-5 shadow-2xl">
