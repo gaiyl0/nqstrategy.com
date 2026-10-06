@@ -250,7 +250,7 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design="editorial"] .editorial-profile-security { background:#fffffff5; border-color:#ffffff80; box-shadow:0 6px 22px #07152518; }
 [data-design="editorial"] .editorial-sponsor-banner {
   background:linear-gradient(90deg,#051525b0,#05152520),url("/images/editorial/sponsor-globe.webp") center/cover;
-  border-color:#c4a56850; max-width:1040px; margin-inline:auto; padding:28px;
+  border-color:#c4a56850; width:100%; margin-inline:auto; padding:28px;
   box-shadow:0 8px 26px #14253615;
 }
 [data-design="editorial"] .editorial-sponsor-copy { min-width:0; }

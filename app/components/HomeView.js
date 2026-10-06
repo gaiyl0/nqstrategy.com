@@ -36,7 +36,7 @@ export function StrategyCard({product,onOpen,t,horizontal=false}) {
 function safeExchangeAdUrl(value){try{const url=new URL(value);return ['https:','http:'].includes(url.protocol)&&!url.username&&!url.password?url.href:'';}catch{return'';}}
 
 function HomeSponsorBanner({ siteSettings, adTitle, adDescription, adUrl, adUrl2, t }) {
-  return <section className="mx-auto w-full max-w-[1040px] px-4 py-3 sm:px-6" aria-label={t('交易所赞助信息','Exchange sponsor')}>
+  return <section className="mx-auto w-full max-w-[1480px] px-4 py-3 sm:px-6 lg:px-8" aria-label={t('交易所赞助信息','Exchange sponsor')}>
     <div className="relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-r from-cyan-950/60 via-slate-900 to-blue-950/50 p-5 shadow-lg shadow-cyan-950/20 sm:p-7">
       <div className="pointer-events-none absolute -right-8 -top-16 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl"/>
       <div className="relative min-w-0 flex-1">
