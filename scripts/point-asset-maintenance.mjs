@@ -29,7 +29,14 @@ for(const withdrawal of db.prepare('SELECT * FROM point_asset_withdrawals').iter
   if(withdrawal.status==='rejected'&&(!refund||refund.funded_delta!==withdrawal.units||refund.withdrawable_delta!==withdrawal.units))issues.push(`withdrawal:${withdrawal.id}:refund`);
   if(withdrawal.status!=='rejected'&&refund)issues.push(`withdrawal:${withdrawal.id}:unexpected_refund`);
 }
-const result={valid:issues.length===0,accounts:db.prepare('SELECT COUNT(*) count FROM point_asset_accounts').get().count,transactions:db.prepare('SELECT COUNT(*) count FROM point_asset_transactions').get().count,sales:db.prepare('SELECT COUNT(*) count FROM point_asset_sales').get().count,withdrawals:db.prepare('SELECT COUNT(*) count FROM point_asset_withdrawals').get().count,issues};
+for(const recharge of db.prepare('SELECT * FROM point_recharge_orders').iterate()){
+  const credit=db.prepare('SELECT user_id,funded_delta,bonus_delta,withdrawable_delta,reason FROM point_asset_transactions WHERE business_key=?').get(`recharge:${recharge.id}`);
+  if(recharge.status==='paid'){
+    if(!recharge.provider_trade_no||!recharge.paid_at||recharge.paid_at<recharge.created_at||recharge.paid_at>recharge.expires_at)issues.push(`recharge:${recharge.id}:payment_metadata`);
+    if(!credit||credit.user_id!==recharge.user_id||credit.funded_delta!==recharge.points_units||credit.bonus_delta!==0||credit.withdrawable_delta!==0||credit.reason!=='verified_recharge')issues.push(`recharge:${recharge.id}:credit`);
+  }else if(credit)issues.push(`recharge:${recharge.id}:unexpected_credit`);
+}
+const result={valid:issues.length===0,accounts:db.prepare('SELECT COUNT(*) count FROM point_asset_accounts').get().count,transactions:db.prepare('SELECT COUNT(*) count FROM point_asset_transactions').get().count,sales:db.prepare('SELECT COUNT(*) count FROM point_asset_sales').get().count,withdrawals:db.prepare('SELECT COUNT(*) count FROM point_asset_withdrawals').get().count,recharges:db.prepare('SELECT COUNT(*) count FROM point_recharge_orders').get().count,issues};
 console.log(JSON.stringify(result));
 db.close();
 if(!result.valid)process.exitCode=1;
