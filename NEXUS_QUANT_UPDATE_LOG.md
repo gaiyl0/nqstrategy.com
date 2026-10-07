@@ -1658,7 +1658,8 @@ NQ-P2-011 后续调整（2026-09-29）：根据管理员操作反馈，将长页
 - 生产环境 `POINT_RECHARGE_ENABLED=1`，`POINT_RECHARGE_TEST_USER_IDS=1`，仅现有管理员账号 ID 1 可进入充值试点；改动前环境文件备份在 `/etc/nexus-quant/nexus.env.pre-point-pilot-20261007153335`，服务重启后健康ready。服务器尚无微信和支付宝商户私钥，后台未设积分充值汇率；前端仍不会展示可用收款按钮，也不能创建实际支付订单。公网匿名充值订单读取返回401，匿名写请求被CSRF返回403。未发送真实支付请求，没有实收或退款。
 - 待用户自行配置：后台支付渠道元数据及积分充值人民币汇率，以及服务器私有环境文件中的商户密钥和证书。私钥不能放入公开Git仓库或聊天。完整开启前仍需官方小额实付、退款和对账验收；管理员试点限制暂不解除，普通用户继续无法充值。生产依赖审计报告2项high（sharp、source-map-js），与本次发布前本地结果一致，另行处理。
 
-### 2026-10-07：Cryptomus 网站根路径验证文件（发布中）
+### 2026-10-07：Cryptomus 网站根路径验证文件已上线
 
 - 按用户提供的本地 `cryptomus_5aac3283.html` 原样复制到仓库 `public/cryptomus_5aac3283.html`，内容仅 `cryptomus=5aac3283`，18字节，源文件与目标文件 SHA-256 均为 `926D0F25B59B9C8B0D1ABE0B20882E35B40DE1C3261554D826F341DEE0A95D7B`。Next 16.3.8 的 public 目录映射到站点根路径，预期地址为 `https://nqstrategy.com/cryptomus_5aac3283.html`。
-- 此文件只用于网站所有权验证，不代表 Cryptomus 支付接口已集成或开放。上线后需核对公网状态码、响应体与文件哈希；结果后续追加。
+- 发布提交 `fa7d7045498f41a65e4ede132a1ceea7d80e1c39` 已推送 GitHub main，当前 `/opt/nexus-quant/releases/fa7d7045498f`，上版 `/opt/nexus-quant/releases/69bd38a734ba` 和备份 `/var/backups/nexus-quant/predeploy-fa7d7045498f` 可恢复。发布脚本 ESLint、42 组测试、生产构建、数据库12/12、quick_check、外键、737条签名审计、旧美元钱包账本和积分账本均通过，服务健康ready；初次环回健康连接未就绪，自动重试后ready。
+- 公网 `https://nqstrategy.com/cryptomus_5aac3283.html` 返回200，响应体18字节，内容与源文件完全一致，SHA-256 `926D0F25B59B9C8B0D1ABE0B20882E35B40DE1C3261554D826F341DEE0A95D7B`；服务器当前文件哈希同值，systemd服务active。此文件只用于网站所有权验证，不代表 Cryptomus 支付接口已集成或开放。生产依赖审计仍报2项high，另行处理。
