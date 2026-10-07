@@ -63,8 +63,9 @@ export default function PointRechargePanel({state,refresh,t}){
 
   return <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
     <h2 className="font-bold">{t('积分充值','Buy points')}</h2>
-    {!state?.rechargeEnabled?<><p className="mt-3 text-sm leading-6 text-slate-400">{t('人民币支付金额将在创建订单时按管理员汇率锁定。官方支付的真实小额测试与退款验收完成前，充值暂不开放。','The CNY quote is locked when the order is created. Recharge remains closed until live payment and refund acceptance tests pass.')}</p><button disabled className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-400">{t('暂未开放','Not available yet')}</button></>:
+    {!state?.rechargeEnabled?<><p className="mt-3 text-sm leading-6 text-slate-400">{t('充值渠道或有效汇率尚未就绪；人民币报价会在创建订单时锁定。','Recharge channels or a valid exchange rate are not ready. The CNY quote is locked when the order is created.')}</p><button disabled className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-400">{t('暂未开放','Not available yet')}</button></>:
       <><p className="mt-3 text-sm text-slate-300">{t('每 1 积分按 1 美元计价。支付金额以订单创建时锁定的人民币报价为准。','One point is valued at USD 1. The CNY amount is locked when the order is created.')}</p>
+        {state.rechargeRateMode==='auto'&&state.rechargeRateDate&&<p className="mt-1 text-xs text-slate-400">{t('汇率参考数据发布日期','Exchange-rate reference date')}：{state.rechargeRateDate}</p>}
         <label className="mt-4 block text-sm text-slate-200">{t('充值积分数量','Points to buy')}<input type="number" min="1" max="1000000" step="0.01" value={amount}
           onChange={event=>{setAmount(event.target.value);requestRef.current=null;}} className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm"/></label>
         {estimate!=null&&<p className="mt-2 text-sm text-amber-200">{t('预计支付','Estimated CNY payment')} ¥{(estimate/100).toFixed(2)}</p>}

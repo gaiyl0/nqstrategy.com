@@ -5,6 +5,7 @@ import { getSessionUser } from '@/lib/auth';
 import { parseJson } from '@/lib/validation';
 import { awardDailyAction, pointState, redeemWithPoints, submitPointClaim } from '@/lib/points';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
+import {refreshAutomaticRechargeRate} from '@/lib/point-recharge';
 
 export const dynamic='force-dynamic';
 
@@ -20,6 +21,7 @@ async function GETHandler(request){
   const context=createSecurityContext(request,user);
   const limited=enforceRateLimits(context,'points.read',[{policy:RATE_LIMITS.orderRead,identifier:`user:${user.id}`}]);
   if(limited)return limited;
+  await refreshAutomaticRechargeRate().catch(()=>{});
   return NextResponse.json({success:true,...pointState(user.id)});
 }
 
