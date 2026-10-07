@@ -1,11 +1,12 @@
 import Image from 'next/image';
-import { Activity, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
+import { Activity, Coins, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
 
 export default function AppHeader({ siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }) {
   const mobileItems = [
     ['home', t('首页', 'Home'), Home, () => setRoute('home')],
     ['market', t('市场', 'Market'), Store, () => setRoute('market')],
     ['forum', t('论坛', 'Forum'), MessageSquare, () => { setRoute('forum'); setForumView('list'); }],
+    ['points', t('积分', 'Points'), Coins, () => user ? setRoute('points') : setAuthModal('login')],
     ['profile', t('我的', 'Profile'), UserIcon, () => user ? setRoute('profile') : setAuthModal('login')],
   ];
   return <>
@@ -19,6 +20,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
       <button onClick={() => setRoute('home')} aria-current={route === 'home' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'home' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('首页概览', 'Dashboard')}</button>
       <button onClick={() => setRoute('market')} aria-current={route === 'market' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'market' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('策略市场', 'EA Market')}</button>
       <button onClick={() => { setRoute('forum'); setForumView('list'); }} aria-current={route === 'forum' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'forum' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('论坛', 'Forum')}</button>
+      <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('points'); }} aria-current={route === 'points' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'points' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('积分任务', 'Points')}</button>
       <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('profile'); }} aria-current={route === 'profile' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'profile' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('个人中心', 'Profile')}</button>
       {user?.role === 'admin' && (<a href="/tianwei" target="_blank" rel="noopener noreferrer" className="rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-400 hover:bg-amber-500/20">{t('后台管理', 'Admin Panel')}</a>)}
     </nav>
@@ -43,7 +45,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
     </div>
   </div>
 </header>
-<nav aria-label={t('移动端主导航', 'Mobile primary navigation')} className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-slate-800 bg-[#07101a]/95 px-[max(0.5rem,env(safe-area-inset-left))] pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+<nav aria-label={t('移动端主导航', 'Mobile primary navigation')} className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-800 bg-[#07101a]/95 px-[max(0.5rem,env(safe-area-inset-left))] pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
   {mobileItems.map(([value, label, Icon, action]) => <button key={value} type="button" aria-current={route === value ? 'page' : undefined} onClick={action} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${route === value ? 'text-cyan-300' : 'text-slate-500'}`}><Icon className="h-4 w-4" /><span>{label}</span></button>)}
 </nav>
 </>;

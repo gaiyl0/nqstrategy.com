@@ -41,7 +41,7 @@ assert.match(auditRoute, /delete metadata\.diagnostic;[\s\S]*delete metadata\.st
 assertions += 1;
 assert.doesNotMatch(auditRoute, /health:\s*getAuditHealth\(\)|\bintegrity,/, 'audit API must expose only its public integrity and health views');
 assertions += 1;
-assert.equal(routeFiles.length, 31, 'route inventory changed; review and update the audit baseline');
+assert.equal(routeFiles.length, 33, 'route inventory changed; review and update the audit baseline');
 assertions += 1;
 
 console.log(`API route error audit passed: ${routeFiles.length} routes, ${assertions} assertions`);

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { createCommentSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
+import { awardDailyAction } from '@/lib/points';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,9 +30,13 @@ async function POSTHandler(request) {
     if (!db.prepare('SELECT id FROM posts WHERE id = ?').get(postId)) {
       return NextResponse.json({ success: false, message: '帖子不存在' }, { status: 404 });
     }
-    const result = db.prepare('INSERT INTO comments (post_id, author, author_user_id, content) VALUES (?, ?, ?, ?)')
-      .run(postId, currentUser.username, currentUser.id, content);
-    return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) }, { status: 201 });
+    const commentId=db.transaction(()=>{
+      const result=db.prepare('INSERT INTO comments (post_id, author, author_user_id, content) VALUES (?, ?, ?, ?)').run(postId,currentUser.username,currentUser.id,content);
+      const id=Number(result.lastInsertRowid);
+      awardDailyAction(currentUser.id,'daily_comment',id);
+      return id;
+    }).immediate();
+    return NextResponse.json({ success: true, id: commentId }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, message: '创建评论失败' }, { status: 500 });
   }

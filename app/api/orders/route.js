@@ -75,6 +75,7 @@ async function GETHandler(request) {
           o.buyer_user_id,
           o.created_at AS purchase_date,
           o.price,
+          r.points_spent AS points_spent,
           o.status,
           o.tx_hash,
           o.payment_verified,
@@ -91,6 +92,7 @@ async function GETHandler(request) {
           p.file_url
         FROM orders o
         LEFT JOIN products p ON o.product_id = p.id
+        LEFT JOIN point_redemptions r ON r.order_id = o.id
         ORDER BY o.created_at DESC, o.id DESC
       `).all();
 
@@ -109,6 +111,7 @@ async function GETHandler(request) {
         o.buyer_user_id,
         o.created_at AS purchase_date,
         o.price,
+        r.points_spent AS points_spent,
         o.status,
         o.payment_verified,
         p.id AS product_id,
@@ -119,6 +122,7 @@ async function GETHandler(request) {
         p.file_url
       FROM orders o
       JOIN products p ON o.product_id = p.id
+      LEFT JOIN point_redemptions r ON r.order_id = o.id
       WHERE o.buyer_user_id = ?
         AND o.status = 'completed'
         AND (o.price = 0 OR o.payment_verified = 1)

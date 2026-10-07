@@ -5,7 +5,7 @@ import { ApiError, apiErrorMessage } from '@/lib/api-client';
 
 const LANGUAGE_EVENT = 'nexus-language-change';
 const MARKET_QUERY_KEYS = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'];
-const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload'];
+const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload', 'points'];
 
 const subscribeLanguage = (callback) => {
   window.addEventListener('storage', callback);

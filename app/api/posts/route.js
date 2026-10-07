@@ -5,6 +5,7 @@ import { listForumPosts } from '@/lib/forum-catalog';
 import { getSessionUser } from '@/lib/auth';
 import { categorySchema, forumListQuerySchema, createPostSchema, forumSortSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { createSecurityContext } from '@/lib/security';
+import { awardDailyAction } from '@/lib/points';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -76,6 +77,7 @@ async function POSTHandler(request) {
       for (const attachmentId of attachments) {
         if (attach.run(postId, attachmentId, currentUser.id).changes !== 1) throw new Error('POST_ATTACHMENT_CLAIM_FAILED');
       }
+      awardDailyAction(currentUser.id,'daily_post',postId);
       return postId;
     });
     const postId = create.immediate();

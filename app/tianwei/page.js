@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { ApiError, apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { useRouter } from 'next/navigation';
-import { Settings, Wallet, Mail, ShieldCheck, Users, Box, CheckCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut, Newspaper, BookOpen, TrendingUp, Bot, Globe2, MousePointerClick, Menu } from 'lucide-react';
+import { Settings, Wallet, Mail, ShieldCheck, Users, Box, CheckCircle, Key, Trash2, BadgeDollarSign, CreditCard, Hash, HandCoins, Flag, LayoutDashboard, Activity, AlertTriangle, ArrowUpRight, FileCheck2, LogOut, Newspaper, BookOpen, TrendingUp, Bot, Globe2, MousePointerClick, Menu, Coins } from 'lucide-react';
 import { Badge, Button, Dialog, Drawer, Field, Panel, useInteraction } from '@/app/components/ui/UiKit';
 import { AdminLocale, localizeAdminValue } from './admin-locale';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
@@ -12,6 +12,7 @@ import ProductReviewWorkspace from './ProductReviewWorkspace';
 import AppearanceSettings from './AppearanceSettings';
 import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
+import PointsAdmin from './PointsAdmin';
 
 const COMMUNITY_EDITOR_SECTIONS = [
   { tab: 'communityContent', key: 'news', title: '社区内容管理', max: 6, icon: Newspaper, fields: [['region', '分类 / 地区', 60], ['regionEn', '分类英文', 60], ['date', '日期 YYYY-MM-DD', 10], ['title', '标题', 140], ['titleEn', '英文标题', 180], ['summary', '摘要', 600, true], ['summaryEn', '英文摘要', 600, true], ['url', '来源 URL', 500], ['source', '来源名称', 120], ['sourceEn', '来源英文名称', 120]] },
@@ -261,7 +262,7 @@ export default function AdminDashboard() {
   const CommunitySectionIcon = currentCommunitySection?.icon || Newspaper;
   const navigation = [
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
-    ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['analytics', '访问与广告统计', Activity], ['withdrawals', '提现管理', HandCoins], ['licenses', '授权管理', Key],
+    ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '提现管理', HandCoins], ['licenses', '授权管理', Key],
     ['reports', '社区治理', Flag],
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
@@ -274,7 +275,7 @@ export default function AdminDashboard() {
     ['站点与外观', ['settings','contactLinks','appearance','homeModules','featured','advertising']],
     ['内容与社区', ['mt5Downloads','forumModules','communityCategories','communityContent','communityDocs','communityStrategies','reports']],
     ['策略与认证', ['products','licenses']],
-    ['交易与收入', ['orders','paymentSettings','walletSettings','withdrawals']],
+    ['交易与收入', ['orders','paymentSettings','walletSettings','withdrawals','points']],
     ['用户与权限', ['users']],
     ['推广与统计', ['analytics']],
   ];
@@ -304,6 +305,7 @@ export default function AdminDashboard() {
             ['策略审核', pendingProducts.length, 'products'], ['提现复核', pendingWithdrawals.length, 'withdrawals'], ['订单异常', pendingOrders.length, 'orders'], ['内容举报', reports.length, 'reports'],
           ].map(([label, count, target], index) => <button key={`queue-${target}-${index}`} type="button" onClick={() => setActiveTab(target)} className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-slate-800/35"><span className={`h-2.5 w-2.5 rounded-full ${count ? 'bg-amber-400' : 'bg-emerald-400'}`} /><div className="flex-1"><p className="font-semibold text-slate-200">{label}</p><p className="mt-1 text-xs text-slate-600">{count ? `${count} 条等待处理` : '当前没有待处理记录'}</p></div><ArrowUpRight className="h-4 w-4 text-slate-600" /></button>)}</div></Panel><div className="space-y-5"><Panel className="p-5"><h2 className="font-bold text-white">系统状态</h2><div className="mt-5 space-y-4">{[['管理员身份','已验证'],['付费能力','保持关闭'],['API 操作','服务端鉴权'],['审计边界','已启用']].map(([label,value], index) => <div key={`system-status-${label}-${index}`} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-emerald-400" />{label}</span><span className="font-semibold text-emerald-300">{value}</span></div>)}</div></Panel><Panel className="p-5"><h2 className="font-bold text-white">业务快照</h2><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{userList.length}</p><p className="mt-1 text-xs text-slate-600">用户</p></div><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{productList.length}</p><p className="mt-1 text-xs text-slate-600">策略</p></div><div className="col-span-2 rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-emerald-300">${completedRevenue.toLocaleString()}</p><p className="mt-1 text-xs text-slate-600">已核验完成订单金额</p></div></div></Panel></div></div>
         </div>}
+        {activeTab === 'points' && <PointsAdmin />}
         
         {activeTab === 'analytics' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">

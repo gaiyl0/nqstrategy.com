@@ -51,7 +51,7 @@ function publicProducts(currentUser = null) {
   const includeOwned = currentUser && ['developer', 'admin'].includes(currentUser.role);
   const products = db.prepare(`
     SELECT id, slug, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
-           pairs, ea_type, trial_enabled, trial_days, status, created_at
+           pairs, ea_type, points_price, status, created_at
     FROM products
     WHERE deleted_at IS NULL AND moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
     ORDER BY created_at DESC
@@ -61,7 +61,7 @@ function publicProducts(currentUser = null) {
 
 function marketProducts(currentUser,query){
   const now=Date.now();
-  const candidates=db.prepare(`SELECT p.id,p.slug,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.trial_enabled,p.trial_days,p.status,p.created_at,
+  const candidates=db.prepare(`SELECT p.id,p.slug,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.points_price,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.status,p.created_at,
     m.max_drawdown_percent metric_drawdown,m.reviewed_at metric_reviewed,
     CASE WHEN v.status='active' AND (v.expires_at IS NULL OR v.expires_at>?) THEN v.level ELSE 'unverified' END verification_level
     FROM products p LEFT JOIN strategy_metrics m ON m.product_id=p.id LEFT JOIN strategy_verifications v ON v.product_id=p.id

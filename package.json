@@ -24,6 +24,7 @@
     "test:licensing": "node tests/licensing.mjs",
     "test:strategy-comparison": "node tests/strategy-comparison.mjs",
     "test:social": "node tests/social.mjs",
+    "test:points": "node tests/points.mjs",
     "test:mt5-download": "node tests/mt5-download.mjs",
     "test:forum-catalog": "node tests/forum-catalog.mjs",
     "test:market-catalog": "node tests/market-catalog.mjs",
