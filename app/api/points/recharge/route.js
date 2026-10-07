@@ -29,7 +29,7 @@ async function GETHandler(request){
 async function POSTHandler(request){
   const user=await getSessionUser();
   if(!user)return NextResponse.json({success:false,message:'请先登录'},{status:401,headers:noStore});
-  if(!pointCheckoutEnabled())return NextResponse.json({success:false,message:'积分充值尚未开放'},{status:503,headers:noStore});
+  if(!pointCheckoutEnabled(user.id))return NextResponse.json({success:false,message:'积分充值尚未开放'},{status:503,headers:noStore});
   const context=createSecurityContext(request,user);
   const limited=enforceRateLimits(context,'points.recharge.create',[{policy:RATE_LIMITS.orderCreateShort,identifier:`user:${user.id}`},
     {policy:RATE_LIMITS.orderCreateDaily,identifier:`user:${user.id}`}]);

@@ -20,6 +20,7 @@ const {default:db}=await import('../lib/db.js');
 const {setRechargeExchangeRate}=await import('../lib/point-recharge.js');
 const {createPointCheckout,pointRechargeOrder,reconcilePointRecharge}=await import('../lib/point-payment-service.js');
 const {pointAssetAccount}=await import('../lib/point-assets.js');
+const {pointState}=await import('../lib/points.js');
 const user=Number(db.prepare("INSERT INTO users(username,email,role,password) VALUES('recharge-buyer','recharge-buyer@example.com','user','hash')").run().lastInsertRowid);
 const save=db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
 for(const [key,value] of Object.entries({wechatPaySetupEnabled:'true',wechatPayMchId:'1900000109',wechatPayAppId:'wx123',
@@ -27,6 +28,16 @@ for(const [key,value] of Object.entries({wechatPaySetupEnabled:'true',wechatPayM
   alipaySetupEnabled:'true',alipayAppId:'2026000000000000',alipaySellerId:'2088000000000000',
   alipayNotifyUrl:'https://nqstrategy.com/api/payments/webhooks/alipay',alipayGateway:'https://openapi.alipay.com/gateway.do'}))save.run(key,value);
 setRechargeExchangeRate(725);
+process.env.POINT_RECHARGE_ENABLED='0';
+assert.equal(pointState(user).rechargeEnabled,false);
+assert.deepEqual(pointState(user).rechargeProviders,[]);
+process.env.POINT_RECHARGE_ENABLED='1';
+process.env.POINT_RECHARGE_TEST_USER_IDS=String(user+1);
+assert.equal(pointState(user).rechargeEnabled,false);
+await assert.rejects(()=>createPointCheckout(user,1,'wechat',crypto.randomUUID(),async()=>new Response('{}')),/RECHARGE_DISABLED/);
+process.env.POINT_RECHARGE_TEST_USER_IDS=String(user);
+assert.equal(pointState(user).rechargeEnabled,true);
+assert.deepEqual(pointState(user).rechargeProviders,['wechat','alipay']);
 const nonce='0123456789abcdef0123456789abcdef';
 const wechatReply=data=>{
   const raw=JSON.stringify(data),time=String(Math.floor(Date.now()/1000));
