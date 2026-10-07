@@ -5,7 +5,7 @@ import { ApiError, apiErrorMessage } from '@/lib/api-client';
 
 const LANGUAGE_EVENT = 'nexus-language-change';
 const MARKET_QUERY_KEYS = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'];
-const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload', 'points'];
+const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload', 'points', 'inbox'];
 
 const subscribeLanguage = (callback) => {
   window.addEventListener('storage', callback);
@@ -66,7 +66,7 @@ export function useAppRoute() {
 export function useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute }) {
   const openedPost = useRef(null);
   useEffect(() => {
-    if (!authReady || user || !['profile', 'assets'].includes(route)) return;
+    if (!authReady || user || !['profile', 'assets', 'inbox'].includes(route)) return;
     const frame = requestAnimationFrame(() => { setRoute('home'); setAuthModal('login'); });
     return () => cancelAnimationFrame(frame);
   }, [authReady, user, route, setRoute, setAuthModal]);

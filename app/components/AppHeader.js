@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { Activity, Coins, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
+import { Activity, Bell, Coins, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
 
 export default function AppHeader({ siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }) {
   const mobileItems = [
@@ -28,6 +28,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
       <button onClick={toggleLang} aria-label={t('切换语言', 'Switch language')} className="flex min-h-11 items-center gap-1 text-xs bg-zinc-900 border border-zinc-800 px-2 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors sm:gap-1.5 sm:px-3">
         <Globe className="w-3.5 h-3.5" /> {lang === 'zh' ? 'EN' : '中文'}
       </button>
+      {user&&<button type="button" onClick={()=>setRoute('inbox')} aria-label={t('通知与私信','Notifications and messages')} title={t('通知与私信','Notifications and messages')} className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-zinc-800 transition-colors hover:bg-zinc-800 ${route==='inbox'?'text-cyan-300':'text-zinc-300'}`}><Bell className="h-5 w-5"/></button>}
       {user ? (
         <div className="relative">
           <button onClick={() => setShowUserMenu(!showUserMenu)} aria-expanded={showUserMenu} className="min-h-11 whitespace-nowrap text-sm font-bold text-zinc-300 bg-zinc-900 px-3 py-1.5 sm:px-4 rounded-lg border border-zinc-800 flex items-center gap-2 hover:bg-zinc-800 transition-colors">
@@ -36,6 +37,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
           {showUserMenu && (
             <div className="absolute right-0 mt-3 w-40 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
               <button onClick={() => { setRoute('profile'); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"><UserIcon className="w-4 h-4" /> {t('个人中心', 'Profile')}</button>
+              <button onClick={() => { setRoute('inbox'); setShowUserMenu(false); }} className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"><Bell className="w-4 h-4" /> {t('通知与私信', 'Inbox')}</button>
               <div className="h-px bg-zinc-800"></div>
               <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-800 flex items-center gap-2"><LogOut className="w-4 h-4" /> {t('退出登录', 'Logout')}</button>
             </div>

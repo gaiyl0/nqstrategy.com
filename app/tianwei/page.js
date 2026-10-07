@@ -13,6 +13,8 @@ import AppearanceSettings from './AppearanceSettings';
 import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
 import PointsAdmin from './PointsAdmin';
+import PointWithdrawalsAdmin from './PointWithdrawalsAdmin';
+import PointExchangeRateAdmin from './PointExchangeRateAdmin';
 
 const COMMUNITY_EDITOR_SECTIONS = [
   { tab: 'communityContent', key: 'news', title: '社区内容管理', max: 6, icon: Newspaper, fields: [['region', '分类 / 地区', 60], ['regionEn', '分类英文', 60], ['date', '日期 YYYY-MM-DD', 10], ['title', '标题', 140], ['titleEn', '英文标题', 180], ['summary', '摘要', 600, true], ['summaryEn', '英文摘要', 600, true], ['url', '来源 URL', 500], ['source', '来源名称', 120], ['sourceEn', '来源英文名称', 120]] },
@@ -59,7 +61,6 @@ export default function AdminDashboard() {
   const [analyticsClickPage,setAnalyticsClickPage]=useState(1);
   
   const [pwdModal, setPwdModal] = useState({ isOpen: false, userId: null, username: '', newPwd: '' });
-  const [balanceModal, setBalanceModal] = useState({ isOpen: false, userId: null, username: '', balance: 0 });
 
   const localizeConfig = value => {
     if (typeof value === 'string') return localizeAdminValue(value, lang);
@@ -201,18 +202,11 @@ export default function AdminDashboard() {
 
   const submitResetPwd = async () => { if (!pwdModal.newPwd) return showStatus('❌ 密码不能为空'); await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: pwdModal.userId, newPassword: pwdModal.newPwd }) }); setPwdModal({ isOpen: false, userId: null, username: '', newPwd: '' }); showStatus('✅ 密码重置成功！'); };
   
-  const submitUpdateBalance = async () => {
-    const response = await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `admin-balance:${balanceModal.userId}:${crypto.randomUUID()}` }, body: JSON.stringify({ id: balanceModal.userId, manualBalance: Number(balanceModal.balance) }) });
-    const data = await response.json();
-    if (!response.ok || !data.success) return showStatus(`❌ ${data.message || '余额修改失败'}`);
-    setBalanceModal({ isOpen: false }); fetchUsers(); showStatus(data.replayed ? 'ℹ️ 余额操作已处理' : '💰 余额修改成功并已记录账本！');
-  };
-
   const handleChangeRole = async (id, newRole) => { if (!await adminConfirm({title:'调整用户权限',description:`用户 #${id} → ${newRole}`,tone:'warning',noticeTitle:'权限变更会立即生效',notice:'请确认新角色与用户的实际职责一致。',confirmLabel:'确认更改'})) return; await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, newRole }) }); fetchUsers(); showStatus('👑 用户权限已更新'); };
   const handleDeleteUser = async (id, username) => { if (!await adminConfirm({title:'注销用户',description:username,noticeTitle:'历史资产将保留原 user_id 关联',notice:'账户会被匿名化并停用，同名重新注册不会继承旧订单、产品或收入。',confirmLabel:'确认注销'})) return; await apiFetch(`/api/users?id=${id}`, { method: 'DELETE' }); fetchUsers(); showStatus('🗑️ 用户已删除'); };
 
   const handleWithdrawAction = async (id, statusAction) => {
-    if (!await adminConfirm({title:statusAction === 'completed' ? '批准提现' : '驳回提现',description:`提现申请 #${id}`,tone:statusAction === 'completed'?'warning':'danger',noticeTitle:statusAction === 'completed'?'请确认链下打款已完成':'冻结余额将原子退回',notice:statusAction === 'completed'?'状态更新具有幂等保护，重复操作不会重复结算。':'驳回退款只会执行一次并写入账本。',confirmLabel:statusAction === 'completed'?'确认已打款':'驳回并退回余额'})) return;
+    if (!await adminConfirm({title:statusAction === 'completed' ? '批准提现' : '驳回提现',description:`提现申请 #${id}`,tone:statusAction === 'completed'?'warning':'danger',noticeTitle:statusAction === 'completed'?'请确认链下打款已完成':'冻结金额将转入积分资产',notice:statusAction === 'completed'?'状态更新具有幂等保护，重复操作不会重复结算。':'驳回退款只会执行一次并写入积分资产账本。',confirmLabel:statusAction === 'completed'?'确认已打款':'驳回并退回积分'})) return;
     const response = await apiFetch('/api/withdraw', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': `withdraw:${id}:${statusAction}:v1` },
@@ -262,7 +256,7 @@ export default function AdminDashboard() {
   const CommunitySectionIcon = currentCommunitySection?.icon || Newspaper;
   const navigation = [
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
-    ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '提现管理', HandCoins], ['licenses', '授权管理', Key],
+    ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
     ['reports', '社区治理', Flag],
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
@@ -275,7 +269,7 @@ export default function AdminDashboard() {
     ['站点与外观', ['settings','contactLinks','appearance','homeModules','featured','advertising']],
     ['内容与社区', ['mt5Downloads','forumModules','communityCategories','communityContent','communityDocs','communityStrategies','reports']],
     ['策略与认证', ['products','licenses']],
-    ['交易与收入', ['orders','paymentSettings','walletSettings','withdrawals','points']],
+    ['交易与收入', ['orders','paymentSettings','walletSettings','points','pointWithdrawals','withdrawals']],
     ['用户与权限', ['users']],
     ['推广与统计', ['analytics']],
   ];
@@ -333,6 +327,7 @@ export default function AdminDashboard() {
         {activeTab === 'contactLinks' && <Panel className="space-y-5 p-6"><h2 className="text-lg font-bold">页脚与社交联系</h2><p className="text-sm leading-6 text-slate-500">填写公开联系方式并保存配置后，前台所有页脚同步显示。X 与 Telegram 留空时隐藏对应入口。</p><Field label="X 账号链接"><input type="url" maxLength={500} value={settings.socialXUrl || ''} placeholder="https://x.com/你的账号" onChange={event => setSettings({ ...settings, socialXUrl: event.target.value })} /></Field><Field label="Telegram 群组链接"><input type="url" maxLength={500} value={settings.telegramGroupUrl || ''} placeholder="https://t.me/你的群组或邀请链接" onChange={event => setSettings({ ...settings, telegramGroupUrl: event.target.value })} /></Field><Field label="公开联系邮箱"><input type="email" maxLength={254} value={settings.contactEmail || ''} placeholder="contact@example.com" onChange={event => setSettings({ ...settings, contactEmail: event.target.value })} /></Field><p className="text-xs leading-6 text-slate-500">邮箱与网站信息页面共用同一设置。链接在新窗口打开；这里只配置公开信息，不填写密码或支付密钥。</p></Panel>}
         {activeTab === 'paymentSettings' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">
+            <PointExchangeRateAdmin />
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-6 text-sm leading-6 text-amber-100">
               <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" /><div><p className="font-bold text-amber-200">支付渠道资料仅作接入准备，真实收款保持关闭</p><p className="mt-1 text-amber-100/75">保存商户标识、回调地址和证书序列号后，仍不能创建付费订单、发放许可证或结算创作者收入。只有完成 Payment Intent、签名回调、服务端二次查单、退款和对账验收后，才可单独评估开启付费能力。</p></div></div>
             </div>
@@ -443,8 +438,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="p-5">
-                          <div className="font-black text-emerald-400 text-lg">${u.balance || 0}</div>
-                          <button onClick={() => setBalanceModal({ isOpen: true, userId: u.id, username: u.username, balance: u.balance || 0 })} className="text-xs text-zinc-500 hover:text-cyan-400 mt-1">💳 修改余额</button>
+                          <div className="text-xs text-zinc-500">历史美元余额已迁入积分</div>
                         </td>
                         <td className="p-5 space-y-2">
                           <select value={u.role} onChange={(e) => handleChangeRole(u.id, e.target.value)} disabled={u.id === 1} className="bg-zinc-950 border border-zinc-700 text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer">
@@ -550,6 +544,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {activeTab === 'pointWithdrawals' && <PointWithdrawalsAdmin />}
         {activeTab === 'withdrawals' && (
            <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50 shadow-[var(--nq-shadow-panel)] animate-in fade-in duration-300">
               <table className="min-w-[760px] w-full text-left whitespace-nowrap">
@@ -565,7 +560,7 @@ export default function AdminDashboard() {
                         {w.status === 'pending' && (
                           <>
                             <button onClick={() => handleWithdrawAction(w.id, 'completed')} className="px-3 py-1.5 bg-emerald-600 text-white rounded font-bold">已打款</button>
-                            <button onClick={() => handleWithdrawAction(w.id, 'rejected')} className="px-3 py-1.5 bg-red-600 text-white rounded font-bold">驳回(退钱)</button>
+                            <button onClick={() => handleWithdrawAction(w.id, 'rejected')} className="px-3 py-1.5 bg-red-600 text-white rounded font-bold">驳回(退积分)</button>
                           </>
                         )}
                       </td>
@@ -580,7 +575,6 @@ export default function AdminDashboard() {
         </div></main>
       </div>
 
-      <Dialog open={balanceModal.isOpen} onClose={() => setBalanceModal({ ...balanceModal, isOpen: false })} title="调控用户余额" description={`修改 ${balanceModal.username || '用户'} 的底层金额；操作会写入账本和审计。`} footer={<><Button onClick={() => setBalanceModal({ ...balanceModal, isOpen: false })}>取消</Button><Button variant="primary" onClick={submitUpdateBalance}>确认调整</Button></>}><Field label="余额（USD）" required><input type="number" inputMode="decimal" value={balanceModal.balance} onChange={event => setBalanceModal({ ...balanceModal, balance: event.target.value })} /></Field></Dialog>
 
       <Dialog open={pwdModal.isOpen} onClose={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })} title="强制修改密码" description={`为 ${pwdModal.username || '用户'} 设置新密码；现有会话会按服务端策略失效。`} footer={<><Button onClick={() => setPwdModal({ ...pwdModal, isOpen: false, newPwd: '' })}>取消</Button><Button variant="primary" onClick={submitResetPwd}>确认修改</Button></>}><Field label="新密码" required><input type="password" autoComplete="new-password" value={pwdModal.newPwd} onChange={event => setPwdModal({ ...pwdModal, newPwd: event.target.value })} /></Field></Dialog>
     </div></AdminLocale>

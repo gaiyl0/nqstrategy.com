@@ -86,6 +86,7 @@ run_as_nexus "npm run db:migrate -- up"
 run_as_nexus "npm run db:migrate -- verify"
 run_as_nexus "npm run audit:verify"
 run_as_nexus "npm run ledger:verify"
+run_as_nexus "npm run points:verify"
 
 ln -sfn "$release_dir" "$current_link"
 switched=1

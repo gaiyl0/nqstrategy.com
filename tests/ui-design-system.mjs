@@ -36,7 +36,8 @@ assert.match(css, /prefers-reduced-motion/);
 
 assert.match(market, /product\.metrics\?\.reviewedAt && product\.report/, 'market curves must require reviewed server metrics and an MT5 report');
 assert.match(market, /No reviewed curve/, 'market must expose a truthful empty curve state');
-assert.match(market, /Paid checkout unavailable/, 'market must keep paid checkout visibly unavailable');
+assert.match(market, /Points price not set/, 'market must explain why a paid strategy cannot be redeemed without points pricing');
+assert.match(market, /Recharge will open after official payment callback verification/, 'market must keep recharge visibly unavailable');
 assert.match(market, /setRetryKey\(value\s*=>\s*value\s*\+\s*1\)/, 'market error retry must issue a new request');
 assert.doesNotMatch(market, /Math\.random/, 'market must not generate synthetic chart data');
 for (const landmark of ['SideNavigation', 'ComparisonRail', 'StrategyCard', 'market-filter']) {
@@ -98,8 +99,8 @@ assert.match(header, /Mobile primary navigation/, 'small screens must expose pri
 assert.match(header, /aria-current=\{route === value \? 'page'/, 'mobile navigation must announce the active page');
 assert.match(header, /env\(safe-area-inset-bottom\)/, 'mobile navigation must respect device safe areas');
 assert.equal((overlays.match(/fixed inset-0/g) || []).length, (overlays.match(/role="dialog"/g) || []).length, 'every application overlay must expose dialog semantics');
-assert.equal((overlays.match(/<button aria-label=\{t\('关闭','Close'\)\}/g) || []).length, 4, 'every application dialog must have a named close button');
-assert.match(admin, /<Dialog open=\{balanceModal\.isOpen\}/, 'admin balance editor must use the accessible dialog primitive');
+assert.equal((overlays.match(/<button aria-label=\{t\('关闭','Close'\)\}/g) || []).length, 3, 'every application dialog must have a named close button');
+assert.match(admin, /<PointWithdrawalsAdmin/, 'admin must expose point withdrawal review');
 assert.match(admin, /setLang\(current => current === 'zh' \? 'en' : 'zh'\)/, 'admin must allow switching its language');
 assert.match(admin, /<AdminLocale lang=\{lang\}>/, 'admin interface must localize static UI labels');
 assert.match(admin, /localizeConfig\(config\)/, 'admin action dialogs must use the selected language');

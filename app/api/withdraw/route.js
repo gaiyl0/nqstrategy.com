@@ -2,19 +2,18 @@ import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
+import { parseJson } from '@/lib/validation';
 import {
-  createWithdrawalSchema,
   idempotencyKeySchema,
-  parseJson,
   reviewWithdrawalSchema,
   validate,
 } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
-import { applyWalletDelta, moneyToMinor } from '@/lib/wallet-ledger.mjs';
+import { moneyToMinor } from '@/lib/wallet-ledger.mjs';
+import { applyPointAssetDelta } from '@/lib/point-assets';
 
 export const dynamic = 'force-dynamic';
 
-const MIN_WITHDRAWAL = 100;
 class WithdrawalError extends Error {
   constructor(message, status) {
     super(message);
@@ -83,54 +82,10 @@ async function POSTHandler(request) {
   });
   if (!currentUser) return audited(jsonError('请先登录', 401), 'failure', 'UNAUTHENTICATED');
 
-  const parsed = await parseJson(request, createWithdrawalSchema);
-  if (!parsed.success) return audited(parsed.response, 'failure', 'VALIDATION_ERROR');
-  const { address: targetAddress, amount } = parsed.data;
-  const hasExplicitAmount = amount !== undefined && amount !== null && amount !== '';
-  const requestedAmount = hasExplicitAmount ? amount : null;
+  // Legacy dollar wallet remains auditable, but new withdrawals use point assets.
+  return audited(jsonError('美元钱包已迁入积分资产，请在积分中心申请提现', 410), 'blocked', 'LEGACY_WALLET_CLOSED');
 
-  try {
-    const createWithdrawal = db.transaction(() => {
-      const account = db.prepare('SELECT id, username, balance FROM users WHERE id = ? AND deleted_at IS NULL').get(currentUser.id);
-      if (!account) throw new WithdrawalError('账户不存在或已停用', 409);
 
-      const pending = db.prepare("SELECT id FROM withdrawals WHERE user_id = ? AND status = 'pending'").get(account.id);
-      if (pending) throw new WithdrawalError('您已有正在审核中的提现申请，请等待上一笔处理完成', 409);
-
-      const balance = Number(account.balance);
-      const withdrawAmount = hasExplicitAmount ? requestedAmount : balance;
-      if (!Number.isFinite(balance) || !Number.isFinite(withdrawAmount) || withdrawAmount < MIN_WITHDRAWAL) {
-        throw new WithdrawalError(`最低提现门槛为 ${MIN_WITHDRAWAL} USD`, 400);
-      }
-
-      const result = db.prepare("INSERT INTO withdrawals (username, user_id, amount, crypto_address, status) VALUES (?, ?, ?, ?, 'pending')")
-        .run(account.username, account.id, withdrawAmount, targetAddress);
-      const withdrawalId = Number(result.lastInsertRowid);
-      try {
-        applyWalletDelta({
-          userId: account.id, transactionType: 'WITHDRAWAL_HOLD',
-          businessKey: `withdrawal:${withdrawalId}:hold`, amountMinor: -moneyToMinor(withdrawAmount),
-          withdrawalId, actorUserId: account.id, metadata: { source: 'withdrawal_request' },
-        });
-      } catch (error) {
-        if (error.message === 'LEDGER_INSUFFICIENT_BALANCE') throw new WithdrawalError('账户可用余额不足', 400);
-        throw error;
-      }
-
-      return { id: withdrawalId, amount: withdrawAmount };
-    });
-
-    const withdrawal = createWithdrawal.immediate();
-    return audited(NextResponse.json({
-      success: true,
-      message: '提现申请已提交，等待审核打款',
-      withdrawal,
-    }, { status: 201 }), 'success', 'REQUESTED', withdrawal.id, { amount: withdrawal.amount });
-  } catch (error) {
-    if (error instanceof WithdrawalError) return audited(jsonError(error.message, error.status), 'failure', 'WITHDRAWAL_REJECTED');
-    if (isPendingConstraintError(error)) return audited(jsonError('您已有正在审核中的提现申请，请等待上一笔处理完成', 409), 'failure', 'PENDING_EXISTS');
-    return audited(jsonError('提现申请失败', 500), 'failure', 'INTERNAL_ERROR');
-  }
 }
 
 async function PATCHHandler(request) {
@@ -173,17 +128,10 @@ async function PATCHHandler(request) {
       if (statusUpdate.changes !== 1) throw new WithdrawalError('该申请已处理，请勿重复操作', 409);
 
       if (status === 'rejected') {
-        try {
-          applyWalletDelta({
-            userId: record.user_id, transactionType: 'WITHDRAWAL_REFUND',
-            businessKey: `withdrawal:${record.id}:refund`, idempotencyKey,
-            amountMinor: moneyToMinor(record.amount), withdrawalId: record.id,
-            actorUserId: currentUser.id, metadata: { source: 'withdrawal_rejection' },
-          });
-        } catch (error) {
-          if (error.message === 'LEDGER_USER_NOT_FOUND') throw new WithdrawalError('申请人账户不存在，审批已回滚', 409);
-          throw error;
-        }
+        const owner=db.prepare('SELECT role FROM users WHERE id=?').get(record.user_id);
+        if(!owner)throw new WithdrawalError('申请人账户不存在，审批已回滚',409);
+        const units=moneyToMinor(record.amount);
+        applyPointAssetDelta(record.user_id,{funded:units,withdrawable:['developer','admin'].includes(owner.role)?units:0},`legacy-withdrawal:${record.id}:refund`,'legacy_withdrawal_refund',{legacyWithdrawalId:record.id},Date.now());
       }
 
       return { replayed: false };
@@ -195,7 +143,7 @@ async function PATCHHandler(request) {
       replayed: result.replayed,
       message: result.replayed
         ? '审批结果已存在，本次为安全重放'
-        : status === 'completed' ? '已标记为打款成功' : '申请已驳回，金额已退回用户余额',
+        : status === 'completed' ? '已标记为打款成功' : '申请已驳回，金额已退回积分资产',
     }), 'success', result.replayed ? 'IDEMPOTENT_REPLAY' : status === 'completed' ? 'COMPLETED' : 'REJECTED_AND_REFUNDED', id, { replayed: result.replayed, decision: status });
   } catch (error) {
     if (error instanceof WithdrawalError) return audited(jsonError(error.message, error.status), 'failure', 'WITHDRAWAL_STATE_CONFLICT', id);

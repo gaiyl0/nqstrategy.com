@@ -9,7 +9,7 @@ import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { 
   Activity, Shield, CheckCircle, Upload, Globe, X, Code2, Edit,
   Image as ImageIcon, FileCode, LogOut, User as UserIcon, MessageSquare, Eye, 
-  Clock, ArrowLeft, Hash, FolderDown, Download, Box, CheckCircle2, Trash2, Settings, Wallet
+  Clock, ArrowLeft, Hash, FolderDown, Download, Box, CheckCircle2, Trash2, Settings
 } from 'lucide-react';
 
 import HomeView, { FadeInView } from './components/HomeView';
@@ -20,6 +20,7 @@ import UploadView from './components/UploadView';
 import ForumView from './components/ForumView';
 import ProfileView from './components/ProfileView';
 import PointsCenter from './components/PointsCenter';
+import InboxCenter from './components/InboxCenter';
 import AppOverlays from './components/AppOverlays';
 import { useAppRoute, useLanguage, useToast, useTopicEntry } from './hooks/useAppShell';
 import { useInteraction } from './components/ui/UiKit';
@@ -134,8 +135,6 @@ export default function App() {
   const [avatarFile, setAvatarFile] = useState(null);
   const [isProfileUpdating, setIsProfileUpdating] = useState(false);
   
-  const [withdrawModal, setWithdrawModal] = useState(false);
-  const [withdrawAddress, setWithdrawAddress] = useState('');
 
   const [siteSettings, setSiteSettings] = useState(null);
   const [products, setProducts] = useState([]);
@@ -254,19 +253,6 @@ export default function App() {
       if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); fetchMyOrders(); } else showToast('❌ ' + data.message);
     } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('资料更新失败', 'Profile update failed'))}`); }
     finally { setIsProfileUpdating(false); }
-  };
-
-  const submitWithdrawal = async () => {
-    if (!withdrawAddress) return showToast(t('请输入有效的收款地址', 'Please enter a valid crypto address'));
-    try {
-      const res = await apiFetch('/api/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address: withdrawAddress }) });
-      const data = await res.json();
-      if (data.success) {
-         showToast(t('✅ 提现申请已提交，等待审核打款！', '✅ Withdrawal submitted, pending approval!'));
-         updateUserSession({ balance: 0 }); 
-         setWithdrawModal(false); setWithdrawAddress('');
-      } else { showToast('❌ ' + data.message); }
-    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('请求异常', 'Request error'))}`); }
   };
 
   const fetchProducts = () => { apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
@@ -398,6 +384,7 @@ export default function App() {
     const value = String(uploadForm.pointsPrice ?? '').trim();
     if (value && (!/^[1-9]\d*$/.test(value) || Number(value) > 1000000)) return showToast(t('积分价格须为 1–1,000,000 的整数', 'Points price must be an integer from 1 to 1,000,000'));
     if (value && Number(uploadForm.price) <= 0) return showToast(t('免费策略不能设置积分价', 'Free strategies cannot have a points price'));
+    if (!value && Number(uploadForm.price) > 0) return showToast(t('付费策略必须保留积分购买价格', 'Paid strategies need a points purchase price'));
     try {
       const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null})});
       const data = await response.json();
@@ -519,15 +506,16 @@ export default function App() {
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handlePointsRedeem={handlePointsRedeem} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'points' && user && <PointsCenter t={t} setRoute={setRoute} />}
         {route === 'points' && !user && <section className="mx-auto my-16 max-w-xl rounded-2xl border border-cyan-400/25 bg-slate-900 p-8 text-center text-white"><h1 className="text-2xl font-bold">{t('积分任务中心','Points & Tasks')}</h1><p className="mt-3 text-sm leading-6 text-slate-300">{t('登录后查看积分余额、每日任务和审核任务。','Sign in to view your points, daily activities and reviewed tasks.')}</p><button onClick={()=>setAuthModal('login')} className="mt-5 rounded-lg bg-cyan-600 px-5 py-3 text-sm font-bold hover:bg-cyan-500">{t('登录 / 注册','Login / Register')}</button></section>}
+        {route === 'inbox' && user && <InboxCenter t={t} user={user} />}
         {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, savePointsPrice, isSubmitting }} />}
         {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
-        {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
-        {route === 'assets' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
+        {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
+        {route === 'assets' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
       </main>
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
 
-      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
+      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const read = (file) => fs.readFileSync(file, 'utf8');
 const workflow = read('.github/workflows/ci.yml');
@@ -32,7 +34,12 @@ assert.match(paymentGuide, /provider_event_id TEXT NOT NULL/);
 assert.match(paymentGuide, /只有 `changes === 1`/);
 
 const node = process.execPath;
-const drill = spawnSync(node, ['scripts/backup-maintenance.mjs', 'drill'], { cwd: process.cwd(), env: process.env, encoding: 'utf8' });
+const drillRoot=fs.mkdtempSync(path.join(os.tmpdir(),'nexus-release-test-'));
+const drillEnv={...process.env,NEXUS_DB_PATH:path.join(drillRoot,'data.db')};
+const migrate=spawnSync(node,['scripts/db-migrate.mjs','up'],{cwd:process.cwd(),env:drillEnv,encoding:'utf8'});
+assert.equal(migrate.status,0,migrate.stderr||migrate.stdout);
+const drill = spawnSync(node, ['scripts/backup-maintenance.mjs', 'drill'], { cwd: process.cwd(), env: drillEnv, encoding: 'utf8' });
+fs.rmSync(drillRoot,{recursive:true,force:true});
 assert.equal(drill.status, 0, drill.stderr || drill.stdout);
 assert.match(drill.stdout, /"success": true/);
 assert.match(drill.stdout, /"quickCheck": "ok"/);

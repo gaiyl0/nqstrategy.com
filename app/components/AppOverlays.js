@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { CheckCircle, Settings, Shield, User as UserIcon, Wallet, X } from 'lucide-react';
+import { CheckCircle, Settings, Shield, User as UserIcon, X } from 'lucide-react';
 
 function AvatarPicker({ currentUrl, username, setAvatarFile, t }) {
   const previewUrlRef = useRef(null);
@@ -32,7 +32,7 @@ function AvatarPicker({ currentUrl, username, setAvatarFile, t }) {
   );
 }
 
-export default function AppOverlays({ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, withdrawModal, setWithdrawModal, withdrawAddress, setWithdrawAddress, submitWithdrawal, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }) {
+export default function AppOverlays({ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }) {
   const authDialogRef = useRef(null);
   const authOpen = Boolean(authModal);
   useEffect(() => {
@@ -81,26 +81,6 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
         </div>
         <button onClick={submitProfileUpdate} disabled={isProfileUpdating} className="w-full py-4 mt-2 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-xl text-sm shadow-[0_0_20px_rgba(8,145,178,0.3)] transition-all">
           {isProfileUpdating ? t('正在保存...', 'Saving...') : t('保存所有修改', 'Save Changes')}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* 提现弹窗 */}
-{withdrawModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in zoom-in-95">
-    <div role="dialog" aria-modal="true" className="max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-3xl max-w-sm w-full p-8 relative shadow-2xl">
-      <button aria-label={t('关闭','Close')} onClick={() => setWithdrawModal(false)} className="absolute top-5 right-5 text-zinc-400 hover:text-white"><X className="w-5 h-5" /></button>
-      <h3 className="text-xl font-black text-white mb-2 flex items-center gap-2"><Wallet className="w-5 h-5 text-emerald-400"/> {t('余额提现申请', 'Withdrawal Request')}</h3>
-      <p className="text-xs text-zinc-500 mb-6">{t('您当前可全额提取的余额为', 'Your currently withdrawable balance is')} <strong className="text-emerald-400">${user?.balance}</strong> USD</p>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-bold text-zinc-400 mb-2">{t('您的 USDT (TRC20) 钱包地址', 'Your USDT (TRC20) Wallet Address')}</label>
-          <input type="text" value={withdrawAddress} onChange={e => setWithdrawAddress(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-emerald-500 focus:outline-none font-mono" placeholder="T..." />
-        </div>
-        <button onClick={submitWithdrawal} className="w-full py-3.5 mt-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all">
-          {t('提交申请', 'Submit Request')}
         </button>
       </div>
     </div>

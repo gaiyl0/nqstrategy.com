@@ -64,7 +64,10 @@ try {
   const seed = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import db from './lib/db.js';
     db.prepare("INSERT INTO users (username,email,role,password,balance) VALUES ('admin','admin@test.invalid','admin','test-hash',0)").run();
-    db.prepare("INSERT INTO users (username,email,role,password,balance) VALUES ('trader','trader@test.invalid','user','test-hash',0)").run();
+    db.prepare("INSERT INTO users (username,email,role,password,balance) VALUES ('trader','trader@test.invalid','developer','test-hash',0)").run();
+    const {applyPointAssetDelta}=await import('./lib/point-assets.js');
+    applyPointAssetDelta(2,{funded:50000,withdrawable:50000},'test:funded-opening','verified_recharge');
+    db.prepare("INSERT INTO withdrawals(username,user_id,amount,crypto_address,status) VALUES('trader',2,25,'TTestLegacyAddress','pending')").run();
     db.close();
   `], { cwd: root, env, encoding: 'utf8' });
   assert.equal(seed.status, 0, seed.stderr);
@@ -90,38 +93,32 @@ try {
   assert.equal(ready, true, `production server did not become ready\n${serverOutput}`);
 
   const adjusted = await jsonRequest('/api/users', 'PATCH', adminCookie, { id: 2, manualBalance: 500 }, 'http-admin-adjust-1');
-  assert.equal(adjusted.status, 200, JSON.stringify(adjusted.body));
-  assert.equal(adjusted.body.balance, 500);
-  const adjustedReplay = await jsonRequest('/api/users', 'PATCH', adminCookie, { id: 2, manualBalance: 500 }, 'http-admin-adjust-1');
-  assert.equal(adjustedReplay.status, 200);
-  assert.equal(adjustedReplay.body.replayed, true);
+  assert.equal(adjusted.status, 410, JSON.stringify(adjusted.body));
+  const legacyWithdrawal = await jsonRequest('/api/withdraw', 'POST', userCookie, { address: '0x1111111111111111111111111111111111111111', amount: 100 });
+  assert.equal(legacyWithdrawal.status, 410, JSON.stringify(legacyWithdrawal.body));
 
-  const requested = await jsonRequest('/api/withdraw', 'POST', userCookie, {
-    address: '0x1111111111111111111111111111111111111111',
-    amount: 100,
-  });
+  const requested = await jsonRequest('/api/points/withdrawals', 'POST', userCookie, { action:'request',points:100,note:'Alipay account test' });
   assert.equal(requested.status, 201, JSON.stringify(requested.body));
-  const withdrawalId = requested.body.withdrawal.id;
-
+  const withdrawalId = requested.body.id;
   const decisions = await Promise.all([
-    jsonRequest('/api/withdraw', 'PATCH', adminCookie, { id: withdrawalId, status: 'rejected' }, 'http-withdrawal-review-a'),
-    jsonRequest('/api/withdraw', 'PATCH', adminCookie, { id: withdrawalId, status: 'rejected' }, 'http-withdrawal-review-b'),
+    jsonRequest('/api/points/withdrawals', 'POST', adminCookie, { action:'review',id:withdrawalId,approve:false,note:'rejected A' }),
+    jsonRequest('/api/points/withdrawals', 'POST', adminCookie, { action:'review',id:withdrawalId,approve:false,note:'rejected B' }),
   ]);
-  assert.deepEqual(decisions.map((item) => item.status).sort(), [200, 409]);
-  const winningKey = decisions[0].status === 200 ? 'http-withdrawal-review-a' : 'http-withdrawal-review-b';
-  const replay = await jsonRequest('/api/withdraw', 'PATCH', adminCookie, { id: withdrawalId, status: 'rejected' }, winningKey);
-  assert.equal(replay.status, 200);
-  assert.equal(replay.body.replayed, true);
+  assert.deepEqual(decisions.map(item=>item.status).sort(),[200,409]);
+  const legacyDecision=await jsonRequest('/api/withdraw','PATCH',adminCookie,{id:1,status:'rejected'},'legacy-reject-test-key');
+  assert.equal(legacyDecision.status,200,JSON.stringify(legacyDecision.body));
 
   server.kill();
   await new Promise((resolve) => server.once('exit', resolve));
   server = null;
 
   const db = new Database(databasePath, { readonly: true });
-  assert.equal(db.prepare('SELECT balance FROM users WHERE id = 2').get().balance, 500);
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM wallet_transactions WHERE user_id = 2 AND transaction_type = 'WITHDRAWAL_HOLD'").get().count, 1);
-  assert.equal(db.prepare("SELECT COUNT(*) count FROM wallet_transactions WHERE user_id = 2 AND transaction_type = 'WITHDRAWAL_REFUND'").get().count, 1);
-  assert.equal(db.prepare('SELECT status FROM withdrawals WHERE id = ?').get(withdrawalId).status, 'rejected');
+  assert.equal(db.prepare('SELECT balance FROM users WHERE id = 2').get().balance,0);
+  assert.equal(db.prepare('SELECT withdrawable_units FROM point_asset_accounts WHERE user_id=2').get().withdrawable_units,52500);
+  assert.equal(db.prepare('SELECT balance FROM users WHERE id=2').get().balance,0,'legacy rejected withdrawal is returned to points, not old wallet');
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM point_asset_transactions WHERE user_id=2 AND reason='withdrawal_hold'").get().count,1);
+  assert.equal(db.prepare("SELECT COUNT(*) count FROM point_asset_transactions WHERE user_id=2 AND reason='withdrawal_refund'").get().count,1);
+  assert.equal(db.prepare('SELECT status FROM point_asset_withdrawals WHERE id=?').get(withdrawalId).status,'rejected');
   db.close();
 
   const verify = spawnSync(process.execPath, ['scripts/ledger-maintenance.mjs'], { cwd: root, env, encoding: 'utf8' });

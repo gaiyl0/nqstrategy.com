@@ -3,8 +3,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSessionUser, hashPassword, createSession, verifyPassword } from '@/lib/auth';
 import crypto from 'crypto';
-import { idempotencyKeySchema, idSchema, parseJson, userPatchSchema, validate, validationErrorResponse } from '@/lib/validation';
-import { setWalletBalance } from '@/lib/wallet-ledger.mjs';
+import { idSchema, parseJson, userPatchSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
@@ -69,23 +68,7 @@ async function PATCHHandler(request) {
       if (currentUser.role !== 'admin') {
         return NextResponse.json({ success: false, message: '越权拦截：仅限超管可调控账户余额' }, { status: 403 });
       }
-      const newBalance = body.manualBalance;
-      const parsedKey = validate(idempotencyKeySchema, request.headers.get('idempotency-key'));
-      if (!parsedKey.success) return validationErrorResponse(parsedKey.error);
-      try {
-        const result = setWalletBalance({
-          userId: body.id, balance: newBalance,
-          businessKey: `admin-adjustment:${parsedKey.data}`,
-          idempotencyKey: parsedKey.data, actorUserId: currentUser.id,
-          metadata: { source: 'admin_balance_override' },
-        });
-        return NextResponse.json({ success: true, replayed: result.replayed, balance: result.balanceAfterMinor / 100, message: result.replayed ? '余额调整已处理，本次为安全重放' : '余额调整成功并已记录账本' });
-      } catch (error) {
-        if (error.message === 'LEDGER_USER_NOT_FOUND') return NextResponse.json({ success: false, message: '用户不存在或已注销' }, { status: 404 });
-        if (error.message === 'LEDGER_NO_CHANGE') return NextResponse.json({ success: false, message: '目标余额与当前余额相同' }, { status: 409 });
-        if (error.message === 'LEDGER_IDEMPOTENCY_CONFLICT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE') return NextResponse.json({ success: false, message: '该幂等键已用于其他余额操作' }, { status: 409 });
-        throw error;
-      }
+      return NextResponse.json({ success: false, message: '旧美元钱包已迁入积分资产，不能再调整旧余额' }, { status: 410 });
     }
 
     // -------------------------------------------------------------

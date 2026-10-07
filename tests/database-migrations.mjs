@@ -43,10 +43,13 @@ equal(concurrent.pragma('quick_check',{simple:true}),'ok','concurrent migrated d
 concurrent.close();remove(concurrentPath);
 
 const adUpgradePath=path.resolve('.tmp-database-ad-upgrade-test.db');remove(adUpgradePath);
-const adUpgrade=new Database(adUpgradePath);adUpgrade.pragma('foreign_keys=ON');
+const adUpgrade=new Database(adUpgradePath);adUpgrade.pragma('foreign_keys=ON');adUpgrade.function('wallet_maintenance_allowed',()=>1);adUpgrade.function('audit_maintenance_allowed',()=>0);
 runMigrations(adUpgrade,{plan:migrations.slice(0,-2)});
+adUpgrade.prepare("INSERT INTO users(username,email,role,password,balance) VALUES('migration-developer','migration@example.test','developer','hash',12.34)").run();
+adUpgrade.prepare("INSERT INTO point_accounts(user_id,balance,updated_at) VALUES(1,7,?)").run(Date.now());
 adUpgrade.prepare("INSERT INTO ad_click_events(slot,visitor_hash,destination_host,occurred_at,traffic_kind) VALUES('exchange_home',?,?,?,'browser')").run('a'.repeat(64),'first.example',Date.now());
-equal(runMigrations(adUpgrade).currentVersion,10,'advertisement and points schemas upgrade from the deployed version');
+equal(runMigrations(adUpgrade).currentVersion,migrations.at(-1).version,'all schemas upgrade from the deployed version');
+equal(adUpgrade.prepare('SELECT funded_units,bonus_units,withdrawable_units FROM point_asset_accounts WHERE user_id=1').get(),{funded_units:1234,bonus_units:700,withdrawable_units:1234},'old wallet cents and reward points migrate with source provenance');
 equal(adUpgrade.prepare("SELECT slot,destination_host FROM ad_click_events WHERE id=1").get(),{slot:'exchange_home',destination_host:'first.example'},'existing click history survives the upgrade');
 adUpgrade.prepare("INSERT INTO ad_click_events(slot,visitor_hash,destination_host,occurred_at,traffic_kind) VALUES('exchange_home_2',?,?,?,'browser')").run('b'.repeat(64),'second.example',Date.now());
 equal(adUpgrade.prepare("SELECT count(*) n FROM ad_click_events").get().n,2,'second button can record a distinct click');

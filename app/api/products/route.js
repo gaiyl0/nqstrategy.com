@@ -117,6 +117,7 @@ async function POSTHandler(request) {
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
     if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
+    if (body.price > 0 && body.pointsPrice == null) return NextResponse.json({success:false,message:'付费策略须设置积分购买价格'},{status:400});
     if (body.trialEnabled) return NextResponse.json({success:false,message:'限时试用尚无独立程序与到期校验，暂不能开启'},{status:409});
     if (body.reportId) verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
 
@@ -236,10 +237,12 @@ async function PATCHHandler(request) {
 
     if ('pointsPrice' in body && !('title' in body)) {
       if (body.pointsPrice != null && Number(existing.price) <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
+      if (body.pointsPrice == null && Number(existing.price) > 0) return NextResponse.json({success:false,message:'付费策略须保留积分购买价格'},{status:400});
       db.prepare('UPDATE products SET points_price=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,id);
       return NextResponse.json({success:true});
     }
     if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
+    if (body.price > 0 && (body.pointsPrice === undefined ? existing.points_price : body.pointsPrice) == null) return NextResponse.json({success:false,message:'付费策略须设置积分购买价格'},{status:400});
 
     if (body.file_url) return NextResponse.json({ success:false,message:'程序更新必须通过版本管理提交，不能覆盖现有版本文件' },{status:409});
     const logoUpload = body.logo_url ? findOwnedUpload(body.logo_url, currentUser.id, 'image') : null;
