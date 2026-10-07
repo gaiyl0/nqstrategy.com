@@ -116,6 +116,7 @@ async function POSTHandler(request) {
     const parsed = await parseJson(request, createProductSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
+    if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
     if (body.trialEnabled) return NextResponse.json({success:false,message:'限时试用尚无独立程序与到期校验，暂不能开启'},{status:409});
     if (body.reportId) verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
 
@@ -131,10 +132,10 @@ async function POSTHandler(request) {
     const createProduct = db.transaction(() => {
       const result = db.prepare(`
         INSERT INTO products
-          (title, author, author_user_id, description, price, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          (title, author, author_user_id, description, price, points_price, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `).run(
-        body.title, currentUser.username, currentUser.id, body.description, body.price,
+        body.title, currentUser.username, currentUser.id, body.description, body.price, body.pointsPrice ?? null,
         body.metrics ? `${body.metrics.winRatePercent}%` : '未披露', body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),
         body.logo_url || null, body.file_url,0,7,
       );
@@ -233,6 +234,13 @@ async function PATCHHandler(request) {
       return NextResponse.json({ success: false, message: '无权编辑该策略' }, { status: 403 });
     }
 
+    if ('pointsPrice' in body && !('title' in body)) {
+      if (body.pointsPrice != null && Number(existing.price) <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
+      db.prepare('UPDATE products SET points_price=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,id);
+      return NextResponse.json({success:true});
+    }
+    if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
+
     if (body.file_url) return NextResponse.json({ success:false,message:'程序更新必须通过版本管理提交，不能覆盖现有版本文件' },{status:409});
     const logoUpload = body.logo_url ? findOwnedUpload(body.logo_url, currentUser.id, 'image') : null;
     if (body.logo_url && !logoUpload) {
@@ -244,10 +252,10 @@ async function PATCHHandler(request) {
       const replacementExpiry = Date.now() + 24 * 60 * 60 * 1000;
       let query = `
         UPDATE products SET title = ?, description = ?, price = ?, win_rate = ?,
-          drawdown = ?, pairs = ?, ea_type = ?, trial_enabled=?,trial_days=?,status = 'pending'
+          drawdown = ?, pairs = ?, ea_type = ?, points_price=?, trial_enabled=?,trial_days=?,status = 'pending'
       `;
       const params = [body.title, body.description, body.price, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
-        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),0,7];
+        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),body.pointsPrice === undefined ? existing.points_price : body.pointsPrice,0,7];
       if (body.logo_url) { query += ', logo_url = ?'; params.push(body.logo_url); }
       query += ' WHERE id = ?';
       params.push(id);

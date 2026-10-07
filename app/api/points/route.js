@@ -10,7 +10,7 @@ export const dynamic='force-dynamic';
 
 const schema=z.discriminatedUnion('action',[
   z.object({action:z.literal('checkin')}).strict(),
-  z.object({action:z.literal('redeem'),productId:z.number().int().positive()}).strict(),
+  z.object({action:z.literal('redeem'),productId:z.number().int().positive(),expectedPointsPrice:z.number().int().min(1).max(1000000)}).strict(),
   z.object({action:z.literal('submit_claim'),taskId:z.number().int().positive(),contactEmail:z.union([z.literal(''),z.email()]).default(''),customerId:z.string().trim().max(80).default(''),proofText:z.string().trim().max(500).default('')}).strict(),
 ]);
 
@@ -35,12 +35,12 @@ async function POSTHandler(request){
   const audited=(response,outcome,reasonCode)=>withAudit(context,response,{eventType:'points.write',outcome,reasonCode,metadata:{action:body.action}});
   try{
     const result=body.action==='checkin'?awardDailyAction(user.id,'daily_checkin')
-      :body.action==='redeem'?redeemWithPoints(user,body.productId)
+      :body.action==='redeem'?redeemWithPoints(user,body.productId,body.expectedPointsPrice)
       :{claimId:submitPointClaim(user.id,body.taskId,body)};
     return audited(NextResponse.json({success:true,...result},{status:body.action==='checkin'?200:201}),'success',body.action.toUpperCase());
   }catch(error){
     const known={
-      INSUFFICIENT_POINTS:['积分不足',409],POINT_PRICE_UNAVAILABLE:['该策略暂未开放积分兑换',409],
+      INSUFFICIENT_POINTS:['积分不足',409],POINT_PRICE_UNAVAILABLE:['该策略暂未开放积分兑换',409],POINT_PRICE_CHANGED:['策略积分价格已变化，请刷新并重新确认',409],
       PRODUCT_UNAVAILABLE:['策略不存在或已下架',404],VERSION_UNAVAILABLE:['该策略尚无可下载的已发布版本',409],SELF_PURCHASE:['不能兑换自己发布的策略',409],ALREADY_OWNED:['您已拥有该策略',409],
       TASK_UNAVAILABLE:['任务未开放',404],TASK_LINK_UNAVAILABLE:['任务链接尚未配置',409],BROKER_PROOF_REQUIRED:['请填写 TMGM 注册邮箱和客户 ID',400],PROOF_REQUIRED:['请填写任务证明信息',400],CLAIM_EXISTS:['任务已提交或已完成，请勿重复提交',409],
     };

@@ -31,7 +31,7 @@ const emptyMetricsForm = () => ({
 });
 
 const emptyUploadForm = () => ({
-  title: '', description: '', price: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
+  title: '', description: '', price: '', pointsPrice: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
   metrics: emptyMetricsForm(), evidenceIds: [], reportId: null,
   version:'1.0.0',releaseNotes:'初始版本',upgradePolicy:'all_existing',
 });
@@ -314,7 +314,7 @@ export default function App() {
   const handleEditEA = (ea) => {
     const metrics = ea.metrics;
     setUploadForm({
-      id: ea.id, title: ea.title || '', description: ea.description || '', price: ea.price || '',
+      id: ea.id, title: ea.title || '', description: ea.description || '', price: ea.price || '', pointsPrice: ea.points_price ?? '',
       currentLogoUrl: ea.logo_url || '',
       winRate: ea.win_rate || '', drawdown: ea.drawdown || '', pairs: ea.pairs || 'XAUUSD',
       eaTypes: ea.ea_type ? ea.ea_type.split(',') : [],
@@ -372,7 +372,7 @@ export default function App() {
         evidenceIds.push(evidenceData.evidence.id);
       }
       const { currentLogoUrl, ...formPayload } = uploadForm;
-      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0 };
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice) };
       // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
       if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
       else delete payload.metrics;
@@ -393,6 +393,20 @@ export default function App() {
     }
   };
 
+  const savePointsPrice = async () => {
+    if (!uploadForm.id) return;
+    const value = String(uploadForm.pointsPrice ?? '').trim();
+    if (value && (!/^[1-9]\d*$/.test(value) || Number(value) > 1000000)) return showToast(t('积分价格须为 1–1,000,000 的整数', 'Points price must be an integer from 1 to 1,000,000'));
+    if (value && Number(uploadForm.price) <= 0) return showToast(t('免费策略不能设置积分价', 'Free strategies cannot have a points price'));
+    try {
+      const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null})});
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || '积分价格保存失败');
+      await fetchProducts();
+      showToast(t('积分价格已保存，策略上架状态不变', 'Points price saved without changing listing status'));
+    } catch (error) { showToast(`❌ ${error.message}`); }
+  };
+
   const handlePurchaseProcess = async (product) => {
     if (!user) return setAuthModal('login');
     if (product.price === 0) {
@@ -408,7 +422,7 @@ export default function App() {
   const handlePointsRedeem=async(product)=>{
     if(!user)return setAuthModal('login');
     if(!await confirmAction({title:t('积分兑换策略','Redeem strategy with points'),description:`${product.title} · ${product.points_price} ${t('积分','points')}`,noticeTitle:t('兑换后可在个人中心下载','Download after redemption'),notice:t('积分扣除后不能自动退回。请确认策略名称和所需积分。','Points are deducted after redemption. Confirm the strategy and amount.'),confirmLabel:t('确认兑换','Redeem')}))return;
-    try{const response=await apiFetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'redeem',productId:product.id})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'兑换失败');await Promise.all([fetchMyOrders(),fetchMyLicenses()]);showToast(t('✅ 积分兑换成功，策略已加入资产库','✅ Redeemed and added to your assets'));setRoute('profile');}
+    try{const response=await apiFetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'redeem',productId:product.id,expectedPointsPrice:product.points_price})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'兑换失败');await Promise.all([fetchMyOrders(),fetchMyLicenses()]);showToast(t('✅ 积分兑换成功，策略已加入资产库','✅ Redeemed and added to your assets'));setRoute('profile');}
     catch(error){showToast(`❌ ${error.message}`);}
   };
   const handleSocialAction=async(body)=>{if(!user){setAuthModal('login');return null;}try{const response=await apiFetch('/api/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'操作失败');showToast(t('✅ 操作已保存','✅ Saved'));await Promise.all([fetchProducts(),fetchMySocial()]);return data;}catch(error){showToast('❌ '+error.message);return null;}};
@@ -505,7 +519,7 @@ export default function App() {
         {route === 'market' && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handlePointsRedeem={handlePointsRedeem} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'points' && user && <PointsCenter t={t} setRoute={setRoute} />}
         {route === 'points' && !user && <section className="mx-auto my-16 max-w-xl rounded-2xl border border-cyan-400/25 bg-slate-900 p-8 text-center text-white"><h1 className="text-2xl font-bold">{t('积分任务中心','Points & Tasks')}</h1><p className="mt-3 text-sm leading-6 text-slate-300">{t('登录后查看积分余额、每日任务和审核任务。','Sign in to view your points, daily activities and reviewed tasks.')}</p><button onClick={()=>setAuthModal('login')} className="mt-5 rounded-lg bg-cyan-600 px-5 py-3 text-sm font-bold hover:bg-cyan-500">{t('登录 / 注册','Login / Register')}</button></section>}
-        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, isSubmitting }} />}
+        {route === 'upload' && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, savePointsPrice, isSubmitting }} />}
         {route === 'forum' && <ForumView {...{ categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
         {route === 'profile' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
         {route === 'assets' && user && <ProfileView {...{ user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, setWithdrawModal, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
