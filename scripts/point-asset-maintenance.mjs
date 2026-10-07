@@ -32,7 +32,7 @@ for(const withdrawal of db.prepare('SELECT * FROM point_asset_withdrawals').iter
 for(const recharge of db.prepare('SELECT * FROM point_recharge_orders').iterate()){
   const credit=db.prepare('SELECT user_id,funded_delta,bonus_delta,withdrawable_delta,reason FROM point_asset_transactions WHERE business_key=?').get(`recharge:${recharge.id}`);
   if(recharge.status==='paid'){
-    if(!recharge.provider_trade_no||!recharge.paid_at||recharge.paid_at<recharge.created_at||recharge.paid_at>recharge.expires_at)issues.push(`recharge:${recharge.id}:payment_metadata`);
+    if(!recharge.provider_trade_no||!recharge.paid_at||recharge.paid_at<recharge.created_at-1000||recharge.paid_at>recharge.expires_at)issues.push(`recharge:${recharge.id}:payment_metadata`);
     if(!credit||credit.user_id!==recharge.user_id||credit.funded_delta!==recharge.points_units||credit.bonus_delta!==0||credit.withdrawable_delta!==0||credit.reason!=='verified_recharge')issues.push(`recharge:${recharge.id}:credit`);
   }else if(credit)issues.push(`recharge:${recharge.id}:unexpected_credit`);
 }

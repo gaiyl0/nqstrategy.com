@@ -33,7 +33,10 @@ assert.equal(verifyCsrfRequest(request('DELETE', '/api/products?id=1', { origin:
 assert.equal(verifyCsrfRequest(request('POST', '/api/auth/me', { origin: 'https://nexus.test' }), production).allowed, true);
 assert.equal(verifyCsrfRequest(request('PATCH', '/api/users', { authorization: `Bearer ${production.CSRF_AUTOMATION_SECRET}`, 'content-type': 'application/json' }), production).reason, 'AUTOMATION_TOKEN');
 assert.equal(verifyCsrfRequest(request('PATCH', '/api/users', { authorization: 'Bearer wrong', 'content-type': 'application/json' }), production).reason, 'ORIGIN_MISSING');
+assert.equal(verifyCsrfRequest(request('POST', '/api/payments/webhooks/wechat-pay', {'content-type':'application/json'}),production).reason,'SIGNED_PAYMENT_WEBHOOK');
+assert.equal(verifyCsrfRequest(request('POST', '/api/payments/webhooks/alipay', {'content-type':'application/x-www-form-urlencoded'}),production).reason,'SIGNED_PAYMENT_WEBHOOK');
+assert.equal(verifyCsrfRequest(request('POST', '/api/payments/webhooks/alipay', {'content-type':'application/json'}),production).status,415);
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://admin.nexus.test' }), production), 'https://admin.nexus.test');
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://evil.test' }), production), null);
 
-console.log(JSON.stringify({ passed: true, assertions: 26 }));
+console.log(JSON.stringify({ passed: true, assertions: 29 }));

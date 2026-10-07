@@ -35,6 +35,7 @@
     "test:payment-config": "node tests/payment-config.mjs",
     "test:payment-settings": "node tests/payment-settings.mjs",
     "test:payment-crypto": "node tests/payment-crypto.mjs",
+    "test:payment-recharge": "node tests/payment-recharge.mjs",
     "test:site-analytics": "node tests/site-analytics.mjs",
     "test:post-attachments": "node tests/post-attachments.mjs",
     "test:product-slug": "node tests/product-slug.mjs",
