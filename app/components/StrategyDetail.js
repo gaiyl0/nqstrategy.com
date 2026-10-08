@@ -9,6 +9,7 @@ import StrategyVerification from './StrategyVerification';
 import StrategyVersions from './StrategyVersions';
 import {Badge} from './ui/UiKit';
 import {displayDate,displayNumber,upgradeLabel,verificationDisplay} from '@/lib/strategy-display.mjs';
+import {pointPriceLabel} from '@/lib/point-pricing.mjs';
 
 export default function StrategyDetail({product,back,actions,ratingAction,t,tEaType=value=>value}) {
   const verification=verificationDisplay(product.verification,t);
@@ -22,7 +23,7 @@ export default function StrategyDetail({product,back,actions,ratingAction,t,tEaT
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,.65fr)]"><div className="min-w-0">
       <div className="flex items-start gap-4">{product.logo_url?<Image src={product.logo_url} alt={`${product.title} logo`} width={80} height={80} sizes="80px" className="h-16 w-16 shrink-0 rounded-xl border border-slate-500/40 object-cover sm:h-20 sm:w-20"/>:<div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-500/40 bg-slate-900 sm:h-20 sm:w-20"><Cpu className="h-7 w-7 text-cyan-300"/></div>}<div className="min-w-0"><p className="detail-hero-meta text-xs">MetaTrader 5 · {t('自动交易策略','Automated trading strategy')}</p><h1 className="mt-2 break-words text-2xl font-black leading-tight sm:text-3xl">{product.title}</h1><p className="detail-hero-meta mt-2 break-words text-sm">{product.author||t('作者未披露','Author not disclosed')} · {t('发布于','Published')} {displayDate(product.created_at,t)}</p></div></div>
       <div className="mt-5 flex flex-wrap gap-2"><Badge className={`detail-hero-badge ${verification.variant}`} variant={verification.variant}>{verification.label}</Badge>{verification.statusLabel&&<Badge className={`detail-hero-badge ${verification.variant}`} variant={verification.variant}>{verification.statusLabel}</Badge>}<Badge className={`detail-hero-badge ${product.report?'primary':'warning'}`} variant={product.report?'primary':'warning'}>{disclosure}</Badge></div>
-      <div className="mt-5 border-t border-slate-500/30 pt-4"><p className="detail-hero-meta text-xs">{t('售价','Price')} · USD</p><p className="detail-hero-price mt-1 text-3xl font-black">{displayNumber(product.price)==='—'?t('未披露','Not disclosed'):Number(product.price)===0?t('免费','Free'):`$${displayNumber(product.price)}`}</p><p className="detail-hero-meta mt-2 text-xs leading-6">{upgradeLabel(product.currentVersion?.upgradePolicy,t)}</p></div>
+      <div className="mt-5 border-t border-slate-500/30 pt-4"><p className="detail-hero-meta text-xs">{t('积分价格','Points price')}</p><p className="detail-hero-price mt-1 text-3xl font-black">{pointPriceLabel(product,t)}</p><p className="detail-hero-meta mt-2 text-xs leading-6">{upgradeLabel(product.currentVersion?.upgradePolicy,t)}</p></div>
       </div><div className="strategy-detail-actions flex flex-col justify-center gap-2">{actions}</div></div>
     </header>
     {product.slug && product.status === 'active' && <><div className="mt-5"><ShareActions title={product.title} path={`/market/${encodeURIComponent(product.slug)}`} t={t}/></div><StrategyShareSummary product={product}/></>}

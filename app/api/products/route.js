@@ -116,8 +116,6 @@ async function POSTHandler(request) {
     const parsed = await parseJson(request, createProductSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
-    if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
-    if (body.price > 0 && body.pointsPrice == null) return NextResponse.json({success:false,message:'付费策略须设置积分购买价格'},{status:400});
     if (body.trialEnabled) return NextResponse.json({success:false,message:'限时试用尚无独立程序与到期校验，暂不能开启'},{status:409});
     if (body.reportId) verifyMetricsAgainstReport(body.reportId, currentUser.id, body.metrics);
 
@@ -130,13 +128,15 @@ async function POSTHandler(request) {
       return NextResponse.json({ success: false, message: '策略图片无效或不属于当前账户' }, { status: 400 });
     }
 
+    // Legacy order/license checks use products.price only as a zero/non-zero flag.
+    // New listings expose points_price as their sole customer-facing price.
     const createProduct = db.transaction(() => {
       const result = db.prepare(`
         INSERT INTO products
           (title, author, author_user_id, description, price, points_price, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `).run(
-        body.title, currentUser.username, currentUser.id, body.description, body.price, body.pointsPrice ?? null,
+        body.title, currentUser.username, currentUser.id, body.description, body.pointsPrice == null ? 0 : 1, body.pointsPrice ?? null,
         body.metrics ? `${body.metrics.winRatePercent}%` : '未披露', body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),
         body.logo_url || null, body.file_url,0,7,
       );
@@ -236,13 +236,11 @@ async function PATCHHandler(request) {
     }
 
     if ('pointsPrice' in body && !('title' in body)) {
-      if (body.pointsPrice != null && Number(existing.price) <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
-      if (body.pointsPrice == null && Number(existing.price) > 0) return NextResponse.json({success:false,message:'付费策略须保留积分购买价格'},{status:400});
-      db.prepare('UPDATE products SET points_price=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,id);
+      db.prepare('UPDATE products SET points_price=?,price=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,body.pointsPrice == null ? 0 : Number(existing.price)>0 ? existing.price : 1,id);
       return NextResponse.json({success:true});
     }
-    if (body.pointsPrice != null && body.price <= 0) return NextResponse.json({success:false,message:'免费策略不能设置积分价格'},{status:400});
-    if (body.price > 0 && (body.pointsPrice === undefined ? existing.points_price : body.pointsPrice) == null) return NextResponse.json({success:false,message:'付费策略须设置积分购买价格'},{status:400});
+    const pointsPrice=body.pointsPrice === undefined ? existing.points_price : body.pointsPrice;
+    const listingPrice=pointsPrice == null ? 0 : Number(existing.price)>0 ? existing.price : 1;
 
     if (body.file_url) return NextResponse.json({ success:false,message:'程序更新必须通过版本管理提交，不能覆盖现有版本文件' },{status:409});
     const logoUpload = body.logo_url ? findOwnedUpload(body.logo_url, currentUser.id, 'image') : null;
@@ -257,8 +255,8 @@ async function PATCHHandler(request) {
         UPDATE products SET title = ?, description = ?, price = ?, win_rate = ?,
           drawdown = ?, pairs = ?, ea_type = ?, points_price=?, trial_enabled=?,trial_days=?,status = 'pending'
       `;
-      const params = [body.title, body.description, body.price, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
-        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),body.pointsPrice === undefined ? existing.points_price : body.pointsPrice,0,7];
+      const params = [body.title, body.description, listingPrice, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
+        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),pointsPrice,0,7];
       if (body.logo_url) { query += ', logo_url = ?'; params.push(body.logo_url); }
       query += ' WHERE id = ?';
       params.push(id);

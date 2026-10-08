@@ -15,6 +15,7 @@ import AdminNavigation from './AdminNavigation';
 import PointsAdmin from './PointsAdmin';
 import PointWithdrawalsAdmin from './PointWithdrawalsAdmin';
 import PointExchangeRateAdmin from './PointExchangeRateAdmin';
+import {pointPriceLabel} from '@/lib/point-pricing.mjs';
 
 const COMMUNITY_EDITOR_SECTIONS = [
   { tab: 'communityContent', key: 'news', title: '社区内容管理', max: 6, icon: Newspaper, fields: [['region', '分类 / 地区', 60], ['regionEn', '分类英文', 60], ['date', '日期 YYYY-MM-DD', 10], ['title', '标题', 140], ['titleEn', '英文标题', 180], ['summary', '摘要', 600, true], ['summaryEn', '英文摘要', 600, true], ['url', '来源 URL', 500], ['source', '来源名称', 120], ['sourceEn', '来源英文名称', 120]] },
@@ -390,7 +391,7 @@ export default function AdminDashboard() {
 
              <div hidden={activeTab !== 'featured'} className="md:col-span-2 rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-950/30 to-zinc-900/60 p-8 shadow-[var(--nq-shadow-panel)]">
                 <div className="mb-5"><h2 className="text-lg font-bold text-white">首页顶部精选 EA</h2><p className="mt-1 text-sm text-zinc-500">管理员可指定最多三款已上架策略。首页顶部会自动轮动展示；未提供报告的策略也能精选，但会明确显示“未提供验证资料”。</p></div>
-                <div className="grid gap-4 md:grid-cols-3">{[0,1,2].map(slot=>{const selected=Number(settings.featuredProductIds?.[slot]||0);return <label key={`featured-slot-${slot}`} className="block"><span className="mb-2 block text-xs font-bold text-slate-400">精选位 {slot+1}</span><select value={selected||''} onChange={event=>{const value=Number(event.target.value||0);const next=[...(settings.featuredProductIds||[])];if(value)next[slot]=value;else next.splice(slot,1);setSettings({...settings,featuredProductIds:[...new Set(next.filter(Boolean))].slice(0,3)});}} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"><option value="">不配置</option>{productList.filter(product=>product.status==='active'&&product.deleted_at==null).map(product=><option key={`featured-product-${product.id}`} value={product.id} disabled={product.id!==selected&&settings.featuredProductIds?.includes(product.id)}>{product.title} · ${product.price||0}</option>)}</select></label>})}</div>
+                <div className="grid gap-4 md:grid-cols-3">{[0,1,2].map(slot=>{const selected=Number(settings.featuredProductIds?.[slot]||0);return <label key={`featured-slot-${slot}`} className="block"><span className="mb-2 block text-xs font-bold text-slate-400">精选位 {slot+1}</span><select value={selected||''} onChange={event=>{const value=Number(event.target.value||0);const next=[...(settings.featuredProductIds||[])];if(value)next[slot]=value;else next.splice(slot,1);setSettings({...settings,featuredProductIds:[...new Set(next.filter(Boolean))].slice(0,3)});}} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-white"><option value="">不配置</option>{productList.filter(product=>product.status==='active'&&product.deleted_at==null).map(product=><option key={`featured-product-${product.id}`} value={product.id} disabled={product.id!==selected&&settings.featuredProductIds?.includes(product.id)}>{product.title} · {pointPriceLabel(product,(zh,en)=>lang==='en'?en:zh)}</option>)}</select></label>})}</div>
                 <p className="mt-4 text-xs leading-5 text-zinc-500">留空时首页只会回退展示已通过 MT5 报告验证的策略；配置后严格按这里的顺序轮播，已下架或删除的策略会自动跳过。</p>
              </div>
 

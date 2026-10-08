@@ -32,7 +32,7 @@ const emptyMetricsForm = () => ({
 });
 
 const emptyUploadForm = () => ({
-  title: '', description: '', price: '', pointsPrice: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
+  title: '', description: '', pointsPrice: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
   metrics: emptyMetricsForm(), evidenceIds: [], reportId: null,
   version:'1.0.0',releaseNotes:'初始版本',upgradePolicy:'all_existing',
 });
@@ -300,7 +300,7 @@ export default function App() {
   const handleEditEA = (ea) => {
     const metrics = ea.metrics;
     setUploadForm({
-      id: ea.id, title: ea.title || '', description: ea.description || '', price: ea.price || '', pointsPrice: ea.points_price ?? '',
+      id: ea.id, title: ea.title || '', description: ea.description || '', pointsPrice: ea.points_price ?? '',
       currentLogoUrl: ea.logo_url || '',
       winRate: ea.win_rate || '', drawdown: ea.drawdown || '', pairs: ea.pairs || 'XAUUSD',
       eaTypes: ea.ea_type ? ea.ea_type.split(',') : [],
@@ -357,8 +357,9 @@ export default function App() {
         if (previous) evidenceIds.splice(evidenceIds.indexOf(previous), 1);
         evidenceIds.push(evidenceData.evidence.id);
       }
-      const { currentLogoUrl, ...formPayload } = uploadForm;
-      const payload = { ...formPayload, evidenceIds, logo_url, file_url, price: uploadForm.price || 0, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice) };
+      const formPayload = {...uploadForm};
+      delete formPayload.currentLogoUrl;
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice) };
       // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
       if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
       else delete payload.metrics;
@@ -383,8 +384,6 @@ export default function App() {
     if (!uploadForm.id) return;
     const value = String(uploadForm.pointsPrice ?? '').trim();
     if (value && (!/^[1-9]\d*$/.test(value) || Number(value) > 1000000)) return showToast(t('积分价格须为 1–1,000,000 的整数', 'Points price must be an integer from 1 to 1,000,000'));
-    if (value && Number(uploadForm.price) <= 0) return showToast(t('免费策略不能设置积分价', 'Free strategies cannot have a points price'));
-    if (!value && Number(uploadForm.price) > 0) return showToast(t('付费策略必须保留积分购买价格', 'Paid strategies need a points purchase price'));
     try {
       const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null})});
       const data = await response.json();

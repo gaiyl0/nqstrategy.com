@@ -25,7 +25,7 @@ export default async function ProductPage({params}){
   const product=getPublicProductBySlug(slug);
   if(!product)notFound();
   const canonical=new URL(`/market/${product.slug}`,process.env.NEXT_PUBLIC_SITE_URL||process.env.APP_ORIGINS?.split(',')[0]||'http://localhost:3000').toString();
-  const jsonLd={"@context":"https://schema.org","@type":"SoftwareApplication",name:product.title,description:description(product),applicationCategory:'FinanceApplication',operatingSystem:'MetaTrader 5',url:canonical,author:{"@type":"Person",name:product.author},offers:{"@type":"Offer",price:Number(product.price),priceCurrency:'USD',availability:'https://schema.org/InStock'},aggregateRating:product.social?.ratingCount?{"@type":"AggregateRating",ratingValue:product.social.ratingAverage,ratingCount:product.social.ratingCount}:undefined};
+  const jsonLd={"@context":"https://schema.org","@type":"SoftwareApplication",name:product.title,description:description(product),applicationCategory:'FinanceApplication',operatingSystem:'MetaTrader 5',url:canonical,author:{"@type":"Person",name:product.author},offers:Number(product.price)===0?{"@type":"Offer",price:0,priceCurrency:'USD',availability:'https://schema.org/InStock'}:undefined,aggregateRating:product.social?.ratingCount?{"@type":"AggregateRating",ratingValue:product.social.ratingAverage,ratingCount:product.social.ratingCount}:undefined};
   return <TopicPageFrame settings={publicSiteSettings()}><main className="min-w-0 flex-1">
     <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(jsonLd).replace(/</g,'\\u003c')}} />
     <PublicProductDetail product={product}/>

@@ -17,8 +17,9 @@ try {
     drawdownCurve: [{ date: '2026-01-01', percent: 0 }, { date: '2026-02-01', percent: 8.5 }],
     monthlyReturns: [{ month: '2026-01', percent: 6 }, { month: '2026-02', percent: 8.49 }],
   };
-  const base = { title: 'Metrics EA', description: '', price: 0, winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: ['趋势'], logo_url: '', file_url: '/private/eas/test.ex5', metrics: validMetrics, evidenceIds: [1, 2, 3], reportId: 1,version:'1.0.0',releaseNotes:'Initial release',upgradePolicy:'all_existing' };
+  const base = { title: 'Metrics EA', description: '', pointsPrice: 100, winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: ['趋势'], logo_url: '', file_url: '/private/eas/test.ex5', metrics: validMetrics, evidenceIds: [1, 2, 3], reportId: 1,version:'1.0.0',releaseNotes:'Initial release',upgradePolicy:'all_existing' };
   assert.equal(createProductSchema.safeParse(base).success, true);
+  assert.equal(createProductSchema.safeParse({...base,price:99}).success,false,'publisher cannot submit a separate USD sale price');
   const noDisclosure = { ...base, title: 'No report EA', reportId: null, evidenceIds: [], metrics: undefined };
   assert.equal(createProductSchema.safeParse(noDisclosure).success, true, 'EA submission must allow no report, metrics, or screenshots');
   assert.equal(createProductSchema.safeParse({ ...noDisclosure, metrics: validMetrics }).success, false, 'hand-entered performance cannot be submitted without an MT5 report');

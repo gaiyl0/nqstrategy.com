@@ -7,6 +7,7 @@ import {
   X, XCircle,
 } from 'lucide-react';
 import { AdminLocale } from './admin-locale';
+import {pointPriceLabel} from '@/lib/point-pricing.mjs';
 
 const REQUIRED_EVIDENCE = ['settings', 'statistics', 'chart'];
 const EVIDENCE_LABELS = { settings: '设置截图', statistics: '统计截图', chart: '净值曲线', analysis: '后台分析' };
@@ -48,6 +49,7 @@ function SummaryCard({ label, count, tone, icon: Icon, active, onClick }) {
 }
 
 export default function ProductReviewWorkspace({ lang, products, onProductStatus, onDelete, onEvidenceReview, onVerification, onRevokeVerification, onVersionReview }) {
+  const priceText=product=>pointPriceLabel(product,(zh,en)=>lang==='en'?en:zh);
   const [mode, setMode] = useState('review');
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -124,7 +126,7 @@ export default function ProductReviewWorkspace({ lang, products, onProductStatus
           <p className="break-words text-xs text-slate-400">开发者：{product.author || '—'}</p>
           <div className="flex flex-wrap gap-2"><StatusBadge tone={reviewBadge[0]}>审核：{reviewBadge[1]}</StatusBadge><StatusBadge tone={state.certified ? 'green' : state.reviewed ? 'purple' : 'slate'}>认证：{state.certified ? '已认证' : state.reviewed ? '待认证' : '未认证'}</StatusBadge></div>
           <p className="text-xs leading-5 text-slate-400">{state.hasVerificationMaterials ? `资料完整度：${state.approvedCount}/${REQUIRED_EVIDENCE.length} 必需证据通过；${product.report ? 'MT5 报告已解析' : '未提供 MT5 报告'}` : '未提供验证资料 · 可进行基础审核'}</p>
-          <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-400"><span>版本：v{product.currentVersion?.version || product.versions?.[0]?.version || '—'}</span><span>价格：${product.price}</span></div>
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-400"><span>版本：v{product.currentVersion?.version || product.versions?.[0]?.version || '—'}</span><span>积分价格：{priceText(product)}</span></div>
           <p className="text-xs text-slate-400">提交时间：{product.created_at ? new Date(product.created_at).toLocaleString() : '—'}</p>
           <button type="button" aria-label={`查看 ${product.title}`} onClick={() => setSelectedId(product.id)} className="min-h-11 w-full rounded-lg border border-cyan-400/30 px-3 py-2 text-sm font-bold text-cyan-300 hover:bg-cyan-400/10">查看详情与审核操作</button>
         </article>;
@@ -146,15 +148,15 @@ export default function ProductReviewWorkspace({ lang, products, onProductStatus
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-4 py-3 text-xs text-slate-400"><span>共 {filtered.length} 条记录</span><div className="flex items-center gap-2"><button type="button" aria-label="上一页审核记录" disabled={page === 1} onClick={() => setPage(value => value - 1)} className="min-h-11 min-w-11 rounded border border-slate-800 p-2 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button><span className="rounded border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 font-bold text-cyan-300">{page}</span><button type="button" aria-label="下一页审核记录" disabled={page === totalPages} onClick={() => setPage(value => value + 1)} className="min-h-11 min-w-11 rounded border border-slate-800 p-2 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button><span>共 {totalPages} 页</span></div></div>
     </div>
 
-    {selected && <ReviewDrawer product={selected} state={productState(selected)} onClose={() => setSelectedId(null)} onProductStatus={onProductStatus} onDelete={onDelete} onEvidenceReview={onEvidenceReview} onVerification={onVerification} onRevokeVerification={onRevokeVerification} onVersionReview={onVersionReview} />}
+    {selected && <ReviewDrawer product={selected} priceText={priceText} state={productState(selected)} onClose={() => setSelectedId(null)} onProductStatus={onProductStatus} onDelete={onDelete} onEvidenceReview={onEvidenceReview} onVerification={onVerification} onRevokeVerification={onRevokeVerification} onVersionReview={onVersionReview} />}
   </section></AdminLocale>;
 }
 
-function ReviewDrawer({ product, state, onClose, onProductStatus, onDelete, onEvidenceReview, onVerification, onRevokeVerification, onVersionReview }) {
+function ReviewDrawer({ product, priceText, state, onClose, onProductStatus, onDelete, onEvidenceReview, onVerification, onRevokeVerification, onVersionReview }) {
   const evidenceByType = Object.fromEntries((product.evidence || []).map(item => [item.type, item]));
   const metrics = product.metrics;
   return <aside className="nq-readable fixed bottom-0 top-16 right-0 z-20 w-full overflow-y-auto border-l border-slate-800 bg-[#08111a] shadow-2xl shadow-black/50 sm:w-[430px]">
-    <div className="sticky top-0 z-10 border-b border-slate-800 bg-[#08111a]/95 p-5 backdrop-blur"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-xl font-black text-white">{product.title}</h2><StatusBadge tone={state.reviewed ? 'cyan' : 'amber'}>{state.reviewed ? '已审核' : '待审核'}</StatusBadge><StatusBadge tone={state.certified ? 'green' : 'slate'}>{state.certified ? '已认证' : '未认证'}</StatusBadge></div><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400"><span>开发者 <b className="text-slate-200">{product.author}</b></span><span>价格 <b className="text-cyan-300">${product.price}</b></span><span>版本 <b className="text-slate-200">v{product.currentVersion?.version || product.versions?.[0]?.version || '—'}</b></span></div></div><button onClick={onClose} aria-label="关闭审核详情" className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X className="h-5 w-5" /></button></div></div>
+    <div className="sticky top-0 z-10 border-b border-slate-800 bg-[#08111a]/95 p-5 backdrop-blur"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="break-words text-xl font-black text-white">{product.title}</h2><StatusBadge tone={state.reviewed ? 'cyan' : 'amber'}>{state.reviewed ? '已审核' : '待审核'}</StatusBadge><StatusBadge tone={state.certified ? 'green' : 'slate'}>{state.certified ? '已认证' : '未认证'}</StatusBadge></div><div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400"><span>开发者 <b className="text-slate-200">{product.author}</b></span><span>积分价格 <b className="text-cyan-300">{priceText(product)}</b></span><span>版本 <b className="text-slate-200">v{product.currentVersion?.version || product.versions?.[0]?.version || '—'}</b></span></div></div><button onClick={onClose} aria-label="关闭审核详情" className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"><X className="h-5 w-5" /></button></div></div>
     <div className="space-y-6 p-5">
       <section><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold text-white">审核清单 · 验证资料</h3><span className={`text-xs font-bold ${state.complete ? 'text-emerald-300' : 'text-slate-400'}`}>{state.hasVerificationMaterials ? `${state.approvedCount}/${REQUIRED_EVIDENCE.length} 必需证据通过` : '未提供（允许基础审核）'}</span></div><div className="overflow-hidden rounded-xl border border-slate-800">{['settings', 'statistics', 'chart', 'analysis'].map(type => {
         const item = evidenceByType[type];

@@ -31,7 +31,7 @@ function AppliedFilters({ filters, searchQuery, updateFilter, resetFilters, t, t
     ['pair',filters.pair], ['type',filters.type ? tEaType(filters.type) : ''],
     ['maxDrawdown',filters.maxDrawdown === null ? '' : `${t('回撤','Drawdown')} ≤ ${filters.maxDrawdown}%`],
     ['verification',verification[filters.verification] || filters.verification],
-    ['maxPrice',filters.maxPrice === null ? '' : `${t('价格','Price')} ≤ $${filters.maxPrice}`],
+    ['maxPrice',filters.maxPrice === null ? '' : `${t('积分价格','Points price')} ≤ ${filters.maxPrice}`],
   ].filter(([,label]) => label);
   if (!chips.length && !searchQuery) return null;
   return <div className="market-applied-filters mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300" aria-label={t('已生效的筛选条件','Applied filters')}>

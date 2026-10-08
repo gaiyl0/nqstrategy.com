@@ -6,9 +6,9 @@ function check(value, message) { assert.ok(value, message); assertions += 1; }
 function equal(actual, expected, message) { assert.deepEqual(actual, expected, message); assertions += 1; }
 
 const products = [
-  { id: 1, pairs: 'EURUSD,XAUUSD', ea_type: '趋势,多货币', price: 99, metrics: { maxDrawdownPercent: 12, reviewedAt: 1 }, verification: { level: 'report_verified' }, report: {}, currentVersion: {} },
+  { id: 1, pairs: 'EURUSD,XAUUSD', ea_type: '趋势,多货币', price: 99, points_price:99, metrics: { maxDrawdownPercent: 12, reviewedAt: 1 }, verification: { level: 'report_verified' }, report: {}, currentVersion: {} },
   { id: 2, pairs: 'XAUUSD', ea_type: '网格', price: 0, metrics: { maxDrawdownPercent: 24, reviewedAt: 1 }, verification: { level: 'live_verified' }, report: {}, currentVersion: {} },
-  { id: 3, pairs: 'GBPUSD', ea_type: '趋势', price: 300, metrics: null, verification: { level: 'unverified' }, report: null, currentVersion: null },
+  { id: 3, pairs: 'GBPUSD', ea_type: '趋势', price: 300, points_price:300, metrics: null, verification: { level: 'unverified' }, report: null, currentVersion: null },
 ];
 
 const parsed = parseComparisonState('?compare=2,1,2,invalid,3,9&pair=XAUUSD&type=%E8%B6%8B%E5%8A%BF&verification=report_verified&maxDrawdown=20&maxPrice=100');

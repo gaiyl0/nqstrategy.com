@@ -3,6 +3,7 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
 import { comparisonAvailability } from '@/lib/strategy-comparison.mjs';
+import {pointPriceLabel} from '@/lib/point-pricing.mjs';
 
 const levels = {
   unverified: '未认证', screenshot_reviewed: '截图已审核', report_verified: 'MT5 报告已验证',
@@ -27,7 +28,7 @@ export default function StrategyComparison({ products, onRemove, onClose, t }) {
     [t('交易次数', 'Trades'), product => format(product.metrics?.totalTrades, '', 0)],
     [t('初始资金', 'Initial deposit'), product => `$${format(product.metrics?.initialDeposit)}`],
     [t('净利润（仅同资金与区间可比）', 'Net profit (comparable only with same capital and period)'), product => `$${format(product.metrics?.netProfit)}`],
-    [t('价格', 'Price'), product => Number(product.price) === 0 ? t('免费', 'Free') : `$${format(product.price)}`],
+    [t('积分价格', 'Points price'), product => pointPriceLabel(product,t)],
   ];
 
   return <div className="rounded-3xl border border-cyan-500/30 bg-zinc-950 p-5 shadow-2xl">

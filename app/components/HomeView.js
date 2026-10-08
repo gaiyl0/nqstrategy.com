@@ -4,6 +4,7 @@ import {ArrowRight,BarChart3,BookOpen,Check,ChevronRight,Code2,FileCheck2,LineCh
 import{Badge,Button,EmptyState,Panel}from'./ui/UiKit';
 import FeaturedStrategyList from './FeaturedStrategyList';
 import HomeResources from './HomeResources';
+import {pointPriceLabel} from '@/lib/point-pricing.mjs';
 
 export const FadeInView=({children,delay=0,className=''})=>{const[visible,setVisible]=useState(false),ref=useRef(null);useEffect(()=>{const node=ref.current;if(!node||typeof IntersectionObserver==='undefined'){setVisible(true);return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){setVisible(true);observer.disconnect();}},{threshold:.08});observer.observe(node);return()=>observer.disconnect();},[]);return <div ref={ref} style={{transitionDelay:`${delay}ms`}} className={`transition duration-700 ${visible?'translate-y-0 opacity-100':'translate-y-4 opacity-0'} ${className}`}>{children}</div>};
 const rank={unverified:0,screenshot_reviewed:1,report_verified:2,reproducible_backtest:3,platform_rerun:4,live_verified:5};
@@ -27,7 +28,7 @@ export function StrategyCard({product,onOpen,t,horizontal=false}) {
       <div className="mt-3 grid grid-cols-3 gap-3">{[['PF',m.profitFactor],['Sharpe',m.sharpeRatio],[t('回撤','DD'),`${number(m.maxDrawdownPercent)}%`]].map(([label,value]) => <div key={label}><span className="text-xs text-slate-400">{label}</span><div className="mt-1 text-sm font-semibold text-slate-200">{typeof value==='string'?value:number(value)}</div></div>)}</div>
     </> : <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 p-4 text-sm leading-6 text-amber-100">{t('已审核上架；未提供验证资料，表现数据未经验证。','Listed; no verification materials supplied. Performance is unverified.')}</div>}</div>
     <div className="home-strategy-action flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-3">
-      <span className="text-lg font-bold text-white">{Number(product.price)>0?`$${product.price}`:t('免费','Free')}</span>
+      <span className="text-lg font-bold text-white">{pointPriceLabel(product,t)}</span>
       <button type="button" onClick={()=>onOpen(product)} className="flex min-h-11 items-center gap-1 text-sm font-semibold text-cyan-300">{t('查看详情','View details')}<ChevronRight className="h-4 w-4"/></button>
     </div>
   </Panel>;
