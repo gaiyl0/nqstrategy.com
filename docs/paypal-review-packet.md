@@ -24,7 +24,7 @@ Nexus Quant (`https://nqstrategy.com`) offers MT5 EA software and related conten
 
 ## 商户自行配置与验收
 
-1. 在 [PayPal Developer Apps & Credentials](https://developer.paypal.com/dashboard/applications) 创建 **Sandbox REST app**；取得 Client ID、Secret 和该商户账号 Merchant ID。Secret 只写入服务器私有环境文件，不提交 GitHub 或聊天。
+1. 在 [PayPal Developer Apps & Credentials](https://developer.paypal.com/dashboard/applications) 选择 Sandbox，创建名称为 `Nexus Quant` 的 **Merchant REST app**，选择用于测试的 Business 商户账户；取得 Client ID 和 Secret。Merchant ID 在相应商户账户的 Account Settings → Business information 中查看；Sandbox 必须使用沙箱商户的 ID，不能填正式账户 ID。[PayPal Merchant ID 官方说明](https://www.paypal.com/us/cshelp/article/how-do-i-find-my-secure-merchant-id-on-my-paypal-account-help538)。Secret 只写入服务器私有环境文件，不提交 GitHub 或聊天。
 2. 服务器 `/etc/nexus-quant/nexus.env` 填写 `PAYPAL_MODE=sandbox`、`PAYPAL_CLIENT_ID`、`PAYPAL_CLIENT_SECRET`、`PAYPAL_MERCHANT_ID`。先仅对测试账号开放 `POINT_RECHARGE_TEST_USER_IDS`，并在准备测试时设 `PAYPAL_RECHARGE_ENABLED=1`；`POINT_RECHARGE_ENABLED=1` 是所有充值渠道的总开关。
 3. 用 Sandbox 买家账户完成小额付款；核对 PayPal capture ID、USD 金额、本站订单状态，并确认真实积分余额没有变化。模拟网络中断后验证恢复路径。Live 小额验收时，再核对真实充值积分流水和余额；重复调用捕获接口不得重复加分。
 4. 在 PayPal Sandbox 完成退款测试，并核对本站的退款/积分调整处理。退款、争议、对账及异常订单的运营流程尚需完成验收，不能直接对公众开放。
