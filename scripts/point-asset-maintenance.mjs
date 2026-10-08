@@ -36,6 +36,16 @@ for(const recharge of db.prepare('SELECT * FROM point_recharge_orders').iterate(
     if(!credit||credit.user_id!==recharge.user_id||credit.funded_delta!==recharge.points_units||credit.bonus_delta!==0||credit.withdrawable_delta!==0||credit.reason!=='verified_recharge')issues.push(`recharge:${recharge.id}:credit`);
   }else if(credit)issues.push(`recharge:${recharge.id}:unexpected_credit`);
 }
+for(const recharge of db.prepare('SELECT * FROM paypal_point_recharge_orders').iterate()){
+  const credit=db.prepare('SELECT user_id,funded_delta,bonus_delta,withdrawable_delta,reason FROM point_asset_transactions WHERE business_key=?').get(`paypal-recharge:${recharge.id}`);
+  if(recharge.status==='paid'){
+    if(!recharge.paypal_order_id||!recharge.capture_id||!recharge.paid_at||recharge.paid_at<recharge.created_at-1000||recharge.paid_at>recharge.expires_at)
+      issues.push(`paypal-recharge:${recharge.id}:payment_metadata`);
+    if(recharge.mode==='sandbox'&&credit)issues.push(`paypal-recharge:${recharge.id}:sandbox_credit`);
+    if(recharge.mode==='live'&&(!credit||credit.user_id!==recharge.user_id||credit.funded_delta!==recharge.points_units||credit.bonus_delta!==0||credit.withdrawable_delta!==0||credit.reason!=='verified_recharge'))
+      issues.push(`paypal-recharge:${recharge.id}:credit`);
+  }else if(credit)issues.push(`paypal-recharge:${recharge.id}:unexpected_credit`);
+}
 const result={valid:issues.length===0,accounts:db.prepare('SELECT COUNT(*) count FROM point_asset_accounts').get().count,transactions:db.prepare('SELECT COUNT(*) count FROM point_asset_transactions').get().count,sales:db.prepare('SELECT COUNT(*) count FROM point_asset_sales').get().count,withdrawals:db.prepare('SELECT COUNT(*) count FROM point_asset_withdrawals').get().count,recharges:db.prepare('SELECT COUNT(*) count FROM point_recharge_orders').get().count,issues};
 console.log(JSON.stringify(result));
 db.close();

@@ -3,6 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Image from 'next/image';
 import {apiFetch} from '@/lib/api-client';
+import PayPalRechargeButton from './PayPalRechargeButton';
 
 export default function PointRechargePanel({state,refresh,t}){
   const [amount,setAmount]=useState('');
@@ -12,6 +13,7 @@ export default function PointRechargePanel({state,refresh,t}){
   const [error,setError]=useState('');
   const requestRef=useRef(null);
   const providers=state?.rechargeProviders||[];
+  const hasCnyProvider=providers.includes('wechat')||providers.includes('alipay');
   const points=Number(amount);
   const amountValid=Number.isFinite(points)&&points>=1&&points<=1000000&&Math.abs(points*100-Math.round(points*100))<0.000001;
   const estimate=amountValid&&state?.rechargeRateCnyFen?Math.ceil(Math.round(points*100)*state.rechargeRateCnyFen/100):null;
@@ -63,13 +65,16 @@ export default function PointRechargePanel({state,refresh,t}){
 
   return <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-5">
     <h2 className="font-bold">{t('积分充值','Buy points')}</h2>
-    {!state?.rechargeEnabled?<><p className="mt-3 text-sm leading-6 text-slate-400">{t('充值渠道或有效汇率尚未就绪；人民币报价会在创建订单时锁定。','Recharge channels or a valid exchange rate are not ready. The CNY quote is locked when the order is created.')}</p><button disabled className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-400">{t('暂未开放','Not available yet')}</button></>:
-      <><p className="mt-3 text-sm text-slate-300">{t('每 1 积分按 1 美元计价。支付金额以订单创建时锁定的人民币报价为准。','One point is valued at USD 1. The CNY amount is locked when the order is created.')}</p>
-        {state.rechargeRateMode==='auto'&&state.rechargeRateDate&&<p className="mt-1 text-xs text-slate-400">{t('汇率参考数据发布日期','Exchange-rate reference date')}：{state.rechargeRateDate}</p>}
+    {!state?.rechargeEnabled?<><p className="mt-3 text-sm leading-6 text-slate-400">{t('充值渠道尚未就绪。','Recharge channels are not ready yet.')}</p><button disabled className="mt-4 rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-400">{t('暂未开放','Not available yet')}</button></>:
+      <><p className="mt-3 text-sm text-slate-300">{hasCnyProvider?
+        t('每 1 积分按 1 美元计价；人民币支付金额以订单创建时锁定的报价为准。','One point is valued at USD 1; the CNY amount is locked when the order is created.'):
+        t('每 1 积分按 1 美元计价；PayPal 以美元结算。','One point is valued at USD 1; PayPal checkout is in USD.')}</p>
+        {hasCnyProvider&&state.rechargeRateMode==='auto'&&state.rechargeRateDate&&<p className="mt-1 text-xs text-slate-400">{t('汇率参考数据发布日期','Exchange-rate reference date')}：{state.rechargeRateDate}</p>}
         <label className="mt-4 block text-sm text-slate-200">{t('充值积分数量','Points to buy')}<input type="number" min="1" max="1000000" step="0.01" value={amount}
           onChange={event=>{setAmount(event.target.value);requestRef.current=null;}} className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm"/></label>
-        {estimate!=null&&<p className="mt-2 text-sm text-amber-200">{t('预计支付','Estimated CNY payment')} ¥{(estimate/100).toFixed(2)}</p>}
+        {hasCnyProvider&&estimate!=null&&<p className="mt-2 text-sm text-amber-200">{t('预计支付','Estimated CNY payment')} ¥{(estimate/100).toFixed(2)}</p>}
         <div className="mt-4 flex flex-wrap gap-2">{providers.includes('wechat')&&<button disabled={!amountValid||busy} onClick={()=>create('wechat')} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold disabled:opacity-50">{t('微信扫码充值','Pay with WeChat')}</button>}{providers.includes('alipay')&&<button disabled={!amountValid||busy} onClick={()=>create('alipay')} className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold disabled:opacity-50">{t('支付宝扫码充值','Pay with Alipay')}</button>}</div>
+        {providers.includes('paypal')&&<PayPalRechargeButton points={points} amountValid={amountValid} refresh={refresh} t={t}/>}
         {error&&<p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
         {checkout&&<div className="mt-5 rounded-xl border border-slate-600 bg-slate-950/70 p-4"><p className="text-sm font-semibold">{checkout.status==='paid'?t('充值已到账','Payment credited'):checkout.status==='pending'?t('请使用对应 App 扫码支付','Scan with the selected payment app'):t('订单已失效，请重新创建','Order expired; create a new one')}</p>
           <p className="mt-1 text-sm text-slate-300">#{checkout.orderId} · {checkout.points} {t('积分','points')} · ¥{(checkout.cnyFen/100).toFixed(2)}</p>

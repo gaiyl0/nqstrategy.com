@@ -36,6 +36,7 @@
     "test:payment-settings": "node tests/payment-settings.mjs",
     "test:payment-crypto": "node tests/payment-crypto.mjs",
     "test:payment-recharge": "node tests/payment-recharge.mjs",
+    "test:paypal-recharge": "node tests/paypal-recharge.mjs",
     "test:ecb-recharge-rate": "node tests/ecb-recharge-rate.mjs",
     "test:site-analytics": "node tests/site-analytics.mjs",
     "test:post-attachments": "node tests/post-attachments.mjs",
