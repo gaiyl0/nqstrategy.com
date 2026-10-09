@@ -247,6 +247,19 @@
 .reference-admin-group[open]>summary>svg:last-child {transform:rotate(180deg)}
 [data-design="editorial"] .editorial-admin-nav button[aria-current=page] {background:#046375;color:#fff;border-left:3px solid #79e2e1}
 [data-design="editorial"] .editorial-admin-nav button {font-size:13px;padding:9px 10px}
+/* Shared navigation hierarchy, including the drawer: keep headings distinct from children. */
+[data-design] .reference-admin-navigation .reference-admin-group {margin-bottom:6px}
+[data-design] .reference-admin-navigation .reference-admin-group>summary {min-height:44px;border-radius:7px;padding:12px 10px;font-size:14px;color:#e4eef7;background:transparent;transition:background-color .15s,color .15s}
+[data-design] .reference-admin-navigation .reference-admin-group>summary:hover {background:#20344b;color:#baf5f1}
+[data-design] .reference-admin-navigation .reference-admin-group[open]>summary {background:#20344b;color:#91e7e3;border-radius:7px 7px 0 0}
+[data-design] .reference-admin-navigation .reference-admin-group>summary::-webkit-details-marker {display:none}
+[data-design] .reference-admin-navigation .reference-admin-submenu {position:relative;margin:0 0 4px;padding:7px 6px 7px 12px;background:#263d54;border:1px solid #36536e;border-top:0;border-radius:0 0 8px 8px}
+[data-design] .reference-admin-navigation .reference-admin-submenu::before {content:'';position:absolute;left:6px;top:12px;bottom:12px;width:1px;background:#506c85;pointer-events:none}
+[data-design] .reference-admin-navigation .reference-admin-submenu>button {min-height:44px;padding:10px 8px;border-left:3px solid transparent;border-radius:6px;color:#c6d8eb;background:transparent;gap:8px;font-size:13px;line-height:1.6;box-shadow:none}
+[data-design] .reference-admin-navigation .reference-admin-submenu>button:hover {background:#314b63;color:#fff}
+[data-design] .reference-admin-navigation .reference-admin-submenu>button[aria-current=page] {background:#087f8c;color:#fff;border-left-color:#6de0df;box-shadow:none}
+[data-design] .reference-admin-navigation .reference-admin-submenu>button>svg {color:inherit}
+[data-design] .reference-admin-navigation :is(summary,button):focus-visible {outline:2px solid #80e5e2;outline-offset:2px}
 [data-design="editorial"] .admin-content:has(.reference-brand-settings) {padding:22px 26px}
 [data-design="editorial"] .admin-content:has(.reference-brand-settings)>div>div:first-child {margin-bottom:16px;padding-bottom:12px;border:0}
 [data-design="editorial"] .admin-content:has(.reference-brand-settings)>div>div:first-child h1 {font-size:26px;margin-top:0}
