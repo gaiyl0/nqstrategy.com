@@ -116,7 +116,7 @@
 .reference-forum-topic>svg {margin-top:3px;flex-shrink:0;color:#506b86}
 .reference-forum-topic>span {flex:1;min-width:0}
 .reference-forum-topic strong {display:block;overflow-wrap:anywhere;font-size:14px;line-height:1.6;font-weight:650;color:#18324c}
-.reference-forum-topic strong>span {margin-right:6px}
+.reference-forum-topic strong>span {margin-right:6px;white-space:nowrap}
 .reference-forum-topic small {display:block;font-size:12px;color:#7a8b9f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
 .reference-forum-author {display:flex;align-items:center;gap:7px;min-width:140px;max-width:165px;font-size:12px;color:#58718c}
 .reference-forum-author>span:last-child {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -139,7 +139,7 @@
 .reference-forum-aside header {display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .reference-forum-aside h2 {font-size:16px;font-weight:700}
 .reference-forum-aside header :is(button,span) {font-size:12px;color:#7a8a9e}
-.reference-forum-aside section>div {display:grid;gap:8px}
+.reference-forum-aside section>div {display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
 .reference-forum-aside section>div :is(button,a) {text-align:left;font-size:13px;line-height:1.7;color:#415972}
 .reference-forum-aside section>div :is(button,a):hover {color:#058f99}
 .reference-forum-aside p {font-size:13px;color:#718398}
