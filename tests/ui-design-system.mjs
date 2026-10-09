@@ -15,6 +15,9 @@ const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileVie
 const forum = ['ForumView.js', 'CommunityResources.js'].map(file => fs.readFileSync(path.join(root, 'app', 'components', file), 'utf8')).join('\n');
 const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8') + fs.readFileSync(path.join(root, 'app', 'tianwei', 'AdminWorkbench.js'), 'utf8');
+assert.match(admin, /activeTab\s*===\s*'points'\s*&&\s*<PointsAdmin\b/, 'the points navigation must render its task administration panel');
+const desktopCss = fs.readFileSync(path.join(root, 'app', 'reference-desktop.css'), 'utf8');
+assert.match(desktopCss, /\.reference-forum-aside\s*\{[^}]*grid-template-columns:minmax\(0,1fr\)[^}]*min-width:0/, 'long EA descriptions must not expand the forum sidebar grid track');
 const productReview = fs.readFileSync(path.join(root, 'app', 'tianwei', 'ProductReviewWorkspace.js'), 'utf8');
 const adminLocale = fs.readFileSync(path.join(root, 'app', 'tianwei', 'admin-locale.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');

@@ -26,6 +26,7 @@ export default function PointsAdmin(){
     const note=await requestInput({title:'驳回积分任务',description:`${claim.username} · ${claim.taskTitle}`,label:'驳回原因',required:true,minLength:3,maxLength:500,multiline:true,confirmLabel:'确认驳回'});
     if(note)await send({action:'review_claim',claimId:claim.id,approve:false,note});
   };
+  if (!data) return <section className="rounded-xl border border-slate-700 p-5" aria-busy={!notice}>{notice ? <><p role="alert">{notice}</p><button className="mt-4 rounded-lg bg-cyan-600 px-4 py-2 text-white" onClick={()=>{setNotice('');load().catch(error=>setNotice(error.message));}}>重新读取积分任务</button></> : <p role="status">正在读取积分任务与审核记录…</p>}</section>;
   return <div className="space-y-6 pb-20 text-slate-200">
     <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-4 text-sm leading-6">管理员可逐项设置任务奖励。策略积分价由发布者在发布或编辑 EA 时填写。TMGM 入金、X 关注及 Telegram 入群需核实后批准。积分充值仍关闭；这些积分不会计入现金收入或创作者分成。</div>
     {notice&&<p role="status" className="rounded-lg border border-slate-700 p-3 text-sm">{notice}</p>}

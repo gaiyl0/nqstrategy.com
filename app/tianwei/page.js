@@ -297,6 +297,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'brandPages' && <BrandSettings products={productList} settings={settings}/>}
         {activeTab === 'dashboard' && <AdminWorkbench onSelect={setActiveTab} />}
+        {activeTab === 'points' && <PointsAdmin />}
 
         {activeTab === 'analytics' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">

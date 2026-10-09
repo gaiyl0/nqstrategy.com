@@ -94,7 +94,7 @@
 .reference-latest-discussions span {font-size:12px;color:#667c93}
 .reference-latest-discussions>p {padding:16px;font-size:13px}
 [data-design="editorial"] .reference-latest-discussions {border-radius:5px;box-shadow:none;background:#fff}
-.reference-forum {max-width:1380px;margin:auto;padding:26px 24px 32px}
+.reference-forum {width:100%;min-width:0;max-width:1380px;margin:auto;padding:26px 24px 32px}
 .reference-forum-heading {display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:24px}
 .reference-forum-heading h1 {font-family:Georgia,"Noto Serif SC",serif;font-size:30px;font-weight:750;color:#0e2439}
 .reference-forum-heading p {font-size:14px;color:#718098;margin-top:7px}
@@ -115,7 +115,8 @@
 .reference-forum-topic {display:flex;gap:12px;align-items:start;text-align:left;flex:1;min-width:0}
 .reference-forum-topic>svg {margin-top:3px;flex-shrink:0;color:#506b86}
 .reference-forum-topic>span {flex:1;min-width:0}
-.reference-forum-topic strong {display:flex;align-items:center;gap:6px;font-size:14px;line-height:1.6;font-weight:650;color:#18324c}
+.reference-forum-topic strong {display:block;overflow-wrap:anywhere;font-size:14px;line-height:1.6;font-weight:650;color:#18324c}
+.reference-forum-topic strong>span {margin-right:6px}
 .reference-forum-topic small {display:block;font-size:12px;color:#7a8b9f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
 .reference-forum-author {display:flex;align-items:center;gap:7px;min-width:140px;max-width:165px;font-size:12px;color:#58718c}
 .reference-forum-author>span:last-child {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -131,7 +132,9 @@
 .reference-forum-resources {font-size:12px;color:#718398;border-top:1px solid #edf1f6;margin-top:14px;padding-top:12px}
 .reference-forum-resources>summary {cursor:pointer}
 .reference-forum-resources>section {margin-top:16px}
-.reference-forum-aside {display:grid;gap:14px}
+.reference-forum-aside {display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:14px}
+.reference-forum-aside>section,.reference-forum-aside section>div,.reference-forum-aside section>div :is(button,a) {min-width:0;max-width:100%}
+.reference-forum-aside section>div :is(button,a) {overflow-wrap:anywhere}
 [data-design="editorial"] .reference-forum-aside>section {background:white;border:0;border-radius:6px;box-shadow:none;padding:16px}
 .reference-forum-aside header {display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
 .reference-forum-aside h2 {font-size:16px;font-weight:700}
