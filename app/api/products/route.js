@@ -28,6 +28,7 @@ import { productSocialSummary } from '@/lib/social';
 import { queryMarketCatalog } from '@/lib/market-catalog.mjs';
 import { productSlug } from '@/lib/product-slug.mjs';
 import { createSecurityContext, withAudit } from '@/lib/security';
+import {siteFeatureAccess} from '@/lib/forum-feature';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -91,6 +92,10 @@ async function GETHandler(request) {
     }
 
     const currentUser=await getSessionUser();
+    if(!siteFeatureAccess().catalog){
+      if(searchParams.get('market')==='1')return NextResponse.json({success:false,message:'商城已停用',code:'CATALOG_DISABLED'},{status:403});
+      return NextResponse.json({success:true,products:currentUser?publicProducts(currentUser).filter(product=>product.author_user_id===currentUser.id):[]},{headers:{'Cache-Control':'private, no-store'}});
+    }
     if(searchParams.get('market')==='1'){
       const input=Object.fromEntries([...searchParams.entries()].filter(([key])=>['market','q','pair','type','verification','maxDrawdown','maxPrice','page','pageSize'].includes(key)));
       const parsed=validate(marketQuerySchema,input);if(!parsed.success)return validationErrorResponse(parsed.error);
@@ -112,6 +117,7 @@ async function POSTHandler(request) {
     if (!['developer', 'admin'].includes(currentUser.role)) {
       return NextResponse.json({ success: false, message: '仅认证开发者可发布策略' }, { status: 403 });
     }
+    if(!siteFeatureAccess().catalog&&currentUser.role!=='admin')return NextResponse.json({success:false,message:'商城已停用',code:'CATALOG_DISABLED'},{status:403});
 
     const parsed = await parseJson(request, createProductSchema);
     if (!parsed.success) return parsed.response;
@@ -131,6 +137,7 @@ async function POSTHandler(request) {
     // Legacy order/license checks use products.price only as a zero/non-zero flag.
     // New listings expose points_price as their sole customer-facing price.
     const createProduct = db.transaction(() => {
+      if (!siteFeatureAccess().catalog && currentUser.role !== 'admin') throw new Error('CATALOG_DISABLED');
       const result = db.prepare(`
         INSERT INTO products
           (title, author, author_user_id, description, price, points_price, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
@@ -165,6 +172,7 @@ async function POSTHandler(request) {
 
     return NextResponse.json({ success: true, id: createProduct() }, { status: 201 });
   } catch (error) {
+    if (error.message === 'CATALOG_DISABLED') return NextResponse.json({ success: false, message: '商城已停用', code: 'CATALOG_DISABLED' }, { status: 403 });
     if (['EVIDENCE_OWNERSHIP_INVALID', 'EVIDENCE_SET_INCOMPLETE', 'EVIDENCE_ALREADY_USED','REPORT_OWNERSHIP_INVALID','REPORT_ALREADY_USED'].includes(error.message)) {
       return NextResponse.json({ success: false, message: '回测证据不完整、所有权无效或已被其他策略使用' }, { status: 409 });
     }

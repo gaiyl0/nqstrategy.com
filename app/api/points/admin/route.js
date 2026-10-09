@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withApiErrors } from '@/lib/api-errors';
 import { getSessionUser } from '@/lib/auth';
 import { parseJson } from '@/lib/validation';
-import { adminPointOverview, configurePointTask, createCustomPointTask, reviewPointClaim } from '@/lib/points';
+import { adminPendingCounts, adminPointOverview, configurePointTask, createCustomPointTask, reviewPointClaim } from '@/lib/points';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
 
 export const dynamic='force-dynamic';
@@ -22,7 +22,8 @@ async function GETHandler(request){
   const context=createSecurityContext(request,user);
   const limited=enforceRateLimits(context,'points.admin.read',[{policy:RATE_LIMITS.orderRead,identifier:`user:${user.id}`}]);
   if(limited)return limited;
-  return NextResponse.json({success:true,...adminPointOverview()});
+  const summary=new URL(request.url).searchParams.get('view')==='summary';
+  return NextResponse.json({success:true,...(summary?{pendingCounts:adminPendingCounts()}:adminPointOverview())},{headers:{'Cache-Control':'private, no-store'}});
 }
 
 async function POSTHandler(request){

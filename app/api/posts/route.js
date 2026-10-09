@@ -6,6 +6,7 @@ import { getSessionUser } from '@/lib/auth';
 import { categorySchema, forumListQuerySchema, createPostSchema, forumSortSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { createSecurityContext } from '@/lib/security';
 import { awardDailyAction } from '@/lib/points';
+import { forumAccess } from '@/lib/forum-feature';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,6 +15,10 @@ async function GETHandler(request) {
   const { searchParams } = new URL(request.url);
   const rawCategory = searchParams.get('category');
   const rawViewId = searchParams.get('viewId');
+  const access = forumAccess();
+  if (!access.enabled && !(access.readable && rawViewId !== null) && (await getSessionUser())?.role !== 'admin') {
+    return NextResponse.json({ success: false, message: '论坛已停用', code: 'FORUM_DISABLED' }, { status: 403 });
+  }
   const parsedSort=validate(forumSortSchema,searchParams.get('sort')||'latest');
   if(!parsedSort.success)return validationErrorResponse(parsedSort.error);
   const sort=parsedSort.data;
@@ -54,6 +59,7 @@ async function GETHandler(request) {
 }
 
 async function POSTHandler(request) {
+  if (!forumAccess().enabled) return NextResponse.json({ success: false, message: '论坛已关闭发布', code: 'FORUM_DISABLED' }, { status: 403 });
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -70,6 +76,7 @@ async function POSTHandler(request) {
     const imageIds = new Set(ownedAttachments.filter(item => item.kind === 'image').map(item => item.id));
     if (referencedImages.some(id => !imageIds.has(id))) return NextResponse.json({ success: false, message: '正文图片引用无效' }, { status: 400 });
     const create = db.transaction(() => {
+      if (!forumAccess().enabled) throw new Error('FORUM_DISABLED');
       const result = db.prepare('INSERT INTO posts (title, content, author, author_user_id, category) VALUES (?, ?, ?, ?, ?)')
         .run(title, content, currentUser.username, currentUser.id, category);
       const postId = Number(result.lastInsertRowid);
@@ -83,6 +90,7 @@ async function POSTHandler(request) {
     const postId = create.immediate();
     return NextResponse.json({ success: true, id: postId }, { status: 201 });
   } catch (error) {
+    if (error.message === 'FORUM_DISABLED') return NextResponse.json({ success: false, message: '论坛已关闭发布', code: 'FORUM_DISABLED' }, { status: 403 });
     return NextResponse.json({ success: false, message: '创建帖子失败' }, { status: 500 });
   }
 }

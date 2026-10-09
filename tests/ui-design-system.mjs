@@ -6,6 +6,7 @@ const root = process.cwd();
 const css = fs.readFileSync(path.join(root, 'app', 'globals.css'), 'utf8');
 const kit = fs.readFileSync(path.join(root, 'app', 'components', 'ui', 'UiKit.js'), 'utf8');
 const market = [
+  fs.readFileSync(path.join(root, 'app', 'components', 'StrategyAcquisition.js'), 'utf8'),
   fs.readFileSync(path.join(root, 'app', 'components', 'MarketView.js'), 'utf8'),
   fs.readFileSync(path.join(root, 'app', 'components', 'StrategyMarketCatalog.js'), 'utf8'),
   fs.readFileSync(path.join(root, 'app', 'components', 'MarketFilters.js'), 'utf8'),
@@ -13,7 +14,7 @@ const market = [
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
 const forum = ['ForumView.js', 'CommunityResources.js'].map(file => fs.readFileSync(path.join(root, 'app', 'components', file), 'utf8')).join('\n');
 const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
-const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
+const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8') + fs.readFileSync(path.join(root, 'app', 'tianwei', 'AdminWorkbench.js'), 'utf8');
 const productReview = fs.readFileSync(path.join(root, 'app', 'tianwei', 'ProductReviewWorkspace.js'), 'utf8');
 const adminLocale = fs.readFileSync(path.join(root, 'app', 'tianwei', 'admin-locale.js'), 'utf8');
 const header = fs.readFileSync(path.join(root, 'app', 'components', 'AppHeader.js'), 'utf8');
@@ -37,15 +38,18 @@ assert.match(css, /prefers-reduced-motion/);
 assert.match(market, /product\.metrics\?\.reviewedAt && product\.report/, 'market curves must require reviewed server metrics and an MT5 report');
 assert.match(market, /No reviewed curve/, 'market must expose a truthful empty curve state');
 assert.match(market, /Points price not set/, 'market must explain why a paid strategy cannot be redeemed without points pricing');
-assert.match(market, /Recharge will open after official payment callback verification/, 'market must keep recharge visibly unavailable');
+assert.match(market, /Check the point center for available recharge channels/, 'market must keep recharge visibly unavailable');
 assert.match(market, /setRetryKey\(value\s*=>\s*value\s*\+\s*1\)/, 'market error retry must issue a new request');
 assert.doesNotMatch(market, /Math\.random/, 'market must not generate synthetic chart data');
 for (const landmark of ['SideNavigation', 'ComparisonRail', 'StrategyCard', 'market-filter']) {
   assert.match(market, new RegExp(landmark), `market visual composition is missing ${landmark}`);
 }
-for (const landmark of ['ProfileNav', 'AssetTable', 'Licenses', 'BindingDrawer', 'No trusted return time series']) {
+for (const landmark of ['AssetTable', 'Licenses', 'BindingDrawer', 'No trusted return time series']) {
   assert.match(profile, new RegExp(landmark), `profile visual composition is missing ${landmark}`);
 }
+assert.doesNotMatch(profile, /ProfileNav|editorial-profile-nav/, 'personal center must not duplicate global navigation');
+assert.match(profile, /Notifications and messages/, 'personal center must expose the inbox');
+assert.match(profile, /Tasks under review/, 'profile statistics must use actual task review status');
 assert.match(profile, /Trading passwords and exchange API secrets are not accepted/, 'profile binding drawer must disclose the credential boundary');
 assert.doesNotMatch(profile, /placeholder=["'](?:API Key|API Secret)/, 'profile must not collect exchange API credentials');
 assert.doesNotMatch(profile, /Math\.random/, 'profile must not generate synthetic portfolio data');
@@ -62,7 +66,8 @@ for (const source of [
 ]) assert.ok(communityContent.includes(source), `default community briefing must link to official source ${source}`);
 for (const strategy of ['趋势跟随', '区间突破', '均值回归', '组合与风险']) assert.ok(communityContent.includes(strategy), `default community strategy guide is missing ${strategy}`);
 assert.match(forum, /教育与研究用途，不构成投资建议或收益承诺/, 'strategy guide must disclose that it is educational, not investment advice');
-assert.match(forum, /role="tab"[\s\S]*setSection/, 'community tabs must switch interactive sections');
+assert.doesNotMatch(forum, /setSection|<NewsBriefings|<StrategyLibrary/, 'discussion feed must not contain redundant resource sections');
+assert.match(forum, /<details[\s\S]*DocumentLibrary/, 'references remain accessible as an optional disclosure');
 assert.match(forum, /DocumentLibrary/, 'documents tab must display its content');
 assert.match(forum, /nexus_forum_post_draft/, 'forum post composer must preserve a local draft through refreshes');
 assert.match(forum, /setPreview\(value => !value\)/, 'forum post composer must provide a live preview toggle');
@@ -80,7 +85,7 @@ assert.match(admin, /addCommunityItem/, 'administrator can add editorial items')
 assert.match(admin, /removeCommunityItem/, 'administrator can remove editorial items');
 assert.doesNotMatch(forum, /Math\.random/, 'community must not generate synthetic activity data');
 for (const fakeTotal of ['12,426', '256,781']) assert.doesNotMatch(forum, new RegExp(fakeTotal), `community must not copy mock total ${fakeTotal}`);
-for (const landmark of ['运营仪表盘', '待办队列', '系统状态', '业务快照', '用户与角色', '社区治理']) {
+for (const landmark of ['运营仪表盘', '待办队列', '积分任务核验', '积分提现审核', '用户与角色', '社区治理']) {
   assert.match(admin, new RegExp(landmark), `admin operations console is missing ${landmark}`);
 }
 for (const landmark of ['待审核', '已审核', '待认证', '已认证', '资料不完整', '已驳回', '策略审核', '证据认证', '审核清单', '风险摘要', '认证管理']) {

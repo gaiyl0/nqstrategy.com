@@ -39,4 +39,20 @@ assert.equal(verifyCsrfRequest(request('POST', '/api/payments/webhooks/alipay', 
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://admin.nexus.test' }), production), 'https://admin.nexus.test');
 assert.equal(allowedCorsOrigin(request('OPTIONS', '/api/users', { origin: 'https://evil.test' }), production), null);
 
-console.log(JSON.stringify({ passed: true, assertions: 29 }));
+const development = { NODE_ENV: 'development', APP_ORIGINS: 'https://nexus.test' };
+const localRequest = origin => new Request('http://localhost:3000/api/auth/login', {
+  method: 'POST', headers: { origin, 'content-type': 'application/json' },
+});
+for (const origin of ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:3000']) {
+  assert.equal(verifyCsrfRequest(localRequest(origin), development).allowed, true);
+  assert.equal(allowedCorsOrigin(localRequest(origin), development), origin);
+}
+for (const origin of ['http://127.0.0.1:3001', 'https://127.0.0.1:3000', 'http://127.0.0.1.evil.test:3000', 'http://evil.test:3000']) {
+  assert.equal(verifyCsrfRequest(localRequest(origin), development).reason, 'ORIGIN_NOT_ALLOWED');
+  assert.equal(allowedCorsOrigin(localRequest(origin), development), null);
+}
+assert.equal(verifyCsrfRequest(localRequest('http://127.0.0.1:3000'), production).allowed, false, 'production never inherits development loopback aliases');
+assert.equal(verifyCsrfRequest(request('POST','/api/auth/login',{origin:'http://127.0.0.1:3000','content-type':'application/json'}),development).allowed,false,'non-loopback servers never acquire local aliases');
+assert.equal(verifyCsrfRequest(localRequest('null'), development).reason, 'ORIGIN_INVALID');
+assert.equal(verifyCsrfRequest(new Request('http://localhost:3000/api/auth/login',{method:'POST',headers:{'content-type':'application/json'}}),development).reason,'ORIGIN_MISSING');
+console.log(JSON.stringify({ passed: true, assertions: 47 }));

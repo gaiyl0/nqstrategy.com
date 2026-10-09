@@ -10,8 +10,11 @@ import { AdminLocale, localizeAdminValue } from './admin-locale';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
 import ProductReviewWorkspace from './ProductReviewWorkspace';
 import AppearanceSettings from './AppearanceSettings';
+import BrandSettings from './BrandSettings';
+import BrandMark from '@/app/components/BrandMark';
 import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
+import AdminWorkbench from './AdminWorkbench';
 import PointsAdmin from './PointsAdmin';
 import PointWithdrawalsAdmin from './PointWithdrawalsAdmin';
 import PointExchangeRateAdmin from './PointExchangeRateAdmin';
@@ -144,6 +147,8 @@ export default function AdminDashboard() {
     setIsSaving(true);
     try {
       const {
+        siteBrand,
+        brokerReward,
         wechatPayApiV3KeyConfigured,
         wechatPayMerchantPrivateKeyConfigured,
         wechatPayPlatformCertificateConfigured,
@@ -256,6 +261,7 @@ export default function AdminDashboard() {
   const currentCommunitySection = COMMUNITY_EDITOR_SECTIONS.find(section => section.tab === activeTab);
   const CommunitySectionIcon = currentCommunitySection?.icon || Newspaper;
   const navigation = [
+    ['brandPages', '品牌、导航与页面', Globe2],
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
     ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
     ['reports', '社区治理', Flag],
@@ -266,42 +272,32 @@ export default function AdminDashboard() {
   ];
 
   const navigationGroups = [
-    ['运营概览', ['dashboard']],
-    ['站点与外观', ['settings','contactLinks','appearance','homeModules','featured','advertising']],
-    ['内容与社区', ['mt5Downloads','forumModules','communityCategories','communityContent','communityDocs','communityStrategies','reports']],
-    ['策略与认证', ['products','licenses']],
-    ['交易与收入', ['orders','paymentSettings','walletSettings','points','pointWithdrawals','withdrawals']],
-    ['用户与权限', ['users']],
-    ['推广与统计', ['analytics']],
+    ['工作台', ['dashboard']],
+    ['EA 管理', ['products','orders','licenses','featured']],
+    ['任务与推广', ['points','advertising','analytics']],
+    ['论坛运营', ['reports','communityCategories','forumModules','communityDocs']],
+    ['用户与积分', ['users','pointWithdrawals']],
+    ['网站设置', ['brandPages','appearance','contactLinks','mt5Downloads']],
+    ['系统维护', ['settings','paymentSettings','homeModules','communityContent','communityStrategies','walletSettings','withdrawals']],
   ];
   const settingsTabs = ['settings','contactLinks','appearance','homeModules','featured','advertising','mt5Downloads','forumModules','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
   return (
     <AdminLocale lang={lang}><div className="editorial-admin-shell min-h-screen bg-[#060c13] text-zinc-300 relative">
-      <header className="sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-3 sm:px-5 backdrop-blur-xl">
-        <Button className="mr-2 shrink-0 lg:hidden" variant="ghost" size="sm" icon={Menu} aria-label="打开后台菜单" aria-haspopup="dialog" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}>菜单</Button><div className="flex min-w-0 items-center gap-3"><div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10"><Activity className="h-5 w-5 text-cyan-300" /></div><div><p className="whitespace-nowrap text-xs sm:text-base font-black sm:tracking-[0.14em] text-white">NEXUS QUANT</p><p className="text-[10px] text-slate-600">运营控制台</p></div></div>
+      <header className="reference-admin-header sticky top-0 z-30 flex h-16 items-center border-b border-slate-800/80 bg-[#08111a]/95 px-3 sm:px-5 backdrop-blur-xl">
+        <Button className="mr-2 shrink-0 lg:hidden" variant="ghost" size="sm" icon={Menu} aria-label="打开后台菜单" aria-haspopup="dialog" aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen(true)}>菜单</Button><div className="flex min-w-0 items-center gap-3">{settings.siteBrand?.logoUrl?<Image unoptimized src={settings.siteBrand.logoUrl} width={48} height={36} alt="" className="h-9 w-12 object-contain"/>:<><BrandMark className="reference-brand-mark h-8 w-12"/><div className="classic-brand-mark hidden sm:flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-400/25 bg-cyan-400/10"><Activity className="h-5 w-5 text-cyan-300" /></div></>}<div><p className="whitespace-nowrap text-xs sm:text-base font-black sm:tracking-[0.14em] text-white">{settings.siteBrand?.name||settings.siteName||'Nexus Quant'}</p><p className="text-[10px] text-slate-600">运营控制台</p></div></div>
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-3"><span className="hidden sm:inline-flex"><Badge variant="success">{process.env.NODE_ENV === 'production' ? (lang === 'zh' ? '运行环境' : 'Runtime') : (lang === 'zh' ? '本地预览' : 'Local preview')}</Badge></span><span className="hidden items-center gap-2 text-xs text-slate-500 md:flex"><span className="h-2 w-2 rounded-full bg-emerald-400" />{lang === 'zh' ? '管理员会话已验证' : 'Administrator session verified'}</span><Button variant="ghost" size="sm" onClick={() => setLang(current => current === 'zh' ? 'en' : 'zh')} aria-label={lang === 'zh' ? 'Switch language' : '切换语言'}>{lang === 'zh' ? 'EN' : '中文'}</Button><Button variant="ghost" size="sm" icon={LogOut} aria-label={lang === 'zh' ? '返回网站' : 'Back to website'} onClick={() => router.push('/')}><span className="hidden sm:inline">{lang === 'zh' ? '返回网站' : 'Back to website'}</span></Button></div>
       </header>
       <Drawer open={mobileNavOpen} onClose={closeMobileNav} title={lang === 'zh' ? '后台功能菜单' : 'Admin menu'} description={lang === 'zh' ? '按分类选择需要管理的功能。' : 'Choose a management section.'}>
         <AdminNavigation groups={navigationGroups} items={navigation} activeTab={activeTab} mobile onSelect={value => { setActiveTab(value); closeMobileNav(); }} counts={{products: pendingProducts.length, withdrawals: pendingWithdrawals.length, reports: reports.length}} />
       </Drawer>
       <div className="flex min-h-[calc(100vh-64px)]">
-        <aside className="editorial-admin-nav sticky top-16 hidden h-[calc(100vh-4rem)] overflow-y-auto w-60 shrink-0 border-r border-slate-800/80 bg-[#08111a]/70 p-3 lg:flex lg:flex-col"><AdminNavigation groups={navigationGroups} items={navigation} activeTab={activeTab} onSelect={setActiveTab} counts={{products: pendingProducts.length, withdrawals: pendingWithdrawals.length, reports: reports.length}} /><Panel className="mt-auto p-4"><ShieldCheck className="h-5 w-5 text-cyan-300" /><p className="mt-3 text-sm font-bold text-white">安全边界已启用</p><p className="mt-2 text-xs leading-5 text-slate-500">管理员 RBAC、会话校验、幂等操作与审计日志继续由服务端执行。</p></Panel></aside>
+        <aside className="editorial-admin-nav sticky top-16 hidden h-[calc(100vh-4rem)] overflow-y-auto w-52 shrink-0 border-r border-slate-800/80 bg-[#08111a]/70 p-3 lg:flex lg:flex-col"><AdminNavigation groups={navigationGroups} items={navigation} activeTab={activeTab} onSelect={setActiveTab} counts={{products: pendingProducts.length, withdrawals: pendingWithdrawals.length, reports: reports.length}} /></aside>
         <main className="admin-content min-w-0 flex-1 p-4 md:p-6 xl:p-8"><div className="mx-auto max-w-[1500px]">
-        <div className="mb-7 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-6 md:flex-row md:items-end"><div><p className="text-sm font-semibold text-cyan-300">Nexus Quant Operations</p><h1 className="mt-2 text-3xl font-black text-white">{activeTab === 'dashboard' ? '运营仪表盘' : navigation.find(item => item[0] === activeTab)?.[1]}</h1><p className="mt-2 text-sm text-slate-500">真实业务数据、审核队列与风险操作集中管理。</p></div>{settingsTabs.includes(activeTab) && <Button variant="primary" loading={isSaving} onClick={handleSave}>保存配置</Button>}</div>
+        <div className="mb-7 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-6 md:flex-row md:items-end"><div><p className="text-sm font-semibold text-cyan-300">Nexus Quant Operations</p><h1 className="mt-2 text-3xl font-black text-white">{activeTab === 'dashboard' ? '运营仪表盘' : activeTab === 'brandPages' ? '后台 · 品牌与页面配置' : navigation.find(item => item[0] === activeTab)?.[1]}</h1><p className="mt-2 text-sm text-slate-500">真实业务数据、审核队列与风险操作集中管理。</p></div>{settingsTabs.includes(activeTab) && <Button variant="primary" loading={isSaving} onClick={handleSave}>保存配置</Button>}</div>
 
-        {activeTab === 'dashboard' && <div className="space-y-5">
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
-            ['待审策略', pendingProducts.length, '进入策略审核队列', Box, 'primary'],
-            ['待处理提现', pendingWithdrawals.length, '真实打款前必须人工复核', HandCoins, 'warning'],
-            ['风险事件', reports.length, '当前待处理内容举报', AlertTriangle, 'danger'],
-            ['历史订单', orderList.length, '付费能力仍处于关闭状态', CreditCard, 'neutral'],
-          ].map(([label, value, hint, Icon, tone], index) => <Panel key={`dashboard-metric-${label}-${index}`} className="admin-stat-card p-5" data-tone={tone}><div className="flex items-start justify-between"><div><p className="text-sm text-slate-400">{label}</p><p className="nq-number mt-2 text-3xl font-black text-white">{value}</p></div><div className="rounded-lg border border-slate-700/50 bg-slate-800/70 p-3"><Icon className="h-5 w-5 text-cyan-300" /></div></div><div className="mt-4"><Badge variant={tone}>{hint}</Badge></div></Panel>)}</section>
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,.7fr)]"><Panel className="overflow-hidden"><div className="flex items-center justify-between border-b border-slate-800 px-5 py-4"><div><h2 className="font-bold text-white">待办队列</h2><p className="mt-1 text-xs text-slate-600">来自当前数据库的真实待处理记录</p></div><FileCheck2 className="h-5 w-5 text-cyan-300" /></div><div className="divide-y divide-slate-800/70">{[
-            ['策略审核', pendingProducts.length, 'products'], ['提现复核', pendingWithdrawals.length, 'withdrawals'], ['订单异常', pendingOrders.length, 'orders'], ['内容举报', reports.length, 'reports'],
-          ].map(([label, count, target], index) => <button key={`queue-${target}-${index}`} type="button" onClick={() => setActiveTab(target)} className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-slate-800/35"><span className={`h-2.5 w-2.5 rounded-full ${count ? 'bg-amber-400' : 'bg-emerald-400'}`} /><div className="flex-1"><p className="font-semibold text-slate-200">{label}</p><p className="mt-1 text-xs text-slate-600">{count ? `${count} 条等待处理` : '当前没有待处理记录'}</p></div><ArrowUpRight className="h-4 w-4 text-slate-600" /></button>)}</div></Panel><div className="space-y-5"><Panel className="p-5"><h2 className="font-bold text-white">系统状态</h2><div className="mt-5 space-y-4">{[['管理员身份','已验证'],['付费能力','保持关闭'],['API 操作','服务端鉴权'],['审计边界','已启用']].map(([label,value], index) => <div key={`system-status-${label}-${index}`} className="flex items-center justify-between text-sm"><span className="flex items-center gap-2 text-slate-500"><span className="h-2 w-2 rounded-full bg-emerald-400" />{label}</span><span className="font-semibold text-emerald-300">{value}</span></div>)}</div></Panel><Panel className="p-5"><h2 className="font-bold text-white">业务快照</h2><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{userList.length}</p><p className="mt-1 text-xs text-slate-600">用户</p></div><div className="rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-white">{productList.length}</p><p className="mt-1 text-xs text-slate-600">策略</p></div><div className="col-span-2 rounded-lg bg-slate-950/50 p-3"><p className="nq-number text-xl font-black text-emerald-300">${completedRevenue.toLocaleString()}</p><p className="mt-1 text-xs text-slate-600">已核验完成订单金额</p></div></div></Panel></div></div>
-        </div>}
-        {activeTab === 'points' && <PointsAdmin />}
-        
+        {activeTab === 'brandPages' && <BrandSettings products={productList} settings={settings}/>}
+        {activeTab === 'dashboard' && <AdminWorkbench onSelect={setActiveTab} />}
+
         {activeTab === 'analytics' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/55 p-4"><div><h2 className="font-bold text-white">访问流量与广告效果</h2><p className="mt-1 text-xs leading-5 text-slate-500">仅计入可见页面确认的浏览器访问和通过来源验证的蜘蛛。浏览器访问为真人估算，并非精确人数；后台、验收、预加载和历史未验证请求不计入主要数字。不保存完整 IP。</p></div><div className="flex items-center gap-2"><select value={analyticsDays} onChange={event=>{setAnalyticsDays(Number(event.target.value));setAnalyticsVisitPage(1);setAnalyticsClickPage(1);}} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"><option value={7}>最近 7 天</option><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option><option value={365}>最近 365 天</option></select><Button size="sm" onClick={()=>fetchAnalytics(analyticsDays)}>刷新</Button></div></div>
@@ -364,7 +360,8 @@ export default function AdminDashboard() {
         {activeTab === 'mt5Downloads' && <Mt5DownloadSettings settings={settings} setSettings={setSettings}/>}
         {activeTab === 'forumModules' && <Panel className="space-y-5 p-5 sm:p-6"><h2 className="text-lg font-bold">论坛首页模块开关</h2><p className="text-sm leading-6 text-slate-500">分别控制论坛讨论列表顶部的两个模块。关闭只隐藏展示，已保存的内容不会删除，文档和策略研究资料仍可访问。更改后点击“保存配置”生效。</p>{[['forumNewsEnabled','市场简报 · 重要新闻','显示管理员配置的新闻摘要与来源链接。'],['forumStrategyOverviewEnabled','策略类型速览','显示可展开的网格、趋势等策略研究摘要。']].map(([key,label,description]) => <div key={key} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-700 p-4"><div><h3 className="text-base font-semibold">{label}</h3><p className="mt-2 text-sm text-slate-500">{description}</p></div><button type="button" role="switch" aria-label={label} aria-checked={settings[key] !== false} onClick={() => setSettings({...settings,[key]:settings[key] === false})} className="forum-module-switch"><span className="forum-switch-track"><span/></span><span>{settings[key] !== false ? '已开启' : '已关闭'}</span></button></div>)}</Panel>}
 
-        {['appearance','homeModules'].includes(activeTab) && <AppearanceSettings settings={settings} setSettings={setSettings} products={productList} tab={activeTab}/>}
+        {activeTab==='homeModules'&&<div className="rounded-xl border border-slate-600 p-6"><h2 className="text-lg font-bold">首页配置已统一到品牌配置</h2><p className="mt-3 text-sm">首页模块、文案和轮播请在“品牌、导航与页面 → 预设与首页”编辑，再保存草稿并发布。</p><button onClick={()=>setActiveTab('brandPages')} className="mt-4 rounded-lg bg-teal-600 px-4 py-2 text-white">打开预设与首页配置</button></div>}
+        {activeTab==='appearance' && <AppearanceSettings settings={settings} setSettings={setSettings} products={productList} tab={activeTab}/>}
         {['settings','advertising','featured','communityCategories','walletSettings'].includes(activeTab) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-20 animate-in fade-in duration-300">
              <div hidden={activeTab !== 'communityCategories'} className="md:col-span-2 bg-gradient-to-br from-purple-900/20 to-zinc-900/50 border border-purple-500/20 rounded-xl p-8 space-y-4 shadow-[var(--nq-shadow-panel)]">
@@ -397,7 +394,7 @@ export default function AdminDashboard() {
 
              <div hidden={activeTab !== 'settings'} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-8 space-y-5 shadow-[var(--nq-shadow-panel)]">
                 <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Mail className="text-emerald-400" /> 基础与邮件网关</h2>
-                <input type="text" value={settings.siteName} onChange={(e) => setSettings({...settings, siteName: e.target.value})} placeholder="网站名称" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white" />
+                <input type="text" readOnly value={settings.siteName} placeholder="网站名称" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white" /><p className="mt-2 text-sm text-slate-500">网站名称请在“品牌、导航与页面”中编辑并发布。</p>
                 <input type="text" value={settings.contactEmail} onChange={(e) => setSettings({...settings, contactEmail: e.target.value})} placeholder="联系邮箱" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white" />
                 <input type="text" value={settings.smtpHost} onChange={(e) => setSettings({...settings, smtpHost: e.target.value})} placeholder="SMTP 主机" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white" />
                 <input type="text" value={settings.smtpUser} onChange={(e) => setSettings({...settings, smtpUser: e.target.value})} placeholder="SMTP 账号" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white" />

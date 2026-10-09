@@ -4,11 +4,13 @@ import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { createCommentSchema, idSchema, parseJson, pinSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { awardDailyAction } from '@/lib/points';
+import { forumAccess } from '@/lib/forum-feature';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 async function GETHandler(request) {
+  if (!forumAccess().readable && (await getSessionUser())?.role !== 'admin') return NextResponse.json({ success: false, message: '论坛已停用', code: 'FORUM_DISABLED' }, { status: 403 });
   const parsedPostId = validate(idSchema, new URL(request.url).searchParams.get('postId'));
   if (!parsedPostId.success) return validationErrorResponse(parsedPostId.error);
   const postId = parsedPostId.data;
@@ -21,6 +23,7 @@ async function GETHandler(request) {
 }
 
 async function POSTHandler(request) {
+  if (!forumAccess().enabled) return NextResponse.json({ success: false, message: '论坛已关闭回复', code: 'FORUM_DISABLED' }, { status: 403 });
   try {
     const currentUser = await getSessionUser();
     if (!currentUser) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
@@ -31,6 +34,7 @@ async function POSTHandler(request) {
       return NextResponse.json({ success: false, message: '帖子不存在' }, { status: 404 });
     }
     const commentId=db.transaction(()=>{
+      if (!forumAccess().enabled) throw new Error('FORUM_DISABLED');
       const result=db.prepare('INSERT INTO comments (post_id, author, author_user_id, content) VALUES (?, ?, ?, ?)').run(postId,currentUser.username,currentUser.id,content);
       const id=Number(result.lastInsertRowid);
       awardDailyAction(currentUser.id,'daily_comment',id);
@@ -38,6 +42,7 @@ async function POSTHandler(request) {
     }).immediate();
     return NextResponse.json({ success: true, id: commentId }, { status: 201 });
   } catch (error) {
+    if (error.message === 'FORUM_DISABLED') return NextResponse.json({ success: false, message: '论坛已关闭回复', code: 'FORUM_DISABLED' }, { status: 403 });
     return NextResponse.json({ success: false, message: '创建评论失败' }, { status: 500 });
   }
 }

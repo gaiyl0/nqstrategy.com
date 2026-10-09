@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
 import { Mt5DownloadLink } from './Mt5Download';
 import { Activity, Mail, FileText, Shield, Lock, CircleHelp, Send } from 'lucide-react';
 
@@ -36,18 +38,18 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
         <div className="footer-columns grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Activity className="text-zinc-950 w-4 h-4" /></div>
+              {siteSettings?.siteBrand?.logoUrl ? <Image unoptimized src={siteSettings.siteBrand.logoUrl} width={32} height={32} alt="" className="h-8 w-8 object-contain" /> : <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Activity className="text-zinc-950 w-4 h-4" /></div>}
               <span className="font-extrabold text-xl text-white tracking-tight">{siteSettings?.siteName || 'Nexus Quant'}</span>
             </div>
             <p className="text-sm text-zinc-400 leading-relaxed max-w-sm">
-              {t('面向 MT5 EA、XAUUSD 黄金与外汇自动交易的策略研究和开发者社区。查看资料披露、比较策略风险，交流使用与开发经验。', 'A strategy research and developer community for MT5 EAs, XAUUSD gold and forex automation. Review disclosed evidence, compare risks and exchange experience.')}
+              {siteSettings?.siteBrand?.description || t('面向 MT5 EA、XAUUSD 黄金与外汇自动交易的策略研究和开发者社区。查看资料披露、比较策略风险，交流使用与开发经验。', 'A strategy research and developer community for MT5 EAs, XAUUSD gold and forex automation. Review disclosed evidence, compare risks and exchange experience.')}
             </p>
             <SocialLinks siteSettings={siteSettings} t={t} />
           </div>
           <FooterGroup title={t('平台生态', 'Ecosystem')}>
             <ul className="footer-link-list text-sm text-zinc-400">
-              <li><button onClick={() => setRoute('market')} className="hover:text-cyan-400 transition-colors">{t('EA 策略市场', 'EA Strategy Market')}</button></li>
-              <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('量化策略论坛', 'Quant Forum')}</button></li>
+              {catalogEnabled(siteSettings?.siteBrand)&&<li><button onClick={() => setRoute('market')} className="hover:text-cyan-400 transition-colors">{t('EA 策略市场', 'EA Strategy Market')}</button></li>}
+              {forumEnabled(siteSettings?.siteBrand) && <li><button onClick={() => { setRoute('forum'); setForumView('list'); }} className="hover:text-cyan-400 transition-colors">{t('量化策略论坛', 'Quant Forum')}</button></li>}
               <li><span>{t('机构版 API 接入', 'Institutional API Access')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
               <li><span>{t('MQL5 深度学习实验室', 'MQL5 Deep Learning Lab')} <span className="footer-coming-soon">{t('筹备中', 'Coming soon')}</span></span></li>
             </ul>

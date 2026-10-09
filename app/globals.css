@@ -254,6 +254,11 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
   box-shadow:0 8px 26px #14253615;
 }
 [data-design="editorial"] .editorial-sponsor-copy { min-width:0; }
+@container (min-width:1000px) {
+  [data-design="editorial"] .editorial-sponsor-banner { display:grid; grid-template-columns:minmax(0,1fr) 370px; align-items:center; gap:28px; min-height:190px; }
+  [data-design="editorial"] .editorial-sponsor-banner .editorial-ad-actions { width:100%; max-width:none; margin-top:0; }
+  [data-design="editorial"] .editorial-sponsor-banner .editorial-link-button { min-height:48px; padding:10px 12px; font-size:14px; }
+}
 [data-design="editorial"] .editorial-sponsor-banner h2 { color:#fff2cf; line-height:1.6; }
 [data-design="editorial"] .editorial-sponsor-banner p { color:#d2e0e9; max-width:850px; line-height:1.8; }
 [data-design="editorial"] .editorial-sponsor-banner .editorial-link-button { flex-shrink:0; border:1px solid #8dedde80; box-shadow:0 5px 20px #07152550; }
@@ -340,7 +345,7 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design="editorial"] .editorial-profile-nav nav button:hover { background:#ffffff0c; }
 [data-design="editorial"] .editorial-profile-nav button[aria-current="page"] { background:#139c9135; color:#80e6d8; }
 [data-design="editorial"] .editorial-profile-nav > div { color:#a3b9ca; }
-[data-design="editorial"] .editorial-profile-layout { width:100%; max-width:none; margin-inline:0; }
+[data-design="editorial"] .editorial-profile-layout { width:100%; max-width:1380px; margin-inline:auto; }
 
 /* Component states keep editorial surfaces independent from utility hover tokens. */
 [data-design="editorial"] .market-filter select { background:#f9fbfc; color:#243448; border-color:#cbd6e1; }
@@ -464,6 +469,26 @@ body:has(> .nq-design-root[data-design="editorial"]) { background:#f4f6f8; }
 [data-design] .strategy-detail-hero .strategy-detail-actions button:disabled { background:#253341; border-color:#586b7a; color:#c6d7e4; }
 [data-design] .strategy-detail-hero .strategy-detail-actions :is(button,a):hover:not(:disabled) { background:#1c4357; border-color:#8cdbdf; }
 .strategy-detail .nq-report-content :is([class^='rounded-2xl'],[class*=' rounded-2xl']) { border-radius:10px; }
+.strategy-detail-section { box-shadow:none; }
+.strategy-acquisition { background:#0d2235; border-color:#3d6279; color:#e8f5ff; }
+[data-design] .strategy-detail-hero .strategy-acquisition :is(h2,p,li,strong) { color:#e8f5ff; }
+.strategy-acquisition ol { border-color:#3d6279; }
+[data-design] .strategy-detail-hero .strategy-acquisition .acquisition-primary { background:#0a9289; border-color:#42c8bd; color:#fff; }
+[data-design] .strategy-detail-hero .strategy-acquisition .acquisition-primary:hover:not(:disabled) { background:#08796f; border-color:#87e7df; }
+.strategy-detail-nav a:focus-visible { outline:2px solid #14aaa1; outline-offset:2px; }
+.custom-page-hero { background:#0a2338; border-color:#36586c; color:#edf6ff; }
+[data-design] .custom-page-hero :is(h1,p) { color:#edf6ff; }
+.custom-page-body,.custom-page-block { background:var(--nq-panel); border-color:var(--nq-border); color:var(--nq-text); }
+.custom-page-block[data-tone=blue] { background:linear-gradient(120deg,#0b2033,#123f4b); border-color:#436779; color:#edf6ff; }
+.custom-page-block[data-tone=gold] { background:#f7efd8; border-color:#d9c48d; color:#5c461d; }
+[data-design] .custom-page-block[data-tone=blue] :is(h2,p,a) { color:#edf6ff; }
+[data-design] .custom-page-block[data-tone=gold] :is(h2,p) { color:#5c461d; }
+.custom-page-action { background:#087f78; border-color:#2faea5; color:#fff; }
+.custom-page-action:hover { background:#06675f; }
+.custom-page-action:focus-visible { outline:2px solid #32ccc0; outline-offset:3px; }
+.custom-page-block-image { background:#102a3c; }
+.page-editor-preview .custom-page-body,.page-editor-preview .custom-page-block[data-tone=neutral] { background:#f4f7fa; color:#243448; border-color:#d9e3ed; }
+@media(min-width:1024px) { .custom-page-image:not(.image-top) { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:32px; }.custom-page-image.image-right .custom-page-block-image { order:2; }.custom-page-image.image-top .custom-page-block-image { margin-bottom:24px; min-height:320px; } }
 @media (min-width:640px) { .strategy-detail-section { scroll-margin-top:132px; } }
 
 /* P2-06: explicit component surfaces and consistent interaction targets. */

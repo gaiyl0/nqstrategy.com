@@ -1,6 +1,7 @@
 import { withApiErrors } from '@/lib/api-errors';
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import {siteFeatureAccess} from '@/lib/forum-feature';
 import { getSessionUser } from '@/lib/auth';
 import {
   adminScopeSchema,
@@ -157,6 +158,7 @@ async function POSTHandler(request) {
     eventType: 'order.create', outcome, reasonCode, targetType: targetId ? 'product' : null, targetId, metadata,
   });
   if (!currentUser) return audited(jsonError('请先登录您的量化账户', 401), 'failure', 'UNAUTHENTICATED');
+  if(!siteFeatureAccess().catalog)return audited(jsonError('商城已停用，已有订单与下载不受影响',403),'failure','CATALOG_DISABLED');
 
   const parsed = await parseJson(request, createOrderSchema);
   if (!parsed.success) return audited(parsed.response, 'failure', 'VALIDATION_ERROR');
@@ -176,6 +178,7 @@ async function POSTHandler(request) {
     }
 
     const createFreeLicense = db.transaction(() => {
+      if(!siteFeatureAccess().catalog)throw new OrderError('商城已停用，已有订单与下载不受影响',403);
       const existing = db.prepare('SELECT id, status FROM orders WHERE buyer_user_id = ? AND product_id = ?')
         .get(currentUser.id, product.id);
       if (existing) {

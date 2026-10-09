@@ -23,6 +23,13 @@ try {
  db.prepare("INSERT INTO comments(post_id,author,content,moderation_status) VALUES(?,'reader','valid','visible')").run(ids[1]);
  db.prepare("INSERT INTO comments(post_id,author,content,moderation_status) VALUES(?,'reader','hidden','hidden')").run(ids[1]);
  eq(listForumPosts({sort:'discussed'}).posts[1].id,ids[1],'most discussed sorting');eq(listForumPosts({q:'独有作者'}).posts[0].comment_count,1,'hidden replies not counted');eq(listForumPosts({sort:'hot'}).posts[1].id,ids[24],'popular sorting');
+ db.prepare("UPDATE comments SET created_at='2026-10-08' WHERE post_id=? AND moderation_status='visible'").run(ids[1]);
+ db.prepare("INSERT INTO comments(post_id,author,content,created_at,moderation_status) VALUES(?,'reader','hidden new reply','2026-10-09','hidden')").run(ids[24]);
+ eq(listForumPosts({sort:'replied'}).posts[0].id,ids[1],'latest replies uses visible reply dates rather than reply count or hidden replies');
+ const unanswered=listForumPosts({sort:'unanswered'});
+ eq(unanswered.pagination.total,24,'unanswered count excludes posts with visible replies');
+ eq(listForumPosts({sort:'unanswered',q:'独有作者'}).posts.length,0,'unanswered filter is applied before server pagination');
+ eq(listForumPosts({sort:'unanswered',q:'讨论 25'}).posts[0].id,ids[24],'hidden replies do not remove a topic from unanswered results');
  for(const input of [{page:0},{page:1.5},{page:'bad'},{pageSize:37},{q:'x'.repeat(201)}])eq(forumListQuerySchema.safeParse(input).success,false,'invalid query rejected');
  eq(forumListQuerySchema.parse({}),{page:1,pageSize:12,q:''},'defaults');
  eq(settingsSchema.safeParse({forumNewsEnabled:false,forumStrategyOverviewEnabled:true}).success,true,'module booleans accepted');eq(settingsSchema.safeParse({forumNewsEnabled:'false'}).success,false,'string toggles rejected');

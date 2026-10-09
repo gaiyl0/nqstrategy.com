@@ -1,0 +1,3 @@
+export default function ForumUnavailable({ mode, setRoute, t }) {
+  return <section className="mx-auto w-full max-w-4xl px-8 py-16"><div className="rounded-2xl border border-slate-700 p-10"><h1 className="text-2xl font-bold">{t('论坛暂未开放','Forum is unavailable')}</h1><p className="mt-4 text-base leading-7 text-slate-400">{mode==='archived'?t('讨论功能已关闭，历史文章仍可通过原有链接阅读。','Discussions are closed. Historical articles remain readable through their existing links.'):t('本站目前未启用论坛。历史内容已保留，重新启用后可恢复访问。','The forum is disabled. Historical content is retained and can be restored when enabled.')}</p><button onClick={()=>setRoute('home')} className="mt-6 rounded-lg bg-teal-600 px-5 py-3 font-semibold text-white">{t('返回首页','Back to home')}</button></div></section>;
+}

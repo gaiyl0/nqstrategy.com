@@ -4,7 +4,7 @@ import { resolveMt5Download, MT5_PACKAGE } from '@/lib/mt5-download';
 export function Mt5DownloadLink({ settings, t = zh => zh, className = '' }) {
   const download = resolveMt5Download(settings);
   if (!download) return null;
-  return <a href={download.url} className={`mt5-download-link ${className}`} download={download.url.startsWith('/downloads/') ? true : undefined} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4 shrink-0" aria-hidden="true"/>{t(download.label, download.label === MT5_PACKAGE.label ? 'Download MT5 (Windows)' : download.label)}<span aria-hidden="true">↗</span></a>;
+  return <a href={download.url} className={`mt5-download-link ${className}`} download={download.url.startsWith('/downloads/') ? true : undefined} target="_blank" rel="noopener noreferrer"><Download className="h-4 w-4 shrink-0" aria-hidden="true"/><span className="mt5-download-label">{t(download.label, download.label === MT5_PACKAGE.label ? 'Download MT5 (Windows)' : download.label)}</span><span aria-hidden="true">↗</span></a>;
 }
 
 export default function Mt5DownloadPanel({ settings }) {

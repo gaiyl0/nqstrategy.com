@@ -4,6 +4,8 @@ import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
 import { parseJson, settingsSchema } from '@/lib/validation';
 import { DEFAULT_COMMUNITY_CONTENT, normalizeCommunityContent } from '@/lib/community-content';
+import { publishedSiteBrand } from '@/lib/site-brand-store';
+import { publicBrokerReward } from '@/lib/point-journey';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,6 +59,9 @@ async function GETHandler() {
       }
     }
 
+    settings.siteBrand = publishedSiteBrand();
+    settings.brokerReward = publicBrokerReward();
+    settings.siteName = settings.siteBrand.name;
     if (!settings.communityContent) settings.communityContent = DEFAULT_COMMUNITY_CONTENT;
     if (isAdmin) {
       for (const [responseKey, environmentKey] of Object.entries(PAYMENT_SECRET_STATUS)) {

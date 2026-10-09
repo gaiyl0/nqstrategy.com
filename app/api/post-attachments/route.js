@@ -6,6 +6,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import db from '@/lib/db';
 import { getSessionUser } from '@/lib/auth';
+import { forumAccess } from '@/lib/forum-feature';
 import { idSchema, parseJson, uploadMetadataSchema, validate, validationErrorResponse } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
 import { cleanupExpiredPostAttachments, malwareScan, sha256, storedPostAttachmentPath, uploadRoots, validateAndNormalizeImage } from '@/lib/upload-security';
@@ -39,6 +40,7 @@ function audit(context, response, outcome, reasonCode, metadata = {}) {
 }
 
 async function POSTHandler(request) {
+  if (!forumAccess().enabled) return NextResponse.json({ success: false, message: '论坛已关闭上传', code: 'FORUM_DISABLED' }, { status: 403 });
   const user = await getSessionUser();
   const context = createSecurityContext(request, user);
   const layers = [{ policy: RATE_LIMITS.uploadIp }];
@@ -74,6 +76,7 @@ async function POSTHandler(request) {
     if (!scan.clean) return audit(context, NextResponse.json({ success: false, message: scan.reason === 'SCANNER_UNAVAILABLE' ? '安全扫描服务暂不可用，请稍后重试' : '文件未通过安全扫描' }, { status: scan.reason === 'SCANNER_UNAVAILABLE' ? 503 : 400 }), 'failure', scan.reason, { kind: classification.kind });
 
     const storedName = `${Date.now()}_${crypto.randomBytes(16).toString('hex')}${classification.extension}`;
+    if (!forumAccess().enabled) return audit(context, NextResponse.json({ success: false, message: '论坛已关闭上传', code: 'FORUM_DISABLED' }, { status: 403 }), 'failure', 'FORUM_DISABLED');
     const fullPath = storedPostAttachmentPath(storedName);
     fs.mkdirSync(uploadRoots().postAttachmentRoot, { recursive: true });
     fs.writeFileSync(fullPath, content, { flag: 'wx', mode: 0o600 });
@@ -99,6 +102,7 @@ async function GETHandler(request) {
   const row = db.prepare(`SELECT a.*,p.moderation_status FROM post_attachments a LEFT JOIN posts p ON p.id=a.post_id
     WHERE a.id=? AND a.status IN ('clean','content_validated') AND ((a.owner_user_id=? AND (a.expires_at IS NULL OR a.expires_at>?)) OR p.moderation_status='visible')`).get(parsedId.data, user?.id || -1, Date.now());
   if (!row) return new NextResponse('附件不存在或无权访问', { status: 404 });
+  if (row.post_id && !forumAccess().readable && user?.role !== 'admin') return new NextResponse('论坛已停用', { status: 404 });
   const fullPath = storedPostAttachmentPath(row.stored_name);
   if (!fs.existsSync(fullPath)) return new NextResponse('附件文件不存在', { status: 404 });
   const data = fs.readFileSync(fullPath);

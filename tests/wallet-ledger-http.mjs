@@ -83,7 +83,7 @@ try {
   server.stdout.on('data', (chunk) => { serverOutput += chunk; });
   server.stderr.on('data', (chunk) => { serverOutput += chunk; });
   let ready = false;
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  for (let attempt = 0; attempt < 240; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 250));
     try {
       const response = await fetch(`http://127.0.0.1:${port}/`);

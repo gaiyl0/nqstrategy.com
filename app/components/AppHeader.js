@@ -1,7 +1,19 @@
 import Image from 'next/image';
+import BrandMark from './BrandMark';
+import { navigationHref, forumEnabled,catalogEnabled,tasksEnabled } from '@/lib/site-brand.mjs';
 import { Activity, Bell, Coins, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
 
 export default function AppHeader({ siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }) {
+  const configuredNavigation = siteSettings?.siteBrand?.navigation.filter(item => item.visible && (item.kind !== 'route' || (item.target !== 'forum' || forumEnabled(siteSettings.siteBrand))&&(item.target !== 'market' || catalogEnabled(siteSettings.siteBrand))&&(item.target !== 'points' || tasksEnabled(siteSettings.siteBrand)))) || [];
+  function renderNavigation(item, index) {
+    return <a key={`${item.kind}-${item.target}-${index}`} href={navigationHref(item)} target={item.kind === 'external' ? '_blank' : undefined} rel={item.kind === 'external' ? 'noopener noreferrer' : undefined} aria-current={item.kind === 'route' && route === item.target ? 'page' : undefined} title={lang === 'en' && item.labelEn ? item.labelEn : item.label} onClick={event => {
+      if (item.kind !== 'route' || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      event.currentTarget.closest('details')?.removeAttribute('open');
+      if (['points','profile'].includes(item.target) && !user) return setAuthModal('login');
+      setRoute(item.target); if (item.target === 'forum') setForumView('list');
+    }} className={`nq-nav-item block max-w-32 truncate transition-colors ${item.kind === 'route' && route === item.target ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{lang === 'en' && item.labelEn ? item.labelEn : item.label}</a>;
+  }
   const mobileItems = [
     ['home', t('首页', 'Home'), Home, () => setRoute('home')],
     ['market', t('市场', 'Market'), Store, () => setRoute('market')],
@@ -10,18 +22,20 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
     ['profile', t('我的', 'Profile'), UserIcon, () => user ? setRoute('profile') : setAuthModal('login')],
   ];
   return <>
-<header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80">
+<header className="reference-site-header sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80">
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
     <button type="button" aria-label={t('返回首页', 'Back to home')} className="flex min-w-0 items-center gap-2 text-left sm:gap-3" onClick={() => setRoute('home')}>
-      <div className="w-8 h-8 shrink-0 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)]"><Activity className="text-zinc-950 w-5 h-5" /></div>
-      <span title={siteSettings?.siteName || 'Nexus Quant'} className="truncate font-extrabold text-base tracking-tight text-white sm:text-xl">{siteSettings?.siteName || 'Nexus Quant'}</span>
+      {siteSettings?.siteBrand?.logoUrl ? <Image unoptimized src={siteSettings.siteBrand.logoUrl} width={36} height={36} alt="" className="h-9 w-9 shrink-0 object-contain" /> : <><BrandMark className="reference-brand-mark h-8 w-12"/><div className="classic-brand-mark w-8 h-8 shrink-0 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.3)]"><Activity className="text-zinc-950 w-5 h-5" /></div></>}
+      <span title={siteSettings?.siteName || 'Nexus Quant'} className="reference-site-name truncate font-extrabold text-base tracking-tight text-white sm:text-xl">{siteSettings?.siteName || 'Nexus Quant'}</span>
     </button>
     <nav className="nq-primary-nav hidden lg:flex items-center gap-2 text-sm font-medium">
+      {siteSettings?.siteBrand ? <>{configuredNavigation.slice(0,4).map(renderNavigation)}{configuredNavigation.length > 4 && <details className="relative"><summary className="nq-nav-item cursor-pointer text-zinc-400">{t('更多','More')}</summary><div className="absolute left-0 top-full mt-2 min-w-40 rounded-xl border border-slate-700 bg-[#071b2c] p-2 shadow-xl">{configuredNavigation.slice(4).map(renderNavigation)}</div></details>}</> : <>
       <button onClick={() => setRoute('home')} aria-current={route === 'home' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'home' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('首页概览', 'Dashboard')}</button>
       <button onClick={() => setRoute('market')} aria-current={route === 'market' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'market' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('策略市场', 'EA Market')}</button>
       <button onClick={() => { setRoute('forum'); setForumView('list'); }} aria-current={route === 'forum' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'forum' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('论坛', 'Forum')}</button>
       <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('points'); }} aria-current={route === 'points' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'points' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('积分任务', 'Points')}</button>
       <button onClick={() => { if(!user) return setAuthModal('login'); setRoute('profile'); }} aria-current={route === 'profile' ? 'page' : undefined} className={`nq-nav-item transition-colors ${route === 'profile' ? 'text-cyan-400' : 'text-zinc-400 hover:text-white'}`}>{t('个人中心', 'Profile')}</button>
+      </>}
       {user?.role === 'admin' && (<a href="/tianwei" target="_blank" rel="noopener noreferrer" className="rounded border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-400 hover:bg-amber-500/20">{t('后台管理', 'Admin Panel')}</a>)}
     </nav>
     <div className="relative flex shrink-0 items-center gap-2 sm:gap-4">
@@ -48,7 +62,7 @@ export default function AppHeader({ siteSettings, setRoute, route, t, user, setA
   </div>
 </header>
 <nav aria-label={t('移动端主导航', 'Mobile primary navigation')} className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-slate-800 bg-[#07101a]/95 px-[max(0.5rem,env(safe-area-inset-left))] pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-  {mobileItems.map(([value, label, Icon, action]) => <button key={value} type="button" aria-current={route === value ? 'page' : undefined} onClick={action} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${route === value ? 'text-cyan-300' : 'text-slate-500'}`}><Icon className="h-4 w-4" /><span>{label}</span></button>)}
+  {mobileItems.filter(([value]) => (value !== 'forum' || forumEnabled(siteSettings?.siteBrand))&&(value!=='market'||catalogEnabled(siteSettings?.siteBrand))&&(value!=='points'||tasksEnabled(siteSettings?.siteBrand))).map(([value, label, Icon, action]) => <button key={value} type="button" aria-current={route === value ? 'page' : undefined} onClick={action} className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-semibold ${route === value ? 'text-cyan-300' : 'text-slate-500'}`}><Icon className="h-4 w-4" /><span>{label}</span></button>)}
 </nav>
 </>;
 }

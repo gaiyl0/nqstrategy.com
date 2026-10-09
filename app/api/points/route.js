@@ -6,6 +6,8 @@ import { parseJson } from '@/lib/validation';
 import { awardDailyAction, pointState, redeemWithPoints, submitPointClaim } from '@/lib/points';
 import { createSecurityContext, enforceRateLimits, RATE_LIMITS, withAudit } from '@/lib/security';
 import {refreshAutomaticRechargeRate} from '@/lib/point-recharge';
+import { pointJourneyState } from '@/lib/point-journey';
+import {siteFeatureAccess} from '@/lib/forum-feature';
 
 export const dynamic='force-dynamic';
 
@@ -21,6 +23,7 @@ async function GETHandler(request){
   const context=createSecurityContext(request,user);
   const limited=enforceRateLimits(context,'points.read',[{policy:RATE_LIMITS.orderRead,identifier:`user:${user.id}`}]);
   if(limited)return limited;
+  if(new URL(request.url).searchParams.get('view')==='summary') return NextResponse.json({success:true,...pointJourneyState(user.id)},{headers:{'Cache-Control':'private, no-store'}});
   await refreshAutomaticRechargeRate().catch(()=>{});
   return NextResponse.json({success:true,...pointState(user.id)});
 }
@@ -36,12 +39,14 @@ async function POSTHandler(request){
   const body=parsed.data;
   const audited=(response,outcome,reasonCode)=>withAudit(context,response,{eventType:'points.write',outcome,reasonCode,metadata:{action:body.action}});
   try{
+    if(body.action!=='redeem'&&!siteFeatureAccess().tasks)throw new Error('POINT_TASKS_DISABLED');
     const result=body.action==='checkin'?awardDailyAction(user.id,'daily_checkin')
       :body.action==='redeem'?redeemWithPoints(user,body.productId,body.expectedPointsPrice)
       :{claimId:submitPointClaim(user.id,body.taskId,body)};
     return audited(NextResponse.json({success:true,...result},{status:body.action==='checkin'?200:201}),'success',body.action.toUpperCase());
   }catch(error){
     const known={
+      CATALOG_DISABLED:['商城已停用，已有订单与下载仍可在个人中心管理',403],POINT_TASKS_DISABLED:['积分任务已停用',403],
       INSUFFICIENT_POINTS:['积分不足',409],POINT_PRICE_UNAVAILABLE:['该策略暂未开放积分兑换',409],POINT_PRICE_CHANGED:['策略积分价格已变化，请刷新并重新确认',409],
       PRODUCT_UNAVAILABLE:['策略不存在或已下架',404],VERSION_UNAVAILABLE:['该策略尚无可下载的已发布版本',409],SELF_PURCHASE:['不能兑换自己发布的策略',409],ALREADY_OWNED:['您已拥有该策略',409],
       TASK_UNAVAILABLE:['任务未开放',404],TASK_LINK_UNAVAILABLE:['任务链接尚未配置',409],BROKER_PROOF_REQUIRED:['请填写 TMGM 注册邮箱和客户 ID',400],PROOF_REQUIRED:['请填写任务证明信息',400],CLAIM_EXISTS:['任务已提交或已完成，请勿重复提交',409],
