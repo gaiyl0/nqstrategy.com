@@ -50,7 +50,7 @@ async function POSTHandler(request){
       RECHARGE_KEY_CONFLICT:['重复请求的内容与原订单不同',409],WECHAT_PAYMENT_CONFIG_UNAVAILABLE:['微信支付尚未配置完成',503],
       ALIPAY_PAYMENT_CONFIG_UNAVAILABLE:['支付宝尚未配置完成',503]};
     const [message,status]=known[error.message]||['支付平台暂不可用，请稍后重试',503];
-    return audited(NextResponse.json({success:false,message},{status,headers:noStore}),'failure',error.message||'CHECKOUT_FAILED');
+    return audited(NextResponse.json({success:false,message,code:known[error.message]?error.message:'CHECKOUT_FAILED'},{status,headers:noStore}),'failure',error.message||'CHECKOUT_FAILED');
   }
 }
 

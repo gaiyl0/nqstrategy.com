@@ -100,4 +100,6 @@ assert.equal(crypto.verify('RSA-SHA256',Buffer.from(wapCanonical),appKeys.public
 assert.equal(new URL(wapParams.return_url).origin,'https://nqstrategy.com');
 assert.throws(()=>createAlipayMobileOrder({...aliOrder,expires_at:Date.now()-1},aliConfig),/ALIPAY_ORDER_INVALID/);
 assert.throws(()=>createAlipayMobileOrder(aliOrder,{...aliConfig,gateway:'https://evil.example/'}),/ALIPAY_PAYMENT_CONFIG_UNAVAILABLE/);
+const nearlyExpiredWap=createAlipayMobileOrder({...aliOrder,expires_at:Date.now()+180000},aliConfig);
+assert.equal(JSON.parse(new URL(nearlyExpiredWap.payUrl).searchParams.get('biz_content')).timeout_express,'2m','retry cannot extend payment beyond local expiry');
 console.log('Payment cryptography tests passed: signed WeChat and Alipay requests, replies, tampering, amounts and trade queries');

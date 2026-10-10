@@ -49,7 +49,7 @@ export default function PointRechargePanel({state,refresh,t}){
         if(!['https://openapi.alipay.com/gateway.do','https://openapi-sandbox.dl.alipaydev.com/gateway.do'].includes(`${paymentUrl.origin}${paymentUrl.pathname}`))throw Error('支付跳转地址无效');
         window.location.assign(paymentUrl.href);
       }
-    }catch(cause){setError(cause.message||'创建充值订单失败');}finally{setBusy(false);}
+    }catch(cause){setError(cause.message||'创建充值订单失败');if(cause.code==='RECHARGE_ORDER_NOT_PAYABLE'){requestRef.current=null;setCheckout(previous=>previous?{...previous,status:'expired'}:previous);}}finally{setBusy(false);}
   };
 
   useEffect(()=>{
