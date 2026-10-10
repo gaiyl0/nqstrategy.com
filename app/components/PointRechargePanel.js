@@ -10,6 +10,8 @@ export default function PointRechargePanel({state,refresh,t}){
   const [qrData,setQrData]=useState('');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
+  const [querying,setQuerying]=useState(false);
+  const [queryMessage,setQueryMessage]=useState('');
   const [mobile,setMobile]=useState(false);
   const requestRef=useRef(null);
   const providers=state?.rechargeProviders||[];
@@ -34,15 +36,15 @@ export default function PointRechargePanel({state,refresh,t}){
 
   const create=async provider=>{
     if(!amountValid||busy)return;
-    setBusy(true);setError('');
+    setBusy(true);setError('');setQueryMessage('');
     const previous=requestRef.current;
-    const requestKey=checkout?.status!=='expired'&&previous?.provider===provider&&previous?.points===points?previous.key:crypto.randomUUID();
+    const requestKey=!['expired','failed','paid'].includes(checkout?.status)&&previous?.provider===provider&&previous?.points===points?previous.key:crypto.randomUUID();
     requestRef.current={provider,points,key:requestKey};
     try{
       const response=await apiFetch('/api/points/recharge',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({provider,points,requestKey,paymentMode:provider==='alipay'&&mobile?'mobile':'qr'})});
       const data=await response.json();
-      if(!data.success)throw new Error(data.message||'创建充值订单失败');
+      if(!data.success)throw Object.assign(new Error(data.message||'创建充值订单失败'),{code:data.code});
       setCheckout(data.checkout);setQrData('');
       if(data.checkout.payUrl){
         const paymentUrl=new URL(data.checkout.payUrl);
@@ -50,6 +52,17 @@ export default function PointRechargePanel({state,refresh,t}){
         window.location.assign(paymentUrl.href);
       }
     }catch(cause){setError(cause.message||'创建充值订单失败');if(cause.code==='RECHARGE_ORDER_NOT_PAYABLE'){requestRef.current=null;setCheckout(previous=>previous?{...previous,status:'expired'}:previous);}}finally{setBusy(false);}
+  };
+
+  const queryPayment=async()=>{
+    if(!checkout?.orderId||querying)return;
+    setQuerying(true);setError('');setQueryMessage('');
+    try{
+      const data=await (await apiFetch(`/api/points/recharge?orderId=${checkout.orderId}&reconcile=1`,{cache:'no-store'})).json();
+      setCheckout(previous=>({...previous,...data.order,orderId:data.order.id}));
+      if(data.order.status==='paid'){requestRef.current=null;await refresh();}
+      setQueryMessage(data.order.status==='paid'?t('付款已核验，积分已到账。','Payment verified and points credited.'):data.queryStatus==='unavailable'?t('支付平台查询暂不可用，请稍后重试，不要重复付款。','Payment lookup is temporarily unavailable. Retry later; do not pay twice.'):t('暂未查到成功付款。如已付款，请稍后重试或提供订单号联系客服。','No successful payment found yet. If paid, retry later or contact support with the order number.'));
+    }catch(cause){setError(cause.message);}finally{setQuerying(false);}
   };
 
   useEffect(()=>{
@@ -95,6 +108,8 @@ export default function PointRechargePanel({state,refresh,t}){
         {error&&<p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
         {checkout&&<div className="mt-5 rounded-xl border border-slate-600 bg-slate-950/70 p-4"><p className="text-sm font-semibold">{checkout.status==='paid'?t('充值已到账','Payment credited'):checkout.status==='pending'?checkout.paymentMode==='mobile'?t('等待支付宝确认付款','Waiting for payment confirmation'):t('请使用对应 App 扫码支付','Scan with the selected payment app'):t('订单已失效，请重新创建','Order expired; create a new one')}</p>
           <p className="mt-1 text-sm text-slate-300">#{checkout.orderId} · {checkout.points} {t('积分','points')} · ¥{(checkout.cnyFen/100).toFixed(2)}</p>
+          {checkout.status!=='paid'&&<button type="button" disabled={querying||busy} onClick={queryPayment} className="mt-3 rounded-lg border border-slate-600 px-3 py-2 text-sm disabled:opacity-50">{querying?t('查询中…','Checking…'):t('我已付款，查询结果','I paid — check result')}</button>}
+          {queryMessage&&<p role="status" className="mt-2 text-sm text-slate-300">{queryMessage}</p>}
           {checkout.status==='pending'&&qrData&&<Image unoptimized src={qrData} alt={t('充值支付二维码','Recharge payment QR code')} width={240} height={240} className="mt-3 rounded-lg bg-white p-2"/>}
           <p className="mt-2 text-xs text-slate-400">{checkout.status==='paid'?t('积分余额已更新。','Your point balance has been updated.'):checkout.status==='pending'?t('请勿重复支付；支付完成后由平台回调核验并自动更新。','Do not pay twice. The server verifies the payment callback before crediting points.'):t('请勿继续支付此订单。','Do not pay this order.')}</p>
         </div>}

@@ -4,7 +4,7 @@ import { withApiErrors } from '@/lib/api-errors';
 import {getSessionUser} from '@/lib/auth';
 import {parseJson} from '@/lib/validation';
 import {createSecurityContext,enforceRateLimits,RATE_LIMITS,withAudit} from '@/lib/security';
-import {createPointCheckout,pointRechargeOrder,reconcilePointRecharge} from '@/lib/point-payment-service';
+import {createPointCheckout,pointRechargeOrder,reconcilePointRecharge,publicPointRechargeOrder,listOwnPointRecharges} from '@/lib/point-payment-service';
 import {pointCheckoutEnabled} from '@/lib/point-payment-config';
 
 export const dynamic='force-dynamic';
@@ -14,19 +14,28 @@ const noStore={'Cache-Control':'no-store'};
 async function GETHandler(request){
   const user=await getSessionUser();
   if(!user)return NextResponse.json({success:false,message:'请先登录'},{status:401,headers:noStore});
-  const orderId=Number(new URL(request.url).searchParams.get('orderId'));
-  if(!Number.isSafeInteger(orderId)||orderId<=0)return NextResponse.json({success:false,message:'订单号无效'},{status:400,headers:noStore});
+  const params=new URL(request.url).searchParams;
   const context=createSecurityContext(request,user);
   const limited=enforceRateLimits(context,'points.recharge.read',[{policy:RATE_LIMITS.orderRead,identifier:`user:${user.id}`}]);
   if(limited)return limited;
+  if(params.get('view')==='history'){
+    const rawPage=params.get('page')||'1';
+    if(!/^[1-9]\d{0,6}$/.test(rawPage)||Number(rawPage)>1000000)return NextResponse.json({success:false,message:'页码无效'},{status:400,headers:noStore});
+    return NextResponse.json({success:true,...listOwnPointRecharges(user.id,Number(rawPage))},{headers:noStore});
+  }
+  const orderId=Number(params.get('orderId'));
+  if(!Number.isSafeInteger(orderId)||orderId<=0)return NextResponse.json({success:false,message:'订单号无效'},{status:400,headers:noStore});
   try{
     let order=pointRechargeOrder(orderId,user.id);
-    // A browser return is never payment evidence: query the provider before crediting.
-    if(new URL(request.url).searchParams.get('reconcile')==='1'&&order.status==='pending'&&order.expires_at>Date.now()){
-      try{await reconcilePointRecharge(order);order=pointRechargeOrder(orderId,user.id);}catch{/* Callback or a later retry may still settle the pending order. */}
+    let queryStatus='not_requested';
+    // Query even after local expiry: an on-time payment can have a delayed callback.
+    // Settlement still checks the provider's paid time against the locked deadline.
+    if(params.get('reconcile')==='1'&&order.status==='pending'){
+      const queryLimit=enforceRateLimits(context,'points.recharge.query',[{policy:RATE_LIMITS.rechargeQuery,identifier:`user:${user.id}`}]);
+      if(queryLimit)return queryLimit;
+      try{await reconcilePointRecharge(order);order=pointRechargeOrder(orderId,user.id);queryStatus='checked';}catch{queryStatus='unavailable';}
     }
-    return NextResponse.json({success:true,order:{id:order.id,provider:order.provider,points:order.points_units/100,cnyFen:order.cny_fen,
-      currency:'CNY',cnyFenPerPoint:order.cny_fen_per_usd,status:order.status,createdAt:order.created_at,expiresAt:order.expires_at}},{headers:noStore});
+    return NextResponse.json({success:true,order:publicPointRechargeOrder(order),queryStatus},{headers:noStore});
   }catch{return NextResponse.json({success:false,message:'充值订单不存在'},{status:404,headers:noStore});}
 }
 
