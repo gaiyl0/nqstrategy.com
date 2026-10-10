@@ -46,6 +46,22 @@ for(const recharge of db.prepare('SELECT * FROM paypal_point_recharge_orders').i
       issues.push(`paypal-recharge:${recharge.id}:credit`);
   }else if(credit)issues.push(`paypal-recharge:${recharge.id}:unexpected_credit`);
 }
+for(const refund of db.prepare('SELECT * FROM point_recharge_refunds').iterate()) {
+  const order=db.prepare('SELECT * FROM point_recharge_orders WHERE id=?').get(refund.order_id);
+  const hold=db.prepare('SELECT * FROM point_asset_transactions WHERE business_key=?').get(`recharge-refund:${refund.id}:hold`);
+  const release=db.prepare('SELECT * FROM point_asset_transactions WHERE business_key=?').get(`recharge-refund:${refund.id}:release`);
+  if(!order||order.status!=='paid'||order.user_id!==refund.user_id||order.provider!=='alipay'||order.cny_fen!==order.points_units||order.cny_fen_per_usd!==100)
+    issues.push(`refund:${refund.id}:order`);
+  if(!hold||hold.user_id!==refund.user_id||hold.funded_delta!==-refund.units||hold.bonus_delta!==0||hold.withdrawable_delta!==0)
+    issues.push(`refund:${refund.id}:hold`);
+  if(refund.status==='rejected'&&(!release||release.user_id!==refund.user_id||release.funded_delta!==refund.units||release.bonus_delta!==0||release.withdrawable_delta!==0))
+    issues.push(`refund:${refund.id}:release`);
+  if(refund.status!=='rejected'&&release)issues.push(`refund:${refund.id}:unexpected_release`);
+  if(refund.status==='paid'&&!refund.paid_at)issues.push(`refund:${refund.id}:payment_metadata`);
+}
+for(const row of db.prepare("SELECT order_id,SUM(units) units FROM point_recharge_refunds WHERE status!='rejected' GROUP BY order_id").iterate()) {
+  if(row.units>db.prepare('SELECT points_units FROM point_recharge_orders WHERE id=?').get(row.order_id)?.points_units)issues.push(`refund-order:${row.order_id}:over_refund`);
+}
 const result={valid:issues.length===0,accounts:db.prepare('SELECT COUNT(*) count FROM point_asset_accounts').get().count,transactions:db.prepare('SELECT COUNT(*) count FROM point_asset_transactions').get().count,sales:db.prepare('SELECT COUNT(*) count FROM point_asset_sales').get().count,withdrawals:db.prepare('SELECT COUNT(*) count FROM point_asset_withdrawals').get().count,recharges:db.prepare('SELECT COUNT(*) count FROM point_recharge_orders').get().count,issues};
 console.log(JSON.stringify(result));
 db.close();

@@ -2,6 +2,8 @@
 
 const reasons={
   legacy_balance_migration:['旧账户余额转入','Previous account balance transferred'],
+  recharge_refund_hold:['充值退款申请，积分冻结','Recharge refund requested; points held'],
+  recharge_refund_release:['退款申请驳回，积分退回','Recharge refund rejected; points restored'],
   verified_recharge:['充值积分到账','Purchased points credited'],
   strategy_purchase:['积分购买 EA 策略','EA strategy purchased with points'],
   strategy_sale:['EA 策略销售分成','EA strategy sale share'],

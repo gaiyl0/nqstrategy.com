@@ -41,7 +41,7 @@ assert.match(auditRoute, /delete metadata\.diagnostic;[\s\S]*delete metadata\.st
 assertions += 1;
 assert.doesNotMatch(auditRoute, /health:\s*getAuditHealth\(\)|\bintegrity,/, 'audit API must expose only its public integrity and health views');
 assertions += 1;
-assert.equal(routeFiles.length, 43, 'route inventory changed; review and update the audit baseline');
+assert.equal(routeFiles.length, 44, 'route inventory changed; review and update the audit baseline');
 const brandRoute = fs.readFileSync(path.join(apiRoot, 'site-brand', 'route.js'), 'utf8');
 assert.match(brandRoute, /role !== 'admin'/, 'brand workspace must stay administrator-only');
 assert.match(brandRoute, /writeAudit\(context/, 'brand configuration mutations must be audited');

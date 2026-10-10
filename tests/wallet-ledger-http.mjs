@@ -68,6 +68,9 @@ try {
     const {applyPointAssetDelta}=await import('./lib/point-assets.js');
     applyPointAssetDelta(2,{funded:50000,withdrawable:50000},'test:funded-opening','verified_recharge');
     db.prepare("INSERT INTO withdrawals(username,user_id,amount,crypto_address,status) VALUES('trader',2,25,'TTestLegacyAddress','pending')").run();
+    const {createPointRechargeOrder,settleVerifiedPointRecharge}=await import('./lib/point-recharge.js');
+    const recharge=createPointRechargeOrder(2,20,'alipay','http-refund-recharge-key');
+    settleVerifiedPointRecharge({orderId:recharge.id,provider:'alipay',providerTradeNo:'HTTPREFUNDTRADE001',cnyFen:2000,paidAt:Date.now()});
     db.close();
   `], { cwd: root, env, encoding: 'utf8' });
   assert.equal(seed.status, 0, seed.stderr);
@@ -108,6 +111,18 @@ try {
   const legacyDecision=await jsonRequest('/api/withdraw','PATCH',adminCookie,{id:1,status:'rejected'},'legacy-reject-test-key');
   assert.equal(legacyDecision.status,200,JSON.stringify(legacyDecision.body));
 
+  const refundBody={action:'request',orderId:1,points:5,reason:'未使用充值退款',requestKey:crypto.randomUUID()};
+  assert.equal((await jsonRequest('/api/points/refunds','POST','',refundBody)).status,401);
+  const refund=await jsonRequest('/api/points/refunds','POST',userCookie,refundBody);
+  assert.equal(refund.status,200,JSON.stringify(refund.body));
+  const replay=await jsonRequest('/api/points/refunds','POST',userCookie,refundBody);
+  assert.equal(replay.body.result.id,refund.body.result.id);
+  assert.equal((await jsonRequest('/api/points/refunds','POST',userCookie,{action:'approve',id:refund.body.result.id})).status,403);
+  const readRefund=async(cookie,url='/api/points/refunds')=>fetch(`http://127.0.0.1:${port}${url}`,{headers:{Cookie:cookie,'X-Nexus-Proxy-Secret':env.TRUSTED_PROXY_SHARED_SECRET,'X-Real-IP':'192.0.2.40'}});
+  assert.equal((await (await readRefund(adminCookie)).json()).items.length,0,'administrator own history is isolated');
+  assert.equal((await (await readRefund(userCookie)).json()).items.length,1);
+  assert.equal((await readRefund(userCookie,'/api/points/refunds?page=0')).status,400);
+  assert.equal((await jsonRequest('/api/points/refunds','POST',adminCookie,{action:'reject',id:refund.body.result.id,note:'申请撤回'})).status,200);
   server.kill();
   await new Promise((resolve) => server.once('exit', resolve));
   server = null;
