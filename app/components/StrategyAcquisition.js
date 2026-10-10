@@ -1,29 +1,16 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Coins, Download } from 'lucide-react';
-import { apiFetch } from '@/lib/api-client';
-import { ownJourneySummary } from '@/lib/point-journey.mjs';
+import usePointSnapshot from '../hooks/usePointSnapshot';
 import { strategyAcquisition } from '@/lib/strategy-acquisition.mjs';
 import { Button } from './ui/UiKit';
 
 export default function StrategyAcquisition({ product, user, owned, onLogin, onTasks, onProfile, onRedeem, onFree, publicMarketUrl, t }) {
-  const [result, setResult] = useState(null);
-  const [failure, setFailure] = useState(null);
-  const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(false);
   const userId = user?.id;
-  useEffect(() => {
-    if (!userId || owned || userId === product.author_user_id) return;
-    const controller = new AbortController();
-    apiFetch('/api/points?view=summary', { cache: 'no-store', signal: controller.signal }).then(async response => {
-      const data = await response.json();
-      if (!response.ok || !data.success || !Number.isFinite(data.balance) || data.balance < 0) throw new Error('BALANCE_UNAVAILABLE');
-      if (!controller.signal.aborted) { setResult({ userId, data }); setFailure(null); }
-    }).catch(() => { if (!controller.signal.aborted) setFailure(userId); });
-    return () => controller.abort();
-  }, [userId, owned, product.author_user_id, retry]);
-  const summary = ownJourneySummary(result, userId);
+  const {points,error,loading,retry}=usePointSnapshot(userId,{summary:true,disabled:owned||userId===product.author_user_id||Boolean(publicMarketUrl)});
+  const summary=error||loading?null:points;
   const quote = strategyAcquisition(product, { userId, owned, balance: summary?.balance });
   const run = async action => { if (busy) return; setBusy(true); try { await action(product); } finally { setBusy(false); } };
   const labels = {
@@ -44,7 +31,7 @@ export default function StrategyAcquisition({ product, user, owned, onLogin, onT
     {publicMarketUrl ? <><p className="mt-3 text-sm leading-6">{t('在市场登录后查看自己的积分与获取资格。兑换成功后，在个人中心下载程序并管理授权。', 'Sign in in the market to check points and eligibility. After redemption, download and manage licenses in your profile.')}</p><a href={publicMarketUrl} className="acquisition-primary mt-4 flex min-h-11 items-center justify-center rounded-lg border px-4 py-3 text-sm font-bold">{t('前往市场获取此策略', 'Get this strategy in the market')}</a></> : <>
       {user && !['owned','author'].includes(quote.state) && <p className="mt-4 text-sm" aria-live="polite">{t('我的可用积分', 'My available points')}：<strong>{quote.balance ?? '—'}</strong></p>}
       {quote.gap > 0 && <p className="mt-2 text-sm leading-6">{t(`还差 ${Number(quote.gap.toFixed(2))} 积分。任务奖励在审核通过后才计入余额。`, `You need ${Number(quote.gap.toFixed(2))} more points. Reviewed task rewards count only after approval.`)}</p>}
-      {failure === userId && userId != null && !['owned','author'].includes(quote.state) && <div role="alert" className="mt-3 text-sm"><p>{t('积分读取失败，请重试或进入积分中心。', 'Points could not load. Retry or open the point center.')}</p><Button className="mt-2" onClick={() => setRetry(value => value + 1)}>{t('重新读取积分', 'Retry points')}</Button></div>}
+      {error && userId != null && !['owned','author'].includes(quote.state) && <div role="alert" className="mt-3 text-sm"><p>{t('积分读取失败，请重试或进入积分中心。', 'Points could not load. Retry or open the point center.')}</p><Button className="mt-2" loading={loading} onClick={retry}>{t('重新读取积分', 'Retry points')}</Button></div>}
       <Button className="acquisition-primary mt-4 w-full" variant="primary" icon={Download} loading={busy} disabled={!action || busy} onClick={action}>{labels[quote.state]}</Button>
       {!['owned','author'].includes(quote.state) && <Button className="mt-2 w-full" onClick={onTasks}>{t('积分任务与充值', 'Point tasks and recharge')}</Button>}
     </>}
