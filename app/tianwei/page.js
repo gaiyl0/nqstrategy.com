@@ -156,6 +156,8 @@ export default function AdminDashboard() {
         alipayAppPrivateKeyConfigured,
         alipayPublicKeyConfigured,
         alipayAppPublicKeyConfigured,
+        pointRechargeOpen,
+        pointRechargeProviders,
         ...persistedSettings
       } = settings;
       await apiFetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(persistedSettings) });
@@ -329,14 +331,14 @@ export default function AdminDashboard() {
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">
             <PointExchangeRateAdmin />
             <div className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-6 text-sm leading-6 text-amber-100">
-              <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" /><div><p className="font-bold text-amber-200">支付渠道资料仅作接入准备，真实收款保持关闭</p><p className="mt-1 text-amber-100/75">保存商户标识、回调地址和证书序列号后，仍不能创建付费订单、发放许可证或结算创作者收入。只有完成 Payment Intent、签名回调、服务端二次查单、退款和对账验收后，才可单独评估开启付费能力。</p></div></div>
+              <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" /><div><p className="font-bold text-amber-200">{settings.pointRechargeOpen ? '人民币积分充值开关已开启' : '人民币积分充值开关未开启'}</p><p className="mt-1 text-amber-100/75">1 元＝1 积分。只有启用且商户配置有效的渠道才向用户显示；付款须通过签名验签及服务端查单后才到账。保存密钥不等于付款已成功，退款与异常订单请联系管理员处理。</p><p className="mt-2 text-sm">当前可用渠道：{settings.pointRechargeProviders?.map(provider => provider === 'alipay' ? '支付宝' : provider === 'wechat' ? '微信支付' : provider).join('、') || '暂无'}</p></div></div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-2">
               <Panel className="overflow-hidden border-emerald-400/20 bg-gradient-to-br from-emerald-950/25 to-slate-950/50 p-0">
                 <div className="border-b border-emerald-400/15 px-6 py-5"><div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/15"><Wallet className="h-5 w-5 text-emerald-300" /></span><div><h2 className="font-bold text-white">微信支付</h2><p className="mt-1 text-xs text-slate-500">商户信息、通知地址与证书标识</p></div></div><Badge variant={settings.wechatPaySetupEnabled ? 'success' : 'neutral'}>{settings.wechatPaySetupEnabled ? '接入资料已启用' : '尚未启用'}</Badge></div></div>
                 <div className="space-y-5 p-6">
-                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-700/80 bg-slate-950/55 px-4 py-3"><span><span className="block text-sm font-semibold text-white">保存为待接入渠道</span><span className="mt-1 block text-xs text-slate-500">该开关不等同于真实收款开关。</span></span><input type="checkbox" checked={settings.wechatPaySetupEnabled === true} onChange={event => setSettings({ ...settings, wechatPaySetupEnabled: event.target.checked })} className="h-4 w-4 accent-emerald-400" /></label>
+                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-700/80 bg-slate-950/55 px-4 py-3"><span><span className="block text-sm font-semibold text-white">启用该支付渠道</span><span className="mt-1 block text-xs text-slate-500">需同时开启充值并配置有效密钥。</span></span><input type="checkbox" checked={settings.wechatPaySetupEnabled === true} onChange={event => setSettings({ ...settings, wechatPaySetupEnabled: event.target.checked })} className="h-4 w-4 accent-emerald-400" /></label>
                   <div className="grid gap-4 md:grid-cols-2"><Field label="商户号" required={settings.wechatPaySetupEnabled}><input maxLength={64} value={settings.wechatPayMchId || ''} onChange={event => setSettings({ ...settings, wechatPayMchId: event.target.value })} placeholder="微信支付商户号" /></Field><Field label="应用 AppID" required={settings.wechatPaySetupEnabled}><input maxLength={64} value={settings.wechatPayAppId || ''} onChange={event => setSettings({ ...settings, wechatPayAppId: event.target.value })} placeholder="例如 wx1234567890abcdef" /></Field></div>
                   <Field label="支付结果通知地址" required={settings.wechatPaySetupEnabled}><input type="url" maxLength={500} value={settings.wechatPayNotifyUrl || ''} onChange={event => setSettings({ ...settings, wechatPayNotifyUrl: event.target.value })} placeholder="https://你的域名/api/payments/webhooks/wechat-pay" /></Field>
                   <Field label="平台证书序列号"><input maxLength={128} value={settings.wechatPayCertificateSerial || ''} onChange={event => setSettings({ ...settings, wechatPayCertificateSerial: event.target.value })} placeholder="从微信支付商户平台复制的证书序列号" /></Field>
@@ -347,7 +349,7 @@ export default function AdminDashboard() {
               <Panel className="overflow-hidden border-sky-400/20 bg-gradient-to-br from-sky-950/25 to-slate-950/50 p-0">
                 <div className="border-b border-sky-400/15 px-6 py-5"><div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-400/15"><CreditCard className="h-5 w-5 text-sky-300" /></span><div><h2 className="font-bold text-white">支付宝</h2><p className="mt-1 text-xs text-slate-500">应用信息、签约主体与异步通知</p></div></div><Badge variant={settings.alipaySetupEnabled ? 'success' : 'neutral'}>{settings.alipaySetupEnabled ? '接入资料已启用' : '尚未启用'}</Badge></div></div>
                 <div className="space-y-5 p-6">
-                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-700/80 bg-slate-950/55 px-4 py-3"><span><span className="block text-sm font-semibold text-white">保存为待接入渠道</span><span className="mt-1 block text-xs text-slate-500">该开关不等同于真实收款开关。</span></span><input type="checkbox" checked={settings.alipaySetupEnabled === true} onChange={event => setSettings({ ...settings, alipaySetupEnabled: event.target.checked })} className="h-4 w-4 accent-sky-400" /></label>
+                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-700/80 bg-slate-950/55 px-4 py-3"><span><span className="block text-sm font-semibold text-white">启用该支付渠道</span><span className="mt-1 block text-xs text-slate-500">需同时开启充值并配置有效密钥。</span></span><input type="checkbox" checked={settings.alipaySetupEnabled === true} onChange={event => setSettings({ ...settings, alipaySetupEnabled: event.target.checked })} className="h-4 w-4 accent-sky-400" /></label>
                   <div className="grid gap-4 md:grid-cols-2"><Field label="应用 AppID" required={settings.alipaySetupEnabled}><input maxLength={64} value={settings.alipayAppId || ''} onChange={event => setSettings({ ...settings, alipayAppId: event.target.value })} placeholder="支付宝开放平台 AppID" /></Field><Field label="收款支付宝 PID / Seller ID"><input maxLength={128} value={settings.alipaySellerId || ''} onChange={event => setSettings({ ...settings, alipaySellerId: event.target.value })} placeholder="2088 开头的 16 位收款账号 ID" /></Field></div>
                   <Field label="支付结果通知地址" required={settings.alipaySetupEnabled}><input type="url" maxLength={500} value={settings.alipayNotifyUrl || ''} onChange={event => setSettings({ ...settings, alipayNotifyUrl: event.target.value })} placeholder="https://你的域名/api/payments/webhooks/alipay" /></Field>
                   <AlipayKeySettings settings={settings} onSaved={({ success, ...status }) => setSettings(current => ({ ...current, ...status }))} />
@@ -483,7 +485,7 @@ export default function AdminDashboard() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div data-tone="success" className="admin-income-card bg-gradient-to-br from-emerald-900/40 to-zinc-950 border border-emerald-500/20 p-8 rounded-xl shadow-[var(--nq-shadow-panel)]">
-                <div className="flex items-center gap-3 mb-2 text-emerald-400"><BadgeDollarSign className="w-5 h-5"/> <span className="font-bold">已入账总流水 (USD)</span></div>
+                <div className="flex items-center gap-3 mb-2 text-emerald-400"><BadgeDollarSign className="w-5 h-5"/> <span className="font-bold">历史美元流水 (USD)</span></div>
                 <div className="text-4xl font-black text-white">
                   ${orderList.filter(o => o.status === 'completed' && (Number(o.price) === 0 || o.payment_verified === 1)).reduce((sum, o) => sum + (Number(o.price) || 0), 0).toLocaleString()}
                 </div>

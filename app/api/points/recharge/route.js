@@ -22,7 +22,7 @@ async function GETHandler(request){
   try{
     const order=pointRechargeOrder(orderId,user.id);
     return NextResponse.json({success:true,order:{id:order.id,provider:order.provider,points:order.points_units/100,cnyFen:order.cny_fen,
-      cnyFenPerUsd:order.cny_fen_per_usd,status:order.status,createdAt:order.created_at,expiresAt:order.expires_at}},{headers:noStore});
+      currency:'CNY',cnyFenPerPoint:order.cny_fen_per_usd,status:order.status,createdAt:order.created_at,expiresAt:order.expires_at}},{headers:noStore});
   }catch{return NextResponse.json({success:false,message:'充值订单不存在'},{status:404,headers:noStore});}
 }
 

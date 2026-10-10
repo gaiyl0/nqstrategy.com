@@ -40,7 +40,7 @@ for (const environmentKey of ['WECHAT_PAY_API_V3_KEY', 'WECHAT_PAY_MERCHANT_PRIV
   assert.doesNotMatch(settingsSchema.safeParse({ [environmentKey]: 'not-allowed' }).success ? 'accepted' : 'rejected', /accepted/, `${environmentKey} must not be accepted as a browser setting`);
 }
 assert.match(admin, /支付渠道配置/, 'admin sidebar must expose payment channel settings');
-assert.match(admin, /真实收款保持关闭/, 'admin payment screen must explain the disabled checkout boundary');
+assert.match(admin, /人民币积分充值开关未开启/, 'admin payment screen must reflect the runtime checkout gate');
 assert.match(admin, /管理界面永不读取或展示原文/, 'admin payment screen must state its secret non-disclosure rule');
 assert.match(admin, /paymentSettings/, 'admin must render a dedicated payment settings view');
 

@@ -13,6 +13,8 @@ process.env.PAYPAL_CLIENT_SECRET='sandbox-test-secret';
 process.env.PAYPAL_MERCHANT_ID='SANDBOXMERCHANT1';
 
 const {default:db}=await import('../lib/db.js');
+// Existing USD flow retained only for historical compatibility, not the RMB site.
+db.prepare("INSERT INTO settings(key,value) VALUES('pointAssetCurrency','USD') ON CONFLICT(key) DO UPDATE SET value='USD'").run();
 const {pointAssetAccount}=await import('../lib/point-assets.js');
 const {pointRechargeAvailability}=await import('../lib/point-payment-config.js');
 const {createPayPalPointCheckout,capturePayPalPointCheckout}=await import('../lib/paypal-point-service.js');
@@ -101,4 +103,7 @@ process.env.PAYPAL_RECHARGE_ENABLED='0';
 assert.deepEqual(pointRechargeAvailability(buyer).providers,[]);
 await assert.rejects(createPayPalPointCheckout(buyer,2.5,crypto.randomUUID(),fetchImpl),/PAYPAL_PAYMENT_CONFIG_UNAVAILABLE/);
 console.log('PayPal recharge tests passed: USD order, merchant/amount verification, ownership, idempotency, optional response fields, sandbox asset isolation and disabled gate');
+db.prepare("UPDATE settings SET value='CNY' WHERE key='pointAssetCurrency'").run();
+assert.deepEqual(pointRechargeAvailability(buyer).providers,[], 'legacy USD PayPal is not advertised for RMB points');
+await assert.rejects(()=>createPayPalPointCheckout(buyer,1,crypto.randomUUID()),/PAYPAL_CNY_RECHARGE_UNAVAILABLE/);
 db.close();

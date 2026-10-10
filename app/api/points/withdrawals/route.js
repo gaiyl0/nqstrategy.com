@@ -26,7 +26,7 @@ async function POSTHandler(request){const user=await getSessionUser();if(!user)r
       if(user.role!=='admin')return audited(NextResponse.json({success:false,message:'仅管理员可审核'},{status:403}),'failure','FORBIDDEN');
       if(body.approve&&body.note.length<3)return audited(NextResponse.json({success:false,message:'请填写线下打款凭证或交易参考号'},{status:400}),'failure','PAYOUT_REFERENCE_REQUIRED');
       result=reviewPointWithdrawal(user.id,body.id,body.approve,body.note);
-      try{notifyUser(result.userId,'withdrawal',body.approve?'积分提现已确认':'积分提现已驳回',body.approve?`已确认打款 ${result.points} 美元。`:body.note,'/?route=points');}catch{ /* Review outcome remains authoritative. */ }
+      try{notifyUser(result.userId,'withdrawal',body.approve?'积分提现已确认':'积分提现已驳回',body.approve?`已确认打款 ${result.points} 元人民币。`:body.note,'/?route=points');}catch{ /* Review outcome remains authoritative. */ }
     }
     return audited(NextResponse.json({success:true,...result},{status:body.action==='request'?201:200}),'success',body.action.toUpperCase());
   }catch(error){const [message,status]=known[error.message]||['提现操作失败',500];return audited(NextResponse.json({success:false,message},{status}),'failure',error.message||'INTERNAL_ERROR');}

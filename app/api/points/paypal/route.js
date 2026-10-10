@@ -55,7 +55,7 @@ async function POSTHandler(request){
     const settlement=await capturePayPalPointCheckout(user.id,parsed.data.orderId,parsed.data.paypalOrderId);
     return audited(NextResponse.json({success:true,settlement},{headers:noStore}),'success','PAYPAL_CAPTURE_VERIFIED');
   }catch(error){
-    const known={PAYPAL_PAYMENT_CONFIG_UNAVAILABLE:['PayPal 商户资料尚未配置',503],RECHARGE_KEY_CONFLICT:['重复请求的内容与原订单不同',409],
+    const known={PAYPAL_CNY_RECHARGE_UNAVAILABLE:['人民币积分充值暂不使用旧版美元 PayPal 通道',503],PAYPAL_PAYMENT_CONFIG_UNAVAILABLE:['PayPal 商户资料尚未配置',503],RECHARGE_KEY_CONFLICT:['重复请求的内容与原订单不同',409],
       PAYPAL_ORDER_NOT_FOUND:['充值订单不存在',404],PAYPAL_ORDER_MISMATCH:['PayPal 订单与本站订单不匹配',409],
       PAYPAL_ORDER_NOT_PAYABLE:['订单已过期，请重新下单',409],PAYPAL_CAPTURE_NOT_VERIFIED:['PayPal 支付尚未核验通过',409]};
     const [message,status]=known[error.message]||['PayPal 暂不可用，请稍后重试',503];

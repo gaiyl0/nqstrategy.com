@@ -27,6 +27,8 @@ for(const [key,value] of Object.entries({wechatPaySetupEnabled:'true',wechatPayM
   wechatPayNotifyUrl:'https://nqstrategy.com/api/payments/webhooks/wechat-pay',wechatPayCertificateSerial:'B'.repeat(40),
   alipaySetupEnabled:'true',alipayAppId:'2026000000000000',alipaySellerId:'2088000000000000',
   alipayNotifyUrl:'https://nqstrategy.com/api/payments/webhooks/alipay',alipayGateway:'https://openapi.alipay.com/gateway.do'}))save.run(key,value);
+// RMB checkout must work without a configured or fresh FX feed.
+assert.equal(pointState(user).pointCurrency,'CNY');
 setRechargeExchangeRate(725);
 process.env.POINT_RECHARGE_ENABLED='0';
 assert.equal(pointState(user).rechargeEnabled,false);
@@ -44,13 +46,15 @@ const wechatReply=data=>{
   return new Response(raw,{headers:{'wechatpay-timestamp':time,'wechatpay-nonce':nonce,'wechatpay-serial':'B'.repeat(40),
     'wechatpay-signature':crypto.sign('RSA-SHA256',Buffer.from(`${time}\n${nonce}\n${raw}\n`),platform.privateKey).toString('base64')}});
 };
+db.prepare("DELETE FROM settings WHERE key IN ('pointCnyFenPerUsd','pointRatePublishedDate')").run();
+assert.deepEqual(pointState(user).rechargeProviders,['wechat','alipay']);
 const wxCheckout=await createPointCheckout(user,10,'wechat',crypto.randomUUID(),async()=>wechatReply({code_url:'weixin://wxpay/bizpayurl?pr=offline'}));
-assert.equal(wxCheckout.cnyFen,7250);
+assert.equal(wxCheckout.cnyFen,1000);
 assert.equal(pointAssetAccount(user).fundedUnits,0,'an unsigned browser checkout must not credit points');
 const wxOrder=pointRechargeOrder(wxCheckout.orderId,user);
 const wxPaidTime=new Date(wxOrder.created_at+2000).toISOString();
 const wxQuery={trade_state:'SUCCESS',mchid:'1900000109',appid:'wx123',out_trade_no:`NQPR${wxOrder.id}`,
-  amount:{total:7250,currency:'CNY'},transaction_id:'42000000000000001',success_time:wxPaidTime};
+  amount:{total:1000,currency:'CNY'},transaction_id:'42000000000000001',success_time:wxPaidTime};
 const wxFetch=async()=>wechatReply(wxQuery);
 await assert.rejects(()=>reconcilePointRecharge(wxOrder,{expectedTradeNo:'wrong',fetchImpl:wxFetch}),/RECHARGE_PAYMENT_MISMATCH/);
 assert.equal(pointAssetAccount(user).fundedUnits,0);
@@ -63,11 +67,11 @@ const aliReply=(key,value)=>{
 };
 const aliCheckout=await createPointCheckout(user,5,'alipay',crypto.randomUUID(),async()=>aliReply('alipay_trade_precreate_response',
   {code:'10000',out_trade_no:'NQPR2',qr_code:'https://qr.alipay.com/offline'}));
-assert.equal(aliCheckout.cnyFen,3625);
+assert.equal(aliCheckout.cnyFen,500);
 const aliOrder=pointRechargeOrder(aliCheckout.orderId,user);
 const paidDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',
   hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(aliOrder.created_at+2000));
-const aliQuery={code:'10000',out_trade_no:`NQPR${aliOrder.id}`,trade_no:'202610071000000001',total_amount:'36.25',
+const aliQuery={code:'10000',out_trade_no:`NQPR${aliOrder.id}`,trade_no:'202610071000000001',total_amount:'5.00',
   seller_id:'2088000000000000',trade_status:'TRADE_SUCCESS',send_pay_date:paidDate};
 const aliFetch=async()=>aliReply('alipay_trade_query_response',aliQuery);
 assert.equal((await reconcilePointRecharge(aliOrder,{expectedTradeNo:aliQuery.trade_no,fetchImpl:aliFetch})).paid,true);

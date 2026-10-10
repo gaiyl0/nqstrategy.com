@@ -7,6 +7,7 @@ import { DEFAULT_COMMUNITY_CONTENT, normalizeCommunityContent } from '@/lib/comm
 import { publishedSiteBrand } from '@/lib/site-brand-store';
 import { publicBrokerReward } from '@/lib/point-journey';
 import { paymentSecretConfigured } from '@/lib/payment-secret-store';
+import { pointCheckoutEnabled, pointRechargeAvailability } from '@/lib/point-payment-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +67,8 @@ async function GETHandler() {
     settings.siteName = settings.siteBrand.name;
     if (!settings.communityContent) settings.communityContent = DEFAULT_COMMUNITY_CONTENT;
     if (isAdmin) {
+      settings.pointRechargeOpen = pointCheckoutEnabled(currentUser.id);
+      settings.pointRechargeProviders = pointRechargeAvailability(currentUser.id).providers;
       for (const [responseKey, environmentKey] of Object.entries(PAYMENT_SECRET_STATUS)) {
         settings[responseKey] = environmentKey.startsWith('ALIPAY_') ? paymentSecretConfigured(environmentKey) : Boolean(process.env[environmentKey]?.trim());
       }

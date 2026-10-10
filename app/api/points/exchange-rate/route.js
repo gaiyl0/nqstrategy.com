@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { withApiErrors } from '@/lib/api-errors';
 import { getSessionUser } from '@/lib/auth';
 import { parseJson } from '@/lib/validation';
-import { configuredRechargeExchangeRate, quotePointRecharge, rechargeRateDetails, refreshAutomaticRechargeRate, setRechargeExchangeRate, setRechargeRateMode } from '@/lib/point-recharge';
+import { quotePointRecharge, rechargeRateDetails, refreshAutomaticRechargeRate, setRechargeExchangeRate, setRechargeRateMode } from '@/lib/point-recharge';
 import {pointRechargeAvailability} from '@/lib/point-payment-config';
 
 export const dynamic = 'force-dynamic';
@@ -11,15 +11,14 @@ export const dynamic = 'force-dynamic';
 async function GETHandler(request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ success: false, message: '请先登录' }, { status: 401 });
-  const refreshed=await refreshAutomaticRechargeRate().catch(()=>({feedUnavailable:true}));
-  const details=rechargeRateDetails();
-  const rate = configuredRechargeExchangeRate();
   const points = Number(new URL(request.url).searchParams.get('points') || 0);
   if (points) {
-    if(rate==null)return NextResponse.json({success:false,message:'充值汇率暂不可用'},{status:409});
-    try { return NextResponse.json({ success: true, quote: {...quotePointRecharge(points, rate),available:pointRechargeAvailability(user.id).enabled} }); }
+    try { return NextResponse.json({ success: true, quote: {...quotePointRecharge(points),available:pointRechargeAvailability(user.id).enabled} }); }
     catch { return NextResponse.json({ success: false, message: '积分数量无效' }, { status: 400 }); }
   }
+  if(user.role!=='admin')return NextResponse.json({success:false,message:'仅管理员可查看外币参考汇率'},{status:403});
+  const refreshed=await refreshAutomaticRechargeRate().catch(()=>({feedUnavailable:true}));
+  const details=rechargeRateDetails();
   return NextResponse.json({ success: true, ...details, feedUnavailable:!!refreshed.feedUnavailable, rechargeEnabled: pointRechargeAvailability(user.id).enabled });
 }
 

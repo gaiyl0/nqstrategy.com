@@ -64,7 +64,7 @@ notification.sign=crypto.sign('RSA-SHA256',Buffer.from(alipayCanonical(notificat
 assert.equal(verifyAlipayNotification(notification,alipayKeys.publicKey),true);
 assert.throws(()=>verifyAlipayNotification({...notification,total_amount:'72.51'},alipayKeys.publicKey),/ALIPAY_SIGNATURE_INVALID/);
 const signedRequest={app_id:'2026000000000000',method:'alipay.trade.query',charset:'utf-8',sign_type:'RSA2',biz_content:'{"out_trade_no":"NQPR12"}'};
-assert.equal(crypto.verify('RSA-SHA256',Buffer.from(alipayCanonical(signedRequest)),appKeys.publicKey,
+assert.equal(crypto.verify('RSA-SHA256',Buffer.from('app_id=2026000000000000&biz_content={"out_trade_no":"NQPR12"}&charset=utf-8&method=alipay.trade.query&sign_type=RSA2'),appKeys.publicKey,
   Buffer.from(signAlipayParameters(signedRequest,appKeys.privateKey),'base64')),true);
 const aliNode={code:'10000',out_trade_no:'NQPR12',trade_no:'202610071000000001',total_amount:'72.50',seller_id:'2088000000000000',
   trade_status:'TRADE_SUCCESS',send_pay_date:'2026-10-07 10:00:00'};
