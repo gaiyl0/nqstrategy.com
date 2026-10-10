@@ -11,7 +11,7 @@ if [[ ! "$public_origin" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then echo "In
 if [[ "$(id -u)" -ne 0 ]]; then echo "This runner must execute as root" >&2; exit 2; fi
 
 exec 9>/var/lock/nexus-quant-deploy.lock
-if ! flock -n 9; then echo "Another Nexus Quant deployment is running" >&2; exit 3; fi
+if ! flock -w 120 9; then echo "Deployment or reconciliation lock remained busy" >&2; exit 3; fi
 
 release_root="/opt/nexus-quant/releases"
 release_dir="$release_root/$release_id"

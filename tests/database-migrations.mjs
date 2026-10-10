@@ -44,7 +44,7 @@ concurrent.close();remove(concurrentPath);
 
 const adUpgradePath=path.resolve('.tmp-database-ad-upgrade-test.db');remove(adUpgradePath);
 const adUpgrade=new Database(adUpgradePath);adUpgrade.pragma('foreign_keys=ON');adUpgrade.function('wallet_maintenance_allowed',()=>1);adUpgrade.function('audit_maintenance_allowed',()=>0);
-runMigrations(adUpgrade,{plan:migrations.slice(0,-2)});
+runMigrations(adUpgrade,{plan:migrations.filter(migration=>migration.version<12)});
 adUpgrade.prepare("INSERT INTO users(username,email,role,password,balance) VALUES('migration-developer','migration@example.test','developer','hash',12.34)").run();
 adUpgrade.prepare("INSERT INTO point_accounts(user_id,balance,updated_at) VALUES(1,7,?)").run(Date.now());
 adUpgrade.prepare("INSERT INTO ad_click_events(slot,visitor_hash,destination_host,occurred_at,traffic_kind) VALUES('exchange_home',?,?,?,'browser')").run('a'.repeat(64),'first.example',Date.now());

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check pending Nexus Quant recharges every two minutes
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=2min
+RandomizedDelaySec=10s
+Unit=nexus-quant-recharges.service
+
+[Install]
+WantedBy=timers.target

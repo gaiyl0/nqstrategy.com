@@ -36,6 +36,8 @@
     "test:payment-settings": "node tests/payment-settings.mjs",
     "test:payment-vault": "node tests/payment-secret-vault.mjs",
     "test:payment-crypto": "node tests/payment-crypto.mjs",
+    "recharges:reconcile": "node scripts/reconcile-recharges.mjs",
+    "test:recharge-reconciliation": "node tests/recharge-reconciliation.mjs",
     "test:payment-recharge": "node tests/payment-recharge.mjs",
     "test:paypal-recharge": "node tests/paypal-recharge.mjs",
     "test:ecb-recharge-rate": "node tests/ecb-recharge-rate.mjs",

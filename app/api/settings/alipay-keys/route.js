@@ -14,7 +14,7 @@ const schema = z.object({
   appPublicKey: z.string().trim().max(16000).optional(),
 }).strict().refine(value => Boolean(value.privateKey || value.publicKey || value.appPublicKey), '请至少填写一项密钥');
 
-async function save(request) {
+async function POSTHandler(request) {
   const user = await getSessionUser();
   if (user?.role !== 'admin') return NextResponse.json({ message: '仅管理员可以配置支付密钥' }, { status: 403 });
   const parsed = await parseJson(request, schema);
@@ -45,4 +45,4 @@ async function save(request) {
     return NextResponse.json({ message }, { status: 400 });
   }
 }
-export const POST = withApiErrors(save, { route: '/api/settings/alipay-keys' });
+export const POST = withApiErrors(POSTHandler, { route: '/api/settings/alipay-keys' });
