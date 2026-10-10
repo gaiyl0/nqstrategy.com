@@ -6,6 +6,7 @@ import { parseJson, settingsSchema } from '@/lib/validation';
 import { DEFAULT_COMMUNITY_CONTENT, normalizeCommunityContent } from '@/lib/community-content';
 import { publishedSiteBrand } from '@/lib/site-brand-store';
 import { publicBrokerReward } from '@/lib/point-journey';
+import { paymentSecretConfigured } from '@/lib/payment-secret-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ const PAYMENT_SECRET_STATUS = {
   wechatPayPlatformCertificateConfigured: 'WECHAT_PAY_PLATFORM_CERTIFICATE',
   alipayAppPrivateKeyConfigured: 'ALIPAY_APP_PRIVATE_KEY',
   alipayPublicKeyConfigured: 'ALIPAY_PUBLIC_KEY',
+  alipayAppPublicKeyConfigured: 'ALIPAY_APP_PUBLIC_KEY',
 };
 const ADMIN_SETTINGS_KEYS = new Set([...PUBLIC_SETTINGS_KEYS, ...PAYMENT_CHANNEL_SETTINGS_KEYS, 'smtpHost', 'smtpUser', 'smtpPass']);
 
@@ -65,7 +67,7 @@ async function GETHandler() {
     if (!settings.communityContent) settings.communityContent = DEFAULT_COMMUNITY_CONTENT;
     if (isAdmin) {
       for (const [responseKey, environmentKey] of Object.entries(PAYMENT_SECRET_STATUS)) {
-        settings[responseKey] = Boolean(process.env[environmentKey]?.trim());
+        settings[responseKey] = environmentKey.startsWith('ALIPAY_') ? paymentSecretConfigured(environmentKey) : Boolean(process.env[environmentKey]?.trim());
       }
     }
 

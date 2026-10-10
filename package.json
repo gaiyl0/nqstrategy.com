@@ -34,6 +34,7 @@
     "test:content-moderation": "node tests/content-moderation.mjs",
     "test:payment-config": "node tests/payment-config.mjs",
     "test:payment-settings": "node tests/payment-settings.mjs",
+    "test:payment-vault": "node tests/payment-secret-vault.mjs",
     "test:payment-crypto": "node tests/payment-crypto.mjs",
     "test:payment-recharge": "node tests/payment-recharge.mjs",
     "test:paypal-recharge": "node tests/paypal-recharge.mjs",
