@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {networkProbeArguments,describeNetworkProbe} from '../lib/network-diagnostics.mjs';
+const args=networkProbeArguments({origin:'136.85.76.222'});
+assert.ok(args.includes('nqstrategy.com:443:136.85.76.222'));
+assert.ok(!args.some(x=>['-k','--insecure','--ssl-no-revoke','--proxy','--cookie'].includes(x)));
+assert.ok(args.includes('15'));assert.ok(args.includes('--compressed'));
+for(const options of [{domain:'example.com;echo secret'},{domain:'example.com/private'},{domain:'a..com'},{path:'/api/points'},{family:0},{origin:'localhost'},{origin:'127.0.0.1:443'}])assert.throws(()=>networkProbeArguments(options),/NETWORK_PROBE_INVALID/);
+const report=(overrides,code)=>describeNetworkProbe(JSON.stringify({code:0,tcp:0,tls:0,...overrides}),code);
+assert.equal(report({},6).stage,'dns');assert.equal(report({},35).stage,'tls');assert.equal(report({},60).stage,'tls');
+assert.equal(report({},28).stage,'connect');assert.equal(report({tcp:0.2},28).stage,'tls');assert.equal(report({tls:1},28).stage,'response_wait');assert.equal(report({code:200},28).stage,'response_transfer');
+assert.equal(report({code:403},0).stage,'http');assert.equal(report({code:200},0).ok,true);assert.equal(report({code:200},28).ok,false);
+assert.equal(report({code:'000',tcp:0.1},28).stage,'tls','curl uses zero-padded HTTP status on transport failure');
+assert.equal(describeNetworkProbe('',1).stage,'probe_unavailable');
+console.log('Network diagnostics passed: safe public probes, verified TLS, argument validation and failure-stage classification');
