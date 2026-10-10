@@ -17,6 +17,10 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const nextConfig = {
+  async headers() {
+    // Cache only bundled public artwork; authenticated APIs and private uploads remain uncached.
+    return [{source:'/images/editorial/:path*',headers:[{key:'Cache-Control',value:'public, max-age=86400, stale-while-revalidate=604800'}]}];
+  },
   allowedDevOrigins: ['127.0.0.1'],
   turbopack: {
     root: process.cwd(),

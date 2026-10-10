@@ -18,7 +18,7 @@ assert.ok(lineCount <= 600, `app/page.js regressed to ${lineCount} lines; keep o
 for (const component of components) {
   const componentPath = path.join(root, 'app', 'components', `${component}.js`);
   assert.ok(fs.existsSync(componentPath), `${component}.js is missing`);
-  assert.match(page, new RegExp(`import ${component} from './components/${component}'`));
+  assert.ok(page.includes(`import ${component} from './components/${component}'`) || page.includes(`const ${component} = dynamic(() => import('./components/${component}')`), `${component} must be statically or lazily imported`);
   assert.match(page, new RegExp(`<${component}\\b`));
 }
 assert.match(page, /useAppRoute, useLanguage, useToast/);

@@ -17,6 +17,7 @@ import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
 import AdminWorkbench from './AdminWorkbench';
 import PointsAdmin from './PointsAdmin';
+import FinanceAdmin from './FinanceAdmin';
 import PointWithdrawalsAdmin from './PointWithdrawalsAdmin';
 import PointExchangeRateAdmin from './PointExchangeRateAdmin';
 import {pointPriceLabel} from '@/lib/point-pricing.mjs';
@@ -267,7 +268,7 @@ export default function AdminDashboard() {
   const navigation = [
     ['brandPages', '品牌、导航与页面', Globe2],
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
-    ['orders', '订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
+    ['finance', '人民币与积分流水', BadgeDollarSign], ['orders', '历史订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
     ['reports', '社区治理', Flag],
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
@@ -277,7 +278,7 @@ export default function AdminDashboard() {
 
   const navigationGroups = [
     ['工作台', ['dashboard']],
-    ['EA 管理', ['products','orders','licenses','featured']],
+    ['EA 管理', ['products','finance','orders','licenses','featured']],
     ['任务与推广', ['points','advertising','analytics']],
     ['论坛运营', ['reports','communityCategories','forumModules','communityDocs']],
     ['用户与积分', ['users','pointWithdrawals']],
@@ -302,6 +303,7 @@ export default function AdminDashboard() {
         {activeTab === 'brandPages' && <BrandSettings products={productList} settings={settings}/>}
         {activeTab === 'dashboard' && <AdminWorkbench onSelect={setActiveTab} />}
         {activeTab === 'points' && <PointsAdmin />}
+        {activeTab === 'finance' && <FinanceAdmin />}
 
         {activeTab === 'analytics' && (
           <section className="space-y-6 pb-20 animate-in fade-in duration-300">

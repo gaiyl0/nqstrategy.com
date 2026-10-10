@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { signWechatRequest, verifyWechatResponse, decryptWechatNotificationResource, verifiedWechatTrade } from '../lib/wechat-pay-crypto.mjs';
 import { createWechatNativeOrder, queryWechatNativeOrder } from '../lib/wechat-pay-gateway.mjs';
 import {alipayCanonical,signAlipayParameters,verifyAlipayNotification,verifyAlipayResponse,verifiedAlipayTrade,
-  createAlipayQrOrder,queryAlipayOrder,yuanToFen} from '../lib/alipay-gateway.mjs';
+  createAlipayQrOrder,createAlipayMobileOrder,queryAlipayOrder,yuanToFen} from '../lib/alipay-gateway.mjs';
 
 const merchant=crypto.generateKeyPairSync('rsa',{modulusLength:2048});
 const platform=crypto.generateKeyPairSync('rsa',{modulusLength:2048});
@@ -93,4 +93,11 @@ assert.equal(aliQr.codeUrl,'https://qr.alipay.com/test');
 const aliQuery=await queryAlipayOrder(aliOrder,aliConfig,async()=>new Response(queryRaw));
 assert.equal(aliQuery.settlement.cnyFen,7250);
 await assert.rejects(()=>queryAlipayOrder(aliOrder,{...aliConfig,gateway:'https://evil.example/gateway.do'},async()=>new Response(queryRaw)),/ALIPAY_PAYMENT_CONFIG_UNAVAILABLE/);
+const wap=createAlipayMobileOrder(aliOrder,aliConfig);
+const wapParams=Object.fromEntries(new URL(wap.payUrl).searchParams),wapSign=wapParams.sign;delete wapParams.sign;
+const wapCanonical=Object.keys(wapParams).sort().map(key=>`${key}=${wapParams[key]}`).join('&');
+assert.equal(crypto.verify('RSA-SHA256',Buffer.from(wapCanonical),appKeys.publicKey,Buffer.from(wapSign,'base64')),true,'WAP payload includes sign_type in its independently verified signature');
+assert.equal(new URL(wapParams.return_url).origin,'https://nqstrategy.com');
+assert.throws(()=>createAlipayMobileOrder({...aliOrder,expires_at:Date.now()-1},aliConfig),/ALIPAY_ORDER_INVALID/);
+assert.throws(()=>createAlipayMobileOrder(aliOrder,{...aliConfig,gateway:'https://evil.example/'}),/ALIPAY_PAYMENT_CONFIG_UNAVAILABLE/);
 console.log('Payment cryptography tests passed: signed WeChat and Alipay requests, replies, tampering, amounts and trade queries');

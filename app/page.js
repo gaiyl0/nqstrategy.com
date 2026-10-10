@@ -5,6 +5,7 @@ import { useDesign } from './components/DesignProvider';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { apiErrorMessage, apiFetch } from '@/lib/api-client';
 import { 
   Activity, Shield, CheckCircle, Upload, Globe, X, Code2, Edit,
@@ -14,19 +15,27 @@ import {
 
 import HomeView, { FadeInView } from './components/HomeView';
 import Footer from './components/Footer';
-import MarketView from './components/MarketView';
+
 import AppHeader from './components/AppHeader';
 import ForumUnavailable from './components/ForumUnavailable';
 import CatalogUnavailable from './components/CatalogUnavailable';
 import { forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
-import UploadView from './components/UploadView';
-import ForumView from './components/ForumView';
-import ProfileView from './components/ProfileView';
-import PointsCenter from './components/PointsCenter';
-import InboxCenter from './components/InboxCenter';
+
+
+
+
+
 import AppOverlays from './components/AppOverlays';
 import { useAppRoute, useLanguage, useToast, useTopicEntry } from './hooks/useAppShell';
 import { useInteraction } from './components/ui/UiKit';
+
+const loadingView=()=> <div role="status" className="mx-auto max-w-5xl px-6 py-12 text-sm">正在加载页面… / Loading…</div>;
+const MarketView = dynamic(() => import('./components/MarketView'), {loading:loadingView});
+const UploadView = dynamic(() => import('./components/UploadView'), {loading:loadingView});
+const ForumView = dynamic(() => import('./components/ForumView'), {loading:loadingView});
+const ProfileView = dynamic(() => import('./components/ProfileView'), {loading:loadingView});
+const PointsCenter = dynamic(() => import('./components/PointsCenter'), {loading:loadingView});
+const InboxCenter = dynamic(() => import('./components/InboxCenter'), {loading:loadingView});
 
 const emptyMetricsForm = () => ({
   initialDeposit: '', netProfit: '', profitFactor: '', sharpeRatio: '',
@@ -64,6 +73,7 @@ export default function App() {
   const { confirmAction, requestInput, showValue } = useInteraction();
   const router = useRouter();
   const { lang, toggleLang, t } = useLanguage();
+  const [profileInitialTab,setProfileInitialTab]=useState('assets');
   const { route, setRoute } = useAppRoute();
   const design = useDesign();
   const { toastMsg, showToast } = useToast();
@@ -518,12 +528,12 @@ export default function App() {
         {route === 'market' && !catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'market' && catalogEnabled(siteSettings?.siteBrand) && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handlePointsRedeem={handlePointsRedeem} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'points' && user && <PointsCenter t={t} setRoute={setRoute} />}
         {route === 'points' && !user && <section className="mx-auto my-16 max-w-xl rounded-2xl border border-cyan-400/25 bg-slate-900 p-8 text-center text-white"><h1 className="text-2xl font-bold">{t('积分任务中心','Points & Tasks')}</h1><p className="mt-3 text-sm leading-6 text-slate-300">{t('登录后查看积分余额、每日任务和审核任务。','Sign in to view your points, daily activities and reviewed tasks.')}</p><button onClick={()=>setAuthModal('login')} className="mt-5 rounded-lg bg-cyan-600 px-5 py-3 text-sm font-bold hover:bg-cyan-500">{t('登录 / 注册','Login / Register')}</button></section>}
-        {route === 'inbox' && user && <InboxCenter t={t} user={user} />}
+        {route === 'inbox' && user && <InboxCenter t={t} user={user} setRoute={setRoute} design={design} onProfileNavigate={value=>{setProfileInitialTab(value);setRoute('profile');}} />}
         {route === 'upload'&&!catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'upload'&&catalogEnabled(siteSettings?.siteBrand) && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, savePointsPrice, isSubmitting }} />}
         {route === 'forum' && !forumEnabled(siteSettings?.siteBrand) && <ForumUnavailable mode={siteSettings?.siteBrand?.forumMode} {...{setRoute,t}} />}
         {route === 'forum' && forumEnabled(siteSettings?.siteBrand) && <ForumView {...{ design, categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, siteBrand:siteSettings?.siteBrand,communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
-        {route === 'profile' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
-        {route === 'assets' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
+        {route === 'profile' && user && <ProfileView initialTab={profileInitialTab} {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
+        {route === 'assets' && user && <ProfileView initialTab={profileInitialTab} {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
       </main>
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
