@@ -1,5 +1,9 @@
 # Nexus Quant 最新更新日志与执行顺序
 
+### 2026-10-11：替换为百度最新验证文件
+
+- 按用户要求原样加入public/baidu_verify_codeva-cVEf85Es9L.html，并删除仓库中旧baidu_verify_codeva-bKfmaCfDKs.html；本机Downloads原文件保留。新文件发布后检查根路径200及原文件哈希一致、旧路径404。发布验证进行中。
+
 ### 2026-10-11：百度验证404复查（等待当前验证文件）
 
 - 实测之前上传的/baidu_verify_codeva-bKfmaCfDKs.html仍返回200、32字节；线上当前版本仍76145bc7d4b6。访问日志显示百度与用户最近访问的是/baidu_verify_codeva-cVEf85Es9L.html，该新路径未提供文件，返回404。此前同旧文件路径的301记录与HTTP/www跳转相符，不能当作新文件已部署。
