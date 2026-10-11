@@ -7,13 +7,18 @@ import StrategyAcquisition from './StrategyAcquisition';
 import StrategyComparison from './StrategyComparison';
 import StrategyMarketCatalog from './StrategyMarketCatalog';
 import { COMPARISON_MIN, parseComparisonState, selectComparison, serializeComparisonState } from '@/lib/strategy-comparison.mjs';
+import useNavigationLocation from '../hooks/useNavigationLocation';
+import {appRoute,writeNavigation,NAVIGATION_EVENT,MARKET_KEYS} from '@/lib/app-navigation.mjs';
 import { apiFetch } from '@/lib/api-client';
 import { useInteraction } from './ui/UiKit';
 
 export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handlePointsRedeem, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
   const { requestInput } = useInteraction();
-  const [view, setViewInternal] = useState('list');
-  const [selectedEA, setSelectedEAInternal] = useState(null);
+  const navigationSearch=useNavigationLocation();
+  const eaId=Number(new URLSearchParams(navigationSearch||'').get('ea'));
+  const view=Number.isSafeInteger(eaId)&&eaId>0?'detail':'list';
+  const [selectedEAOverride,setSelectedEAInternal]=useState(null);
+  const selectedEA=selectedEAOverride?.id===eaId?selectedEAOverride:products.find(product=>product.id===eaId);
 
   const [filters, setFilters] = useState({ pair: '', type: '', verification: '', maxDrawdown: null, maxPrice: null });
   const [searchQuery,setSearchQuery]=useState('');
@@ -28,12 +33,6 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
   const lastQuery = useRef(null);
 
   useEffect(() => {
-    const savedView = sessionStorage.getItem('market_view');
-    const savedEA = sessionStorage.getItem('market_ea');
-    // Browser storage and the shareable URL are external state restored after hydration.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (savedView) setViewInternal(savedView);
-    if (savedEA) setSelectedEAInternal(JSON.parse(savedEA));
     const restoreQuery = () => {
       lastQuery.current = window.location.search;
       const urlState = parseComparisonState(window.location.search);
@@ -42,43 +41,33 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
       setShowComparison(urlState.ids.length >= COMPARISON_MIN);
     };
     restoreQuery();
-    const params = new URLSearchParams(window.location.search);
-    if (['q','pair','type','verification','maxDrawdown','maxPrice','page','compare'].some(key => params.has(key)) || params.get('route') === 'market') {
-      setViewInternal('list'); sessionStorage.setItem('market_view','list');
-    }
-    const restoreHistory = () => {
-      // Hash-only section navigation must not replace a detail view with the catalog.
-      if (window.location.search === lastQuery.current) return;
-      restoreQuery(); setViewInternal('list'); sessionStorage.setItem('market_view','list');
-    };
+    const restoreHistory=()=>{if(appRoute(window.location.search)==='market'&&window.location.search!==lastQuery.current)restoreQuery();};
     window.addEventListener('popstate',restoreHistory);
+    window.addEventListener(NAVIGATION_EVENT,restoreHistory);
+    // Hydration restores the external URL before enabling catalog reads.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrlReady(true);
-    return () => window.removeEventListener('popstate',restoreHistory);
+    return () => {window.removeEventListener('popstate',restoreHistory);window.removeEventListener(NAVIGATION_EVENT,restoreHistory);};
   }, []);
 
   useEffect(() => {
     if (!urlReady) return;
     const query = serializeComparisonState({ ids: compareIds, q:searchQuery, page, ...filters });
-    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
-    window.history.replaceState(null, '', nextUrl);
+    if(appRoute(window.location.search)!=='market')return;
+    const params=new URLSearchParams(query), patch={};
+    for(const key of MARKET_KEYS)if(key!=='ea')patch[key]=params.get(key);
+    const before=parseComparisonState(window.location.search);
+    const qOnly=before.q!==searchQuery&&JSON.stringify({...before,q:searchQuery})===JSON.stringify({ids:compareIds,q:searchQuery,...filters,page});
+    writeNavigation('market',patch,{replace:qOnly});
     lastQuery.current = window.location.search;
   }, [compareIds, filters, searchQuery, page, urlReady]);
 
   useEffect(()=>{if(!urlReady)return;const controller=new AbortController();const params=new URLSearchParams({market:'1',page:String(page),pageSize:'12'});if(searchQuery)params.set('q',searchQuery);for(const [key,value] of Object.entries(filters))if(value!==null&&value!=='')params.set(key,String(value));/* eslint-disable react-hooks/set-state-in-effect */setCatalogStatus('loading');apiFetch(`/api/products?${params}`,{cache:'no-store',signal:controller.signal}).then(async response=>{const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'加载失败');setCatalogProducts(data.products);setPagination(data.pagination);if(data.pagination.page!==page)setPage(data.pagination.page);setCatalogStatus('ready');}).catch(error=>{if(error.name!=='AbortError')setCatalogStatus('error');});return()=>controller.abort();},[filters,searchQuery,page,urlReady,retryKey]);
 
 
-  const setView = (v) => {
-    setViewInternal(v);
-    sessionStorage.setItem('market_view', v);
-  };
-
-  const setSelectedEA = (ea) => {
-    setSelectedEAInternal(ea);
-    if (ea) sessionStorage.setItem('market_ea', JSON.stringify(ea));
-    else sessionStorage.removeItem('market_ea');
-  };
-
-  const openDetail = (ea) => { setSelectedEA(ea); setView('detail'); };
+  const setView = value => { if(value==='list')writeNavigation('market',{ea:null}); };
+  const setSelectedEA = ea => setSelectedEAInternal(ea);
+  const openDetail = ea => { setSelectedEA(ea);writeNavigation('market',{ea:ea.id}); };
 
   const filterOptions = ['全部', '马丁格尔', '网格', '套汇', '锁仓', '超短线', '新闻', '趋势', '等级交易', '神经网络', '多货币'];
   const pairs = [...new Set(products.flatMap(product => String(product.pairs || '').split(',').map(item => item.trim()).filter(Boolean)))].sort();
@@ -107,5 +96,5 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
       ratingAction={<button onClick={async()=>{const score=await requestInput({title:t('评分策略','Rate strategy'),description:selectedEA.title,label:t('星级','Rating'),initialValue:String(selectedEA.social?.viewer?.rating?.rating||5),options:[1,2,3,4,5].map(value=>({value:String(value),label:`${value} ${t('星','stars')}`})),required:true,confirmLabel:t('下一步','Continue')});if(!score)return;const review=await requestInput({title:t('评分策略','Rate strategy'),label:t('评价','Review'),hint:t('可选，请基于真实使用体验。','Optional. Base the review on your actual experience.'),initialValue:selectedEA.social?.viewer?.rating?.reviewText||'',multiline:true,rows:4,maxLength:500,confirmLabel:t('提交评分','Submit rating')});if(review===null)return;await socialAction({action:'rate',productId:selectedEA.id,rating:Number(score),reviewText:review},social=>({ratingAverage:social.ratingAverage,ratingCount:social.ratingCount||1,viewer:{...social.viewer,rating:{rating:Number(score),reviewText:review}}}));}} className="mt-3 w-full rounded-xl border border-amber-500/30 bg-amber-500/10 py-2 text-xs font-bold text-amber-300">{selectedEA.social?.viewer?.rating?t('修改我的评分','Edit my rating'):t('提交评分','Rate strategy')}</button>}
     />;
   }
-  return null;
+  return <div role="status" className="mx-auto max-w-5xl p-8"><p>{products.length?t('策略不存在或已下架。','This strategy is unavailable.'):t('正在读取策略…','Loading strategy…')}</p><button onClick={()=>setView('list')} className="mt-4 rounded-lg border px-4 py-2">{t('返回市场列表','Back to market')}</button></div>;
 }

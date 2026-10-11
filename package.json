@@ -73,7 +73,8 @@
     "deploy:production": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
     "test:production-deployment": "node tests/production-deployment.mjs",
     "test:share-pages": "node tests/share-pages.mjs",
-    "test:point-refresh": "node tests/point-refresh.mjs"
+    "test:point-refresh": "node tests/point-refresh.mjs",
+    "test:app-navigation": "node tests/app-navigation.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

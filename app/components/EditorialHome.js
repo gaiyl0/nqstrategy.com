@@ -1,4 +1,5 @@
 "use client";
+import {writeNavigation} from "@/lib/app-navigation.mjs";
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -32,7 +33,7 @@ export default function EditorialHome({ siteSettings, products, forumPosts, setR
   }, [featured.length, featuredKey, seconds, settings.featuredAutoRotate]);
   const lead = featured[index % Math.max(1,featured.length)];
   const publish = () => user ? setRoute('upload') : setAuthModal('login');
-  const openStrategy = product => { sessionStorage.setItem('market_view','detail'); sessionStorage.setItem('market_ea',JSON.stringify(product)); setRoute('market'); };
+  const openStrategy = product => { writeNavigation('market',{ea:product.id}); };
   const modules = Array.isArray(settings.homeModules) ? settings.homeModules : DEFAULT_HOME_MODULES;
   const parts = {
     discussions: <HomeLatestDiscussions {...{forumPosts,openPostDetail,setRoute,t}}/>,

@@ -99,7 +99,7 @@ function ClassicForumList(props) {
 }
 
 function ForumList(props) {
-  return props.design==='editorial'?<ReferenceForumList {...props}><DocumentLibrary items={props.communityContent||DEFAULT_COMMUNITY_CONTENT} t={props.t}/></ReferenceForumList>:<ClassicForumList {...props}/>;
+  return props.design==='editorial'?<ReferenceForumList key={props.forumQuery} {...props}><DocumentLibrary items={props.communityContent||DEFAULT_COMMUNITY_CONTENT} t={props.t}/></ReferenceForumList>:<ClassicForumList key={props.forumQuery} {...props}/>;
 }
 
 function DetailView(props) {

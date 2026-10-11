@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import useNavigationLocation from './useNavigationLocation';
+import { appRoute,writeNavigation } from '@/lib/app-navigation.mjs';
 import { ApiError, apiErrorMessage } from '@/lib/api-client';
 
 const LANGUAGE_EVENT = 'nexus-language-change';
-const MARKET_QUERY_KEYS = ['compare', 'q', 'pair', 'type', 'verification', 'maxDrawdown', 'maxPrice', 'page'];
-const APP_ROUTES = ['home', 'market', 'forum', 'profile', 'assets', 'upload', 'points', 'inbox'];
 
 const subscribeLanguage = (callback) => {
   window.addEventListener('storage', callback);
@@ -31,40 +31,15 @@ export function useLanguage() {
 }
 
 export function useAppRoute() {
-  const [route, setRouteInternal] = useState('home');
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const params = new URLSearchParams(window.location.search);
-      const hasMarketState = MARKET_QUERY_KEYS.some((key) => params.has(key));
-      const savedRoute = sessionStorage.getItem('nexus_route');
-      const destination = APP_ROUTES.includes(params.get('route')) ? params.get('route')
-        : hasMarketState ? 'market' : APP_ROUTES.includes(savedRoute) ? savedRoute : 'home';
-      setRouteInternal(destination);
-      sessionStorage.setItem('nexus_route', destination);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
-
-  const setRoute = useCallback((newRoute) => {
-    setRouteInternal(newRoute);
-    sessionStorage.setItem('nexus_route', newRoute);
-    {
-      const params = new URLSearchParams(window.location.search);
-      if (params.has('route')) params.set('route', newRoute);
-      if (newRoute !== 'forum') params.delete('post');
-      if (newRoute !== 'market') MARKET_QUERY_KEYS.forEach((key) => params.delete(key));
-      const query = params.toString();
-      window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
-      window.dispatchEvent(new Event('nexus-route-change'));
-    }
-  }, []);
-
-  return { route, setRoute };
+  const search=useNavigationLocation();
+  const route=appRoute(search||'');
+  const setRoute=useCallback(newRoute=>{writeNavigation(newRoute);},[]);
+  return {route,setRoute,search};
 }
 
 export function useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute }) {
   const openedPost = useRef(null);
+  const search=useNavigationLocation();
   useEffect(() => {
     if (!authReady || user || !['profile', 'assets', 'inbox'].includes(route)) return;
     const frame = requestAnimationFrame(() => { setRoute('home'); setAuthModal('login'); });
@@ -77,12 +52,13 @@ export function useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal,
   }, [setAuthModal]);
   useEffect(() => {
     if (route !== 'forum') return;
-    const id = new URLSearchParams(window.location.search).get('post');
+    const id = new URLSearchParams(search||'').get('post');
+    if(!id){openedPost.current=null;return;}
     if (!id || !/^[1-9]\d*$/.test(id) || openedPost.current === id) return;
     const post = forumPosts.find(item => String(item.id) === id) || { id: Number(id) };
     const frame = requestAnimationFrame(() => { openedPost.current = id; void openPostDetail(post); });
     return () => cancelAnimationFrame(frame);
-  }, [route, forumPosts, openPostDetail]);
+  }, [route, forumPosts, openPostDetail,search]);
 }
 
 export function useToast() {

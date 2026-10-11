@@ -16,6 +16,7 @@ import {
 import HomeView, { FadeInView } from './components/HomeView';
 import Footer from './components/Footer';
 
+import { appRoute,forumLocation,writeNavigation } from '@/lib/app-navigation.mjs';
 import AppHeader from './components/AppHeader';
 import ForumUnavailable from './components/ForumUnavailable';
 import CatalogUnavailable from './components/CatalogUnavailable';
@@ -73,8 +74,7 @@ export default function App() {
   const { confirmAction, requestInput, showValue } = useInteraction();
   const router = useRouter();
   const { lang, toggleLang, t } = useLanguage();
-  const [profileInitialTab,setProfileInitialTab]=useState('assets');
-  const { route, setRoute } = useAppRoute();
+  const { route, setRoute,search:navigationSearch } = useAppRoute();
   const design = useDesign();
   const { toastMsg, showToast } = useToast();
 
@@ -179,7 +179,8 @@ export default function App() {
   const forumRequest = useRef(0);
   const [forumSort, setForumSort] = useState('latest');
   const [activeCategory, setActiveCategory] = useState('全部');
-  const [forumView, setForumView] = useState('list'); 
+  const [forumView, setForumViewInternal] = useState('list');
+  const setForumView=useCallback(value=>{setForumViewInternal(value);if(value!=='detail')writeNavigation('forum',{post:null,compose:value==='create'?'1':null});},[]);
   const [selectedPost, setSelectedPost] = useState(null);
   const postDetailRequest = useRef(0);
   const [newPost, setNewPost] = useState({ title: '', category: '官方公告', content: '', attachments: [] });
@@ -270,6 +271,7 @@ export default function App() {
 
   const fetchProducts = () => { apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
   const fetchForumPosts = useCallback(async (cat = '全部', sort = 'latest', page = 1, query = '') => {
+    if(appRoute(window.location.search)==='forum'&&writeNavigation('forum',{category:cat==='全部'?null:cat,sort:sort==='latest'?null:sort,forumPage:page>1?page:null,forumQ:query||null,post:null,compose:null}))return;
     setActiveCategory(cat);setForumSort(sort);setForumQuery(query);
     const requestId = ++forumRequest.current; setForumLoading(true); setForumError('');
     try {
@@ -291,9 +293,17 @@ export default function App() {
       .then(data => setUser(data.success ? data.user : null))
       .catch(() => setUser(null))
       .finally(() => setAuthReady(true));
-    apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => { setSiteSettings(data); if (forumEnabled(data.siteBrand)) fetchForumPosts('全部', 'latest', 1, ''); });
+    apiFetch(`/api/settings`, { cache: 'no-store' }).then(res => res.json()).then(data => { setSiteSettings(data); if (forumEnabled(data.siteBrand)&&appRoute(window.location.search)!=='forum') fetchForumPosts('全部', 'latest', 1, ''); });
     apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); });
   }, [fetchForumPosts]);
+
+  useEffect(()=>{
+    if(route!=='forum'||navigationSearch===null||!forumEnabled(siteSettings?.siteBrand))return;
+    const state=forumLocation(navigationSearch);
+    if(state.post)return;
+    const timer=setTimeout(()=>{setForumView(state.compose?'create':'list');if(!state.compose)void fetchForumPosts(state.category,state.sort,state.page,state.query);},0);
+    return()=>clearTimeout(timer);
+  },[route,navigationSearch,siteSettings?.siteBrand,fetchForumPosts,setForumView]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -467,15 +477,15 @@ export default function App() {
 
   const openPostDetail = useCallback(async (post) => {
     const request = ++postDetailRequest.current;
-    setRoute('forum'); setSelectedPost(post.title ? post : null); setForumView(post.title ? 'detail' : 'list'); setComments([]);
+    if(writeNavigation('forum',{post:post.id,compose:null}))return; setSelectedPost(post.title ? post : null); setForumView('detail'); setComments([]);
     try {
       const responses = await Promise.all([apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' }), apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' })]);
       const [detail, replies] = await Promise.all(responses.map(response => response.json()));
       if (request !== postDetailRequest.current) return;
-      if (detail.success && detail.post) { setSelectedPost(detail.post); setForumView('detail'); }
+      if (detail.success && detail.post && forumLocation(window.location.search).post===Number(post.id)) { setSelectedPost(detail.post); setForumView('detail'); }
       if (replies.success) setComments(replies.comments);
     } catch (error) { if (request === postDetailRequest.current) showToast(apiErrorMessage(error)); }
-  }, [setRoute, showToast]);
+  }, [setForumView, showToast]);
   useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute });
 
   const submitComment = async () => {
@@ -528,12 +538,12 @@ export default function App() {
         {route === 'market' && !catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'market' && catalogEnabled(siteSettings?.siteBrand) && (<MarketView products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handlePointsRedeem={handlePointsRedeem} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
         {route === 'points' && user && <PointsCenter key={user.id} userId={user.id} t={t} setRoute={setRoute} />}
         {route === 'points' && !user && <section className="mx-auto my-16 max-w-xl rounded-2xl border border-cyan-400/25 bg-slate-900 p-8 text-center text-white"><h1 className="text-2xl font-bold">{t('积分任务中心','Points & Tasks')}</h1><p className="mt-3 text-sm leading-6 text-slate-300">{t('登录后查看积分余额、每日任务和审核任务。','Sign in to view your points, daily activities and reviewed tasks.')}</p><button onClick={()=>setAuthModal('login')} className="mt-5 rounded-lg bg-cyan-600 px-5 py-3 text-sm font-bold hover:bg-cyan-500">{t('登录 / 注册','Login / Register')}</button></section>}
-        {route === 'inbox' && user && <InboxCenter hasPublications={myEAs.length>0} t={t} user={user} setRoute={setRoute} design={design} onProfileNavigate={value=>{setProfileInitialTab(value);setRoute('profile');}} />}
+        {route === 'inbox' && user && <InboxCenter hasPublications={myEAs.length>0} t={t} user={user} setRoute={setRoute} design={design} onProfileNavigate={value=>{writeNavigation('profile',{tab:value});}} />}
         {route === 'upload'&&!catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'upload'&&catalogEnabled(siteSettings?.siteBrand) && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, savePointsPrice, isSubmitting }} />}
         {route === 'forum' && !forumEnabled(siteSettings?.siteBrand) && <ForumUnavailable mode={siteSettings?.siteBrand?.forumMode} {...{setRoute,t}} />}
         {route === 'forum' && forumEnabled(siteSettings?.siteBrand) && <ForumView {...{ design, categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, siteBrand:siteSettings?.siteBrand,communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
-        {route === 'profile' && user && <ProfileView initialTab={profileInitialTab} {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
-        {route === 'assets' && user && <ProfileView initialTab={profileInitialTab} {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
+        {route === 'profile' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
+        {route === 'assets' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
       </main>
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
