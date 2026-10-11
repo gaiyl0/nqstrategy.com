@@ -86,7 +86,7 @@ assert.equal(new URL(mobileUrl.searchParams.get('return_url')).searchParams.get(
 assert.equal(pointAssetAccount(user).fundedUnits,1500,'generating WAP checkout does not credit points');
 const replay=await createPointCheckout(user,1.23,'alipay',mobileKey,fetch,'mobile');assert.equal(replay.orderId,mobile.orderId);
 await assert.rejects(()=>createPointCheckout(user,1,'wechat',crypto.randomUUID(),fetch,'mobile'),/RECHARGE_REQUEST_INVALID/);
-const {financeOverview}=await import('../lib/finance-overview.js');
+const {financeOverview,financeCsv}=await import('../lib/finance-overview.js');
 assert.throws(()=>financeOverview({role:'user'}),/FINANCE_FORBIDDEN/);
 assert.throws(()=>financeOverview({role:'admin'},{view:'recharges;DROP TABLE users'}),/FINANCE_QUERY_INVALID/);
 const finance=financeOverview({role:'admin'});
@@ -102,6 +102,29 @@ for(let i=0;i<51;i++)applyPointAssetDelta(user,{bonus:1},`finance-pagination:${i
 assert.equal(financeOverview({role:'admin'},{view:'points'}).items.length,50);
 assert.equal(financeOverview({role:'admin'},{view:'points',page:2}).items.length,3);
 assert.equal(financeOverview({role:'admin'},{view:'points',page:2}).pagination.total,53);
+const admin={role:'admin'};
+assert.equal(financeOverview(admin,{view:'recharges',orderId:mobile.orderId}).pagination.total,1);
+assert.equal(financeOverview(admin,{view:'recharges',orderId:mobile.orderId,status:'paid'}).pagination.total,0);
+assert.equal(financeOverview(admin,{view:'recharges',provider:'wechat',orderId:mobile.orderId}).pagination.total,0);
+assert.equal(financeOverview(admin,{view:'recharges',provider:'alipay',orderId:mobile.orderId}).pagination.total,1);
+const beijingDay=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(finance.items[0].created_at));
+assert.equal(financeOverview(admin,{view:'recharges',from:beijingDay,to:beijingDay,orderId:mobile.orderId}).pagination.total,1);
+assert.equal(financeOverview(admin,{view:'recharges',from:'2000-01-01',to:'2000-01-01'}).pagination.total,0);
+assert.throws(()=>financeOverview(admin,{view:'recharges',from:'2026-02-30'}),/FINANCE_QUERY_INVALID/);
+assert.throws(()=>financeOverview(admin,{view:'recharges',from:'2026-10-12',to:'2026-10-11'}),/FINANCE_QUERY_INVALID/);
+assert.throws(()=>financeOverview(admin,{view:'points',provider:'alipay'}),/FINANCE_QUERY_INVALID/);
+assert.throws(()=>financeOverview(admin,{view:'recharges',status:"paid' OR 1=1"}),/FINANCE_QUERY_INVALID/);
+const filtered=financeOverview(admin,{view:'recharges',orderId:mobile.orderId});
+assert.equal(filtered.filtered.count,1);assert.equal(filtered.filtered.amount,1.23);
+assert.equal(filtered.summary.rechargeCny,finance.summary.rechargeCny,'lifetime summary remains explicitly unfiltered');
+const csv=financeCsv(admin,{view:'recharges',orderId:mobile.orderId});
+assert.match(csv,/^\uFEFF"订单号"/);assert.equal(csv.trim().split('\r\n').length,2);
+assert.doesNotMatch(csv,/request_key|private_key|app_secret|metadata/i);
+db.prepare('UPDATE users SET username=? WHERE id=?').run('=HYPERLINK("https://invalid.example")',user);
+assert.match(financeCsv(admin,{view:'points',userId:user}),/"'=HYPERLINK\(""https:\/\/invalid.example""\)"/);
+db.prepare('UPDATE users SET username=? WHERE id=?').run('recharge-buyer',user);
+assert.throws(()=>financeCsv({role:'user'}),/FINANCE_FORBIDDEN/);
+assert.throws(()=>financeCsv(admin,{view:'recharges',orderId:0}),/FINANCE_QUERY_INVALID/);
 // Delayed evidence is accepted only when the signed payment happened before expiry.
 const {createPointRechargeOrder}=await import('../lib/point-recharge.js');
 const late=createPointRechargeOrder(user,2,'alipay',crypto.randomUUID(),Date.now()-20*60_000);
