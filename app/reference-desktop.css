@@ -150,6 +150,11 @@
 [data-design="editorial"] .reference-personal-layout {display:grid;grid-template-columns:210px minmax(0,1fr);background:#f3f8fc;gap:0}
 .reference-personal-nav {background:#f8fbfd;border-right:1px solid #e0e8f0;padding:22px 14px;min-height:680px}
 .reference-personal-nav h2 {display:flex;gap:10px;align-items:center;font-size:18px;font-weight:700;margin-bottom:16px}
+.reference-personal-menu-toggle {display:none}
+.reference-personal-cover>div:nth-child(2) {min-width:0;overflow-wrap:anywhere}
+.reference-personal-stats>section>div {min-width:0;overflow-wrap:anywhere}
+.reference-personal-stats>section>span {flex-shrink:0}
+.reference-owned-copy {overflow-wrap:anywhere}
 .reference-personal-nav nav button,.reference-developer-nav>button {display:flex;gap:12px;width:100%;align-items:center;text-align:left;padding:12px 10px;border-radius:5px;color:#4b657d;font-size:14px}
 .reference-personal-nav button[aria-current=page] {background:linear-gradient(100deg,#a3e2e7,#d4f0f3);color:#045d69}
 .reference-personal-nav button:hover {background:#e0f2f5;color:#086e79}
@@ -190,6 +195,51 @@
 .reference-personal-task>time {font-size:12px;color:#7a8ea1}
 .reference-personal-task>button {font-size:12px;color:#2b7180}
 .reference-task-empty {padding:16px 0;font-size:13px;color:#6a8095}
+/* Personal center and inbox share this navigation. Desktop columns must not
+   consume the phone's content width; collapsed items also leave the tab order. */
+@media(max-width:1023px) {
+  [data-design="editorial"] .reference-personal-layout {grid-template-columns:minmax(0,1fr)}
+  .reference-personal-nav {min-height:0;min-width:0;padding:12px 16px;border-right:0;border-bottom:1px solid #dce6ee}
+  .reference-personal-nav>h2 {display:none}
+  .reference-personal-nav .reference-personal-menu-toggle {display:flex;align-items:center;gap:12px;min-height:48px;width:100%;text-align:left;color:#23475d;background:#edf6fa;padding:8px 12px;border:1px solid #d4e6ed;border-radius:8px}
+  .reference-personal-menu-toggle>span {flex:1;min-width:0;font-size:14px;font-weight:650}
+  .reference-personal-menu-toggle small {display:block;font-size:12px;font-weight:400;color:#637e91;margin-top:2px}
+  .reference-personal-menu-toggle[aria-expanded=true]>svg:last-child {transform:rotate(180deg)}
+  .reference-personal-menu[data-expanded=false] {display:none}
+  .reference-personal-menu[data-expanded=true] {display:block;padding-top:10px}
+  .reference-personal-menu nav {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .reference-personal-nav nav button,.reference-developer-nav>button {min-width:0;min-height:44px;gap:8px;line-height:1.5;overflow-wrap:anywhere}
+  .reference-personal-nav button>svg {flex-shrink:0}
+  .reference-developer-nav {margin-top:10px;padding-top:10px}
+  .reference-personal-stats {gap:10px}
+  [data-design="editorial"] .reference-personal-stats>section {padding:14px;gap:10px}
+}
+@media(max-width:639px) {
+  [data-design="editorial"] .reference-personal-layout>main {padding:16px 12px}
+  .reference-personal-cover {display:grid;grid-template-columns:56px minmax(0,1fr);gap:14px;padding:20px 16px;min-height:0}
+  .reference-personal-avatar {width:56px;height:56px;font-size:24px}
+  [data-design="editorial"] .reference-personal-cover h1 {font-size:20px;line-height:1.4}
+  [data-design="editorial"] .reference-personal-cover p {line-height:1.6;margin-top:4px}
+  [data-design="editorial"] .reference-personal-cover [data-ui=button] {grid-column:1/-1;margin-left:0;min-height:44px;width:100%}
+  .reference-personal-stats {grid-template-columns:minmax(0,1fr)}
+  .reference-personal-stats>section>div {flex:1}
+  .reference-personal-stats :is(button,small) {font-size:13px}
+  .reference-personal-stats button {min-height:32px}
+  .reference-personal-list>header {gap:10px;flex-wrap:wrap}
+  .reference-personal-list header button {min-height:36px}
+  .reference-owned-ea {display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px}
+  .reference-owned-thumbnail {width:64px;height:54px}
+  .reference-owned-copy>span {margin:5px 0 0;display:table}
+  .reference-owned-actions {grid-column:1/-1;display:flex;flex-wrap:wrap;min-width:0;gap:8px}
+  .reference-owned-actions>span {min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .reference-owned-actions :is(button,a) {flex:1 1 120px;max-width:100%;min-height:44px;white-space:normal;text-align:center;justify-content:center;overflow-wrap:anywhere}
+  .reference-personal-task {display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px}
+  .reference-personal-task>strong {overflow-wrap:anywhere}
+  .reference-personal-task>time {grid-column:2}
+  .reference-personal-task>button {min-height:36px}
+  .reference-points-error {flex-wrap:wrap}
+  .reference-personal-layout main :is(h2,h3,p) {overflow-wrap:anywhere}
+}
 .reference-brand-tabs {display:flex;border-bottom:1px solid #d7e2eb;background:#f4f7fa}
 .reference-brand-tabs>button {padding:13px 25px;font-size:14px;color:#52677a;border-bottom:2px solid transparent}
 .reference-brand-tabs>button[aria-selected=true] {background:white;border-bottom-color:#079da5;color:#143d50}
