@@ -74,7 +74,10 @@
     "test:production-deployment": "node tests/production-deployment.mjs",
     "test:share-pages": "node tests/share-pages.mjs",
     "test:point-refresh": "node tests/point-refresh.mjs",
-    "test:app-navigation": "node tests/app-navigation.mjs"
+    "test:app-navigation": "node tests/app-navigation.mjs",
+    "search:submit": "node scripts/submit-search.mjs",
+    "test:search-submission": "node tests/search-submission.mjs",
+    "test:search-submission:http": "node tests/search-submission-http.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

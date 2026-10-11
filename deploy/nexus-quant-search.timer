@@ -1,0 +1,11 @@
+[Unit]
+Description=Submit changed public pages every ten minutes
+
+[Timer]
+OnBootSec=120s
+OnUnitInactiveSec=10min
+RandomizedDelaySec=30s
+Unit=nexus-quant-search.service
+
+[Install]
+WantedBy=timers.target

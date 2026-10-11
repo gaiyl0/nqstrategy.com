@@ -1,5 +1,6 @@
 "use client";
 import AlipayKeySettings from './AlipayKeySettings';
+import SearchSubmissionSettings from './SearchSubmissionSettings';
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
@@ -267,6 +268,7 @@ export default function AdminDashboard() {
   const CommunitySectionIcon = currentCommunitySection?.icon || Newspaper;
   const navigation = [
     ['brandPages', '品牌、导航与页面', Globe2],
+    ['searchSubmission', '搜索引擎提交', Globe2],
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
     ['finance', '人民币与积分流水', BadgeDollarSign], ['orders', '历史订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
     ['reports', '社区治理', Flag],
@@ -282,7 +284,7 @@ export default function AdminDashboard() {
     ['任务与推广', ['points','advertising','analytics']],
     ['论坛运营', ['reports','communityCategories','forumModules','communityDocs']],
     ['用户与积分', ['users','pointWithdrawals']],
-    ['网站设置', ['brandPages','appearance','contactLinks','mt5Downloads']],
+    ['网站设置', ['brandPages','searchSubmission','appearance','contactLinks','mt5Downloads']],
     ['系统维护', ['settings','paymentSettings','homeModules','communityContent','communityStrategies','walletSettings','withdrawals']],
   ];
   const settingsTabs = ['settings','contactLinks','appearance','homeModules','featured','advertising','mt5Downloads','forumModules','communityCategories','walletSettings','paymentSettings','communityContent','communityDocs','communityStrategies'];
@@ -301,6 +303,7 @@ export default function AdminDashboard() {
         <div className="mb-7 flex flex-col justify-between gap-4 border-b border-slate-800/80 pb-6 md:flex-row md:items-end"><div><p className="text-sm font-semibold text-cyan-300">Nexus Quant Operations</p><h1 className="mt-2 text-3xl font-black text-white">{activeTab === 'dashboard' ? '运营仪表盘' : activeTab === 'brandPages' ? '后台 · 品牌与页面配置' : navigation.find(item => item[0] === activeTab)?.[1]}</h1><p className="mt-2 text-sm text-slate-500">真实业务数据、审核队列与风险操作集中管理。</p></div>{settingsTabs.includes(activeTab) && <Button variant="primary" loading={isSaving} onClick={handleSave}>保存配置</Button>}</div>
 
         {activeTab === 'brandPages' && <BrandSettings products={productList} settings={settings}/>}
+        {activeTab === 'searchSubmission' && <SearchSubmissionSettings/>}
         {activeTab === 'dashboard' && <AdminWorkbench onSelect={setActiveTab} />}
         {activeTab === 'points' && <PointsAdmin />}
         {activeTab === 'finance' && <FinanceAdmin />}
