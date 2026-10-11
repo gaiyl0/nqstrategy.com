@@ -28,7 +28,8 @@ try{
   assert.equal(ready,true,output);
   const initialHome=await request('/');assert.equal(initialHome.status,200,'anonymous homepage must render before user summaries load');
   const initialHtml=await initialHome.text();
-  const initialScripts=[...new Set([...initialHtml.matchAll(/src="([^" ]+\.js)"/g)].map(match=>match[1]))];
+  const preloadedScripts=[...initialHtml.matchAll(/<link[^>]*>/g)].map(match=>match[0]).filter(tag=>tag.includes('rel="preload"')&&tag.includes('as="script"')).map(tag=>tag.match(/href="([^"]+)"/)?.[1]).filter(Boolean);
+  const initialScripts=[...new Set([...initialHtml.matchAll(/src="([^" ]+\.js)"/g)].map(match=>match[1]).concat(preloadedScripts))];
   assert.ok(initialScripts.length>0,'initial script budget covers real server HTML');
   for(const script of initialScripts){const response=await request(script);assert.equal(response.status,200);const source=await response.text();assert.ok(!source.includes('$ZodType'),'homepage does not ship administrator validation: '+script);}
 
