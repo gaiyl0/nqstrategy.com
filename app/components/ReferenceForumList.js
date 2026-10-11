@@ -4,7 +4,7 @@ import {useRef,useState} from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {BookOpen,FileText,MessageSquare,PenLine,Search,Star,Trash2} from 'lucide-react';
-import {catalogEnabled} from '@/lib/site-brand.mjs';
+import {catalogEnabled} from '@/lib/site-brand-runtime.mjs';
 import {Badge,Button,EmptyState,Panel,Tabs} from './ui/UiKit';
 
 function PostCard({post,user,t,openPostDetail,handlePinPost,handleDeletePost}) {

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
+import { forumEnabled,catalogEnabled } from '@/lib/site-brand-runtime.mjs';
 import { Mt5DownloadLink } from './Mt5Download';
 import { Activity, Mail, FileText, Shield, Lock, CircleHelp, Send } from 'lucide-react';
 
@@ -56,15 +56,15 @@ export default function Footer({ siteSettings, setRoute, setForumView, t }) {
           </FooterGroup>
           <FooterGroup title={t('支持与服务', 'Support & Services')}>
             <ul className="footer-link-list text-sm text-zinc-400">
-              <li><Link href="/help" className="flex items-center gap-2 hover:text-cyan-400"><CircleHelp className="h-4 w-4 shrink-0" />{t('帮助中心', 'Help Center')}</Link></li>
-              <li><Link href="/privacy" className="flex items-center gap-2 hover:text-cyan-400"><FileText className="h-4 w-4 shrink-0" />{t('隐私政策说明', 'Privacy information')}</Link></li>
-              <li><Link href="/terms" className="flex items-center gap-2 hover:text-cyan-400"><Shield className="h-4 w-4 shrink-0" />{t('服务条款说明', 'Service terms information')}</Link></li>
-              <li><Link href="/risk-disclosure" className="flex items-center gap-2 hover:text-cyan-400"><Lock className="h-4 w-4 shrink-0" />{t('资金安全与风险披露', 'Funds Security & Risk Disclosure')}</Link></li>
+              <li><Link prefetch={false} href="/help" className="flex items-center gap-2 hover:text-cyan-400"><CircleHelp className="h-4 w-4 shrink-0" />{t('帮助中心', 'Help Center')}</Link></li>
+              <li><Link prefetch={false} href="/privacy" className="flex items-center gap-2 hover:text-cyan-400"><FileText className="h-4 w-4 shrink-0" />{t('隐私政策说明', 'Privacy information')}</Link></li>
+              <li><Link prefetch={false} href="/terms" className="flex items-center gap-2 hover:text-cyan-400"><Shield className="h-4 w-4 shrink-0" />{t('服务条款说明', 'Service terms information')}</Link></li>
+              <li><Link prefetch={false} href="/risk-disclosure" className="flex items-center gap-2 hover:text-cyan-400"><Lock className="h-4 w-4 shrink-0" />{t('资金安全与风险披露', 'Funds Security & Risk Disclosure')}</Link></li>
               <li><Mt5DownloadLink settings={siteSettings} t={t}/></li>
             </ul>
           </FooterGroup>
         </div>
-        <nav className="footer-quick-links" aria-label={t('必要支持入口','Essential support links')}><Link href="/help">{t('帮助中心','Help Center')}</Link><Link href="/risk-disclosure">{t('风险披露','Risk disclosure')}</Link></nav>
+        <nav className="footer-quick-links" aria-label={t('必要支持入口','Essential support links')}><Link prefetch={false} href="/help">{t('帮助中心','Help Center')}</Link><Link prefetch={false} href="/risk-disclosure">{t('风险披露','Risk disclosure')}</Link></nav>
         <div className="footer-bottom pt-8 border-t border-zinc-900 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-zinc-400">
           <p className="footer-desktop-risk">{risk}</p><details className="footer-mobile-risk"><summary>{t('交易风险说明','Trading risk information')}<span aria-hidden="true">＋</span></summary><p>{risk}</p></details>
           <p className="shrink-0">&copy; {new Date().getFullYear()} {siteSettings?.siteName || 'Nexus Quant'}. All rights reserved.</p>

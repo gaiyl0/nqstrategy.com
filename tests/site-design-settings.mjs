@@ -34,3 +34,11 @@ for (const value of [
   {telegramGroupUrl:'https://example.com/nexus'},
 ]) assert.equal(settingsSchema.safeParse(value).success,false);
 console.log('Footer contact validation passed: allowed platforms, empty links, protocol and credential boundaries');
+
+const {defaultHomeConfig,homeDisplaySettings}=await import('../lib/home-display.mjs');
+assert.equal(defaultHomeConfig({homeHeroTitle:'  Example  '}).heroTitle,'Example');
+assert.equal(defaultHomeConfig({homeArticleCount:50}).articleCount,4);
+assert.deepEqual(defaultHomeConfig({homeModules:['hero','hero']}).modules,defaultHomeConfig().modules);
+assert.equal(homeDisplaySettings({siteBrand:{catalogEnabled:false,tasksEnabled:false}}).home.showJourney,false);
+assert.ok(!homeDisplaySettings({siteBrand:{catalogEnabled:false}}).home.modules.includes('featured'));
+console.log('Lightweight home runtime preserves defaults, legacy validation and module switches');

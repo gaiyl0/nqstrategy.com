@@ -26,7 +26,12 @@ try{
   let ready=false;
   for(let count=0;count<80;count++){await new Promise(resolve=>setTimeout(resolve,500));try{if((await request('/api/settings')).ok){ready=true;break;}}catch{}}
   assert.equal(ready,true,output);
-  assert.equal((await request('/')).status,200,'anonymous homepage must render before user summaries load');
+  const initialHome=await request('/');assert.equal(initialHome.status,200,'anonymous homepage must render before user summaries load');
+  const initialHtml=await initialHome.text();
+  const initialScripts=[...new Set([...initialHtml.matchAll(/src="([^" ]+\.js)"/g)].map(match=>match[1]))];
+  assert.ok(initialScripts.length>0,'initial script budget covers real server HTML');
+  for(const script of initialScripts){const response=await request(script);assert.equal(response.status,200);const source=await response.text();assert.ok(!source.includes('$ZodType'),'homepage does not ship administrator validation: '+script);}
+
   assert.equal((await request('/api/site-brand')).status,403);
   assert.equal((await request('/api/site-brand',{id:2})).status,403);
   assert.equal((await request('/api/site-brand',{id:2,body:{action:'publish',revision:0}})).status,403);

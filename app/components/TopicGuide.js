@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { forumEnabled } from '@/lib/site-brand.mjs';
+import { forumEnabled } from '@/lib/site-brand-runtime.mjs';
 import Mt5DownloadPanel from './Mt5Download';
 import { resolveMt5Download } from '@/lib/mt5-download';
 import TopicPageFrame from './TopicPageFrame';

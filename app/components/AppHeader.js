@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import BrandMark from './BrandMark';
-import { navigationHref, forumEnabled,catalogEnabled,tasksEnabled } from '@/lib/site-brand.mjs';
+import { navigationHref, forumEnabled,catalogEnabled,tasksEnabled } from '@/lib/site-brand-runtime.mjs';
 import { Activity, Bell, Coins, Globe, Home, LogOut, MessageSquare, Store, User as UserIcon } from 'lucide-react';
 
 export default function AppHeader({ siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }) {

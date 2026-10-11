@@ -1,6 +1,6 @@
 "use client";
 
-import EditorialHome from './components/EditorialHome';
+
 import { useDesign } from './components/DesignProvider';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
@@ -13,20 +13,22 @@ import {
   Clock, ArrowLeft, Hash, FolderDown, Download, Box, CheckCircle2, Trash2, Settings
 } from 'lucide-react';
 
-import HomeView, { FadeInView } from './components/HomeView';
+
 import Footer from './components/Footer';
 
 import { appRoute,forumLocation,writeNavigation } from '@/lib/app-navigation.mjs';
 import AppHeader from './components/AppHeader';
 import ForumUnavailable from './components/ForumUnavailable';
 import CatalogUnavailable from './components/CatalogUnavailable';
-import { forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
+import { forumEnabled,catalogEnabled } from '@/lib/site-brand-runtime.mjs';
 
 
 
 
 
-import AppOverlays from './components/AppOverlays';
+const AppOverlays = dynamic(() => import('./components/AppOverlays'));
+const HomeView = dynamic(() => import('./components/HomeView'));
+const EditorialHome = dynamic(() => import('./components/EditorialHome'));
 import { useAppRoute, useLanguage, useToast, useTopicEntry } from './hooks/useAppShell';
 import { useInteraction } from './components/ui/UiKit';
 
@@ -563,7 +565,7 @@ export default function App({initialRoute='home',initialData={}}) {
 
       <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
 
-      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
+      {(authModal||profileModal||versionModal||toastMsg)&&<AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />}
     </div>
   );
 }

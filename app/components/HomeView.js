@@ -8,8 +8,8 @@ import HomeResources from './HomeResources';
 import HomePointJourney from './HomePointJourney';
 import HomeLatestDiscussions from './HomeLatestDiscussions';
 import {pointPriceLabel} from '@/lib/point-pricing.mjs';
-import { homeDisplaySettings } from '@/lib/home-config.mjs';
-import { forumEnabled } from '@/lib/site-brand.mjs';
+import { homeDisplaySettings } from '@/lib/home-display.mjs';
+import { forumEnabled } from '@/lib/site-brand-runtime.mjs';
 
 export const FadeInView=({children,delay=0,className=''})=>{const[visible,setVisible]=useState(false),ref=useRef(null);useEffect(()=>{const node=ref.current;if(!node||typeof IntersectionObserver==='undefined'){setVisible(true);return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){setVisible(true);observer.disconnect();}},{threshold:.08});observer.observe(node);return()=>observer.disconnect();},[]);return <div ref={ref} style={{transitionDelay:`${delay}ms`}} className={`transition duration-700 ${visible?'translate-y-0 opacity-100':'translate-y-4 opacity-0'} ${className}`}>{children}</div>};
 const rank={unverified:0,screenshot_reviewed:1,report_verified:2,reproducible_backtest:3,platform_rerun:4,live_verified:5};
