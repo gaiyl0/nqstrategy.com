@@ -1,5 +1,9 @@
 # Nexus Quant 最新更新日志与执行顺序
 
+### 2026-10-11：百度验证后重新提交（已执行，平台仍未就绪）
+
+- 用户确认https://nqstrategy.com已通过百度验证后，检查线上配置主站地址正确且百度密钥已配置；仅重置百度失败队列和冷却时间，保留其他引擎状态。北京时间23:14实际探测提交1条，官方接口仍被适配器识别为SEARCH_BAIDU_SITE_NOT_READY，接受0条，剩余额度未返回。24条保留待提交、1条等待重试，恢复6小时暂停保护；没有声称百度已接受或收录。需要用户核对当前不带www的HTTPS站点API接口密钥，或等待平台验证状态同步。
+
 ### 2026-10-11：搜狗站点验证文件（已上线）
 
 - 按用户提供的原文件，将10字节sogousiteverification.txt原样加入public目录，公开路径为/sogousiteverification.txt；原件与仓库副本SHA256一致CFD5BD3FF74900A39C4A1E3912549ECFADCBFDD5BC682C8E57764B632EDE252D。已发布44741d0db60f，生产构建、数据库16/16与审计/积分账本检查通过；公网HTTPS验证地址返回200，10字节内容与原件SHA256完全一致，使用搜狗爬虫User-Agent亦可访问，www地址跳转到主域名后内容一致。发布备份/var/backups/nexus-quant/predeploy-44741d0db60f。搜狗平台最终验证由用户点击完成。
