@@ -3,6 +3,8 @@
 ### 2026-10-11：替换为百度最新验证文件
 
 - 按用户要求原样加入public/baidu_verify_codeva-cVEf85Es9L.html，并删除仓库中旧baidu_verify_codeva-bKfmaCfDKs.html；本机Downloads原文件保留。新文件发布后检查根路径200及原文件哈希一致、旧路径404。发布验证进行中。
+- 已上线29623ebda0fd，发布包两端SHA256一致e0cbbd038bea12e76e2ff609abbc47dc38abad037463ab9834b334128dbd9b13；上版76145bc7d4b6与备份/var/backups/nexus-quant/predeploy-29623ebda0fd保留。原runner生产构建、数据库15/15、外键0、审计及资金/积分账本通过，ready；运行依赖0漏洞，启动瞬间健康连接失败后自动重试通过。
+- 本机HTTPS新地址返回200、32字节，正文SHA256与下载原文件/仓库文件均A41A552A39BD68FB38D17D97289E8D8AD21A8673F0ED6B0DC1F53A28BF2E6605；旧地址已404；使用Baiduspider User-Agent再次请求新文件200，此检查仅模拟UA，不代表百度平台已验证通过。网站替换已完成，用户可回平台重新验证。
 
 ### 2026-10-11：百度验证404复查（等待当前验证文件）
 
