@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const pagePath = path.join(root, 'app', 'page.js');
+const pagePath = path.join(root, 'app', 'App.js');
 const page = fs.readFileSync(pagePath, 'utf8');
 const lineCount = page.split(/\r?\n/).length;
 const components = [

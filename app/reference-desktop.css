@@ -52,13 +52,13 @@
 .reference-reward-strip li p,.reference-reward-status {font-size:12px;color:#708095;margin-top:4px;line-height:1.6}
 .reference-reward-status {margin-top:14px}
 .reference-latest-discussions {padding:0 18px}
-.reference-latest-discussions>button {display:flex;gap:16px;width:100%;text-align:left;align-items:center;padding:15px 0;border-bottom:1px solid #e4ecf4}
-.reference-latest-discussions>button:last-child {border-bottom:0}
-.reference-latest-discussions>button {color:inherit;border-radius:4px;transition:background-color .15s,color .15s}
-.reference-latest-discussions>button:hover {background:#139fa812;color:#008c95}
-.reference-latest-discussions>button:focus-visible {outline:2px solid #079da6;outline-offset:2px}
-.reference-latest-discussions>button>span {flex-shrink:0}
-.reference-latest-discussions>button>span:not(:first-of-type) {white-space:nowrap}
+.reference-latest-discussions>:is(button,a) {display:flex;gap:16px;width:100%;text-align:left;align-items:center;padding:15px 0;border-bottom:1px solid #e4ecf4}
+.reference-latest-discussions>:is(button,a):last-child {border-bottom:0}
+.reference-latest-discussions>:is(button,a) {color:inherit;border-radius:4px;transition:background-color .15s,color .15s}
+.reference-latest-discussions>:is(button,a):hover {background:#139fa812;color:#008c95}
+.reference-latest-discussions>:is(button,a):focus-visible {outline:2px solid #079da6;outline-offset:2px}
+.reference-latest-discussions>:is(button,a)>span {flex-shrink:0}
+.reference-latest-discussions>:is(button,a)>span:not(:first-of-type) {white-space:nowrap}
 [data-design="editorial"] .editorial-home .reference-reward-strip {border-radius:12px;padding:24px 28px}
 [data-design="editorial"] .editorial-home .reward-task-card {border:1px solid #cde5e4;border-radius:16px;padding:24px;background:radial-gradient(ellipse at 90% 0,#beeae74d,transparent 55%),linear-gradient(110deg,#fffdf8,#f0f9fa);box-shadow:0 8px 26px #173f4810;overflow:hidden}
 .reward-task-intro {display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;gap:20px;align-items:center}
@@ -88,8 +88,8 @@
   .reward-task-card li {padding:12px}
   .reward-task-action {grid-column:1/-1;width:100%;min-height:44px}
 }
-[data-design="editorial"] .reference-latest-discussions>button>span[class*="border-amber"] {color:#a46712}
-[data-design="editorial"] .reference-latest-discussions>button>span[class*="border-cyan"] {color:#138698}
+[data-design="editorial"] .reference-latest-discussions>:is(button,a)>span[class*="border-amber"] {color:#a46712}
+[data-design="editorial"] .reference-latest-discussions>:is(button,a)>span[class*="border-cyan"] {color:#138698}
 .reference-latest-discussions strong {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
 .reference-latest-discussions span {font-size:12px;color:#667c93}
 .reference-latest-discussions>p {padding:16px;font-size:13px}
@@ -104,8 +104,8 @@
 .reference-forum-columns {display:grid;grid-template-columns:190px minmax(0,1fr)270px;gap:16px;align-items:start}
 .reference-forum-categories,.reference-forum-feed {background:white;border-radius:7px;padding:16px;min-width:0}
 .reference-forum-categories {padding:18px 10px;min-height:480px}
-.reference-forum-categories nav button,.reference-forum-categories>a {display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:13px 10px;border-radius:5px;font-size:14px;color:#435b72}
-.reference-forum-categories button[aria-current=page] {background:linear-gradient(100deg,#a6e4e8,#d5f0f3);color:#123e53}
+.reference-forum-categories nav button,.reference-forum-categories nav a,.reference-forum-categories>a {display:flex;align-items:center;gap:10px;text-align:left;width:100%;padding:13px 10px;border-radius:5px;font-size:14px;color:#435b72}
+.reference-forum-categories :is(button,a)[aria-current=page] {background:linear-gradient(100deg,#a6e4e8,#d5f0f3);color:#123e53}
 .reference-forum-categories>a {border-top:1px solid #e5ecf3;margin-top:22px;font-size:12px}
 .reference-forum-tools {display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #e1e9f1}
 .reference-forum-tools [role=tablist] {border:0;min-width:0}

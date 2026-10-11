@@ -8,7 +8,7 @@ const root = process.cwd();
 const route = fs.readFileSync(path.join(root, 'app', 'api', 'settings', 'route.js'), 'utf8');
 const home = fs.readFileSync(path.join(root, 'app', 'components', 'HomeView.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8');
-const appPage = fs.readFileSync(path.join(root, 'app', 'page.js'), 'utf8');
+const appPage = fs.readFileSync(path.join(root, 'app', 'App.js'), 'utf8');
 
 const validAd = {
   exchangeAdEnabled: true,

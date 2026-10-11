@@ -33,5 +33,7 @@ try {
  for(const input of [{page:0},{page:1.5},{page:'bad'},{pageSize:37},{q:'x'.repeat(201)}])eq(forumListQuerySchema.safeParse(input).success,false,'invalid query rejected');
  eq(forumListQuerySchema.parse({}),{page:1,pageSize:12,q:''},'defaults');
  eq(settingsSchema.safeParse({forumNewsEnabled:false,forumStrategyOverviewEnabled:true}).success,true,'module booleans accepted');eq(settingsSchema.safeParse({forumNewsEnabled:'false'}).success,false,'string toggles rejected');
+ db.prepare('UPDATE posts SET content=? WHERE id=?').run('x'.repeat(600)+'tail-search-marker',ids[0]);
+ eq(listForumPosts({q:'tail-search-marker'}).posts[0].content.length,400,'list truncates body while searching entire article');
  console.log(`Forum catalog tests passed: ${assertions} assertions`);
 } finally {db.close();fs.rmSync(directory,{recursive:true,force:true});}

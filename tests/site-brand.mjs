@@ -54,7 +54,7 @@ try {
   assert.equal(siteBrandSchema.safeParse({...config,pages:[page,page]}).success,false);
   assert.equal(siteBrandSchema.safeParse({...config,pages:[{...page,enabled:false}]}).success,false);
   assert.equal(navigationHref(config.navigation.at(-1)),'/pages/about');
-  assert.equal(navigationHref(initial.navigation[1]),'/?route=market');
+  assert.equal(navigationHref(initial.navigation[1]),'/market');
   db.prepare("INSERT INTO settings(key,value) VALUES('siteName','Legacy name')").run();
   let workspace=readBrandWorkspace();
   assert.equal(workspace.published.name,'Legacy name');

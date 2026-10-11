@@ -12,7 +12,7 @@ import {appRoute,writeNavigation,NAVIGATION_EVENT,MARKET_KEYS} from '@/lib/app-n
 import { apiFetch } from '@/lib/api-client';
 import { useInteraction } from './ui/UiKit';
 
-export default function MarketView({ products, myOrders, user, handlePurchaseProcess, handlePointsRedeem, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
+export default function MarketView({ products, initialCatalog,initialQuery, myOrders, user, handlePurchaseProcess, handlePointsRedeem, handleSocialAction, handleReport, setRoute, setAuthModal, t, tEaType }) {
   const { requestInput } = useInteraction();
   const navigationSearch=useNavigationLocation();
   const eaId=Number(new URLSearchParams(navigationSearch||'').get('ea'));
@@ -20,11 +20,11 @@ export default function MarketView({ products, myOrders, user, handlePurchasePro
   const [selectedEAOverride,setSelectedEAInternal]=useState(null);
   const selectedEA=selectedEAOverride?.id===eaId?selectedEAOverride:products.find(product=>product.id===eaId);
 
-  const [filters, setFilters] = useState({ pair: '', type: '', verification: '', maxDrawdown: null, maxPrice: null });
-  const [searchQuery,setSearchQuery]=useState('');
-  const [page,setPage]=useState(1);
-  const [catalogProducts,setCatalogProducts]=useState(products);
-  const [pagination,setPagination]=useState({page:1,pageSize:12,total:products.length,totalPages:1});
+  const [filters, setFilters] = useState({ pair:initialQuery?.pair||'', type:initialQuery?.type||'', verification:initialQuery?.verification||'', maxDrawdown:initialQuery?.maxDrawdown??null, maxPrice:initialQuery?.maxPrice??null });
+  const [searchQuery,setSearchQuery]=useState(initialQuery?.q||'');
+  const [page,setPage]=useState(initialCatalog?.pagination?.page||1);
+  const [catalogProducts,setCatalogProducts]=useState(initialCatalog?.products||products);
+  const [pagination,setPagination]=useState(initialCatalog?.pagination||{page:1,pageSize:12,total:products.length,totalPages:1});
   const [catalogStatus,setCatalogStatus]=useState('idle');
   const [retryKey,setRetryKey]=useState(0);
   const [compareIds, setCompareIds] = useState([]);

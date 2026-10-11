@@ -59,6 +59,13 @@ try{
   };
   const created=await request('/api/posts',{id:2,body:{title:'Historical forum article',content:'This article must remain after disabling the forum.',category:'XAUUSD 策略',attachments:[]}});
   assert.equal(created.status,201,await created.clone().text());const postId=(await created.json()).id;
+  const forumHtml=await(await request('/forum',{headers:{'User-Agent':'Googlebot'}})).text();
+  assert.ok(forumHtml.includes('Historical forum article'),'forum first response contains actual posts');
+  assert.ok(forumHtml.includes(`href="/forum/${postId}"`),'post links are discoverable');
+  assert.ok(forumHtml.includes('href="https://nexus.test/forum"'),'forum canonical');
+  assert.equal((await request('/market')).status,200);
+  const homeCatalog=await(await request('/api/products?home=1')).json();assert.ok(homeCatalog.products.length<=3);
+  assert.ok(!JSON.stringify(homeCatalog).includes('file_path'),'homepage excludes program paths');
   await publishMode('archived');
   assert.equal((await request('/api/posts')).status,403);
   assert.equal((await request(`/api/posts?viewId=${postId}`)).status,200);
@@ -103,7 +110,7 @@ try{
   const adminSummary=await(await request('/api/points?view=summary',{id:1})).json();
   assert.equal(adminSummary.balance,0,'administrator cannot receive another user balance in summary');
   const publicReward=(await(await request('/api/settings')).json()).brokerReward;
-  assert.deepEqual(Object.keys(publicReward).sort(),['enabled','rewardPoints']);
+  assert.deepEqual(Object.keys(publicReward).sort(),['description','enabled','rewardPoints','targetUrl','title']);
   const featureBefore=(await(await request('/api/site-brand',{id:1})).json()).workspace;
   const featureDraft=await request('/api/site-brand',{id:1,body:{action:'draft',revision:featureBefore.revision,config:{...featureBefore.draft,catalogEnabled:false,tasksEnabled:false}}});
   assert.equal(featureDraft.status,200);const featureWorkspace=(await featureDraft.json()).workspace;

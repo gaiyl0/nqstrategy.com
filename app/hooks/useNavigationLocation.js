@@ -6,5 +6,5 @@ const subscribe=callback=>{
   return()=>{window.removeEventListener('popstate',callback);window.removeEventListener(NAVIGATION_EVENT,callback);};
 };
 export default function useNavigationLocation(){
-  return useSyncExternalStore(subscribe,()=>window.location.search,()=>null);
+  return useSyncExternalStore(subscribe,()=>{const params=new URLSearchParams(window.location.search);if(!params.has('route')&&['/forum','/market'].includes(window.location.pathname))params.set('route',window.location.pathname.slice(1));return `?${params}`;},()=>null);
 }

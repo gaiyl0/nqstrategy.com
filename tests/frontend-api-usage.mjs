@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const files = [
-  'app/page.js',
+  'app/App.js',
   'app/tianwei/page.js',
   'app/components/MarketView.js',
 ];

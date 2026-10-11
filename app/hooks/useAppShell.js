@@ -30,9 +30,9 @@ export function useLanguage() {
   return { lang, toggleLang, t };
 }
 
-export function useAppRoute() {
+export function useAppRoute(initialRoute='home') {
   const search=useNavigationLocation();
-  const route=appRoute(search||'');
+  const route=search===null?initialRoute:appRoute(search);
   const setRoute=useCallback(newRoute=>{writeNavigation(newRoute);},[]);
   return {route,setRoute,search};
 }

@@ -7,7 +7,7 @@ import { supportPages } from '@/lib/support-content';
 
 export function supportMetadata(kind) {
   const page = supportPages[kind];
-  return { title: `${page.title} | Nexus Quant`, description: page.description, alternates: { canonical: `/${kind}` }, ...(page.draft ? { robots: { index: false, follow: true } } : {}) };
+  return { title: page.title, description: page.description, alternates: { canonical: `/${kind}` }, ...(page.draft ? { robots: { index: false, follow: true } } : {}) };
 }
 
 export default function SupportPage({ kind }) {

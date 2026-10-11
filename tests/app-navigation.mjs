@@ -24,6 +24,9 @@ const before=entries.length;navigate('market');assert.equal(entries.length,befor
 navigate('market',{q:'a'},true);navigate('market',{q:'ab'},true);assert.equal(entries.length,before,'Typing replacement does not add an entry per character');
 navigate('home');assert.equal(appRoute(target.location.search),'home');assert.equal(new URLSearchParams(target.location.search).has('q'),false);
 assert.equal(profileTab('?tab=arbitrary'),'assets');assert.equal(profileTab('?tab=recharges',true),'assets');assert.equal(forumLocation('?forumPage=-10&sort=bad').page,1);assert.equal(forumLocation('?forumPage=9999999').page,100000);
+assert.equal(profileTab('?tab=orders'),'orders');
+assert.equal(appRoute('', '/forum'),'forum');assert.equal(appRoute('', '/market'),'market');
+assert.equal(forumLocation('?page=2&q=gold').page,2);assert.equal(forumLocation('?page=2&q=gold').query,'gold');
 target.sessionStorage={getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}};
 assert.doesNotThrow(()=>navigate('forum',{forumPage:2}));
 console.log('App navigation tests passed: back/forward, forum filters/detail, market filters/detail/comparison, profile tabs, cache isolation, invalid URL and blocked storage');

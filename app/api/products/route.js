@@ -29,6 +29,7 @@ import { queryMarketCatalog } from '@/lib/market-catalog.mjs';
 import { productSlug } from '@/lib/product-slug.mjs';
 import { createSecurityContext, withAudit } from '@/lib/security';
 import {siteFeatureAccess} from '@/lib/forum-feature';
+import {homeCatalog} from '@/lib/home-catalog';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -74,6 +75,7 @@ function marketProducts(currentUser,query){
 async function GETHandler(request) {
   try {
     const searchParams=new URL(request.url).searchParams;
+    if(searchParams.get('home')==='1')return NextResponse.json({success:true,...homeCatalog()},{headers:{'Cache-Control':'private, no-store'}});
     const roleParam = searchParams.get('role');
     let wantsAdmin = false;
     if (roleParam !== null) {

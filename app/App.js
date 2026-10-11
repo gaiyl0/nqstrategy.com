@@ -1,0 +1,569 @@
+"use client";
+
+import EditorialHome from './components/EditorialHome';
+import { useDesign } from './components/DesignProvider';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { apiErrorMessage, apiFetch } from '@/lib/api-client';
+import { 
+  Activity, Shield, CheckCircle, Upload, Globe, X, Code2, Edit,
+  Image as ImageIcon, FileCode, LogOut, User as UserIcon, MessageSquare, Eye, 
+  Clock, ArrowLeft, Hash, FolderDown, Download, Box, CheckCircle2, Trash2, Settings
+} from 'lucide-react';
+
+import HomeView, { FadeInView } from './components/HomeView';
+import Footer from './components/Footer';
+
+import { appRoute,forumLocation,writeNavigation } from '@/lib/app-navigation.mjs';
+import AppHeader from './components/AppHeader';
+import ForumUnavailable from './components/ForumUnavailable';
+import CatalogUnavailable from './components/CatalogUnavailable';
+import { forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
+
+
+
+
+
+import AppOverlays from './components/AppOverlays';
+import { useAppRoute, useLanguage, useToast, useTopicEntry } from './hooks/useAppShell';
+import { useInteraction } from './components/ui/UiKit';
+
+const loadingView=()=> <div role="status" className="mx-auto max-w-5xl px-6 py-12 text-sm">正在加载页面… / Loading…</div>;
+const MarketView = dynamic(() => import('./components/MarketView'), {loading:loadingView});
+const UploadView = dynamic(() => import('./components/UploadView'), {loading:loadingView});
+const ForumView = dynamic(() => import('./components/ForumView'), {loading:loadingView});
+const ProfileView = dynamic(() => import('./components/ProfileView'), {loading:loadingView});
+const PointsCenter = dynamic(() => import('./components/PointsCenter'), {loading:loadingView});
+const InboxCenter = dynamic(() => import('./components/InboxCenter'), {loading:loadingView});
+
+const emptyMetricsForm = () => ({
+  initialDeposit: '', netProfit: '', profitFactor: '', sharpeRatio: '',
+  maxDrawdownPercent: '', recoveryFactor: '', winRatePercent: '', totalTrades: '',
+  equityCurveText: '', drawdownCurveText: '', monthlyReturnsText: '',
+});
+
+const emptyUploadForm = () => ({
+  title: '', description: '', pointsPrice: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
+  metrics: emptyMetricsForm(), evidenceIds: [], reportId: null,
+  version:'1.0.0',releaseNotes:'初始版本',upgradePolicy:'all_existing',
+});
+
+function parseMetricRows(text, valueKey) {
+  return String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map((line) => {
+    const [period, rawValue, ...extra] = line.split(',').map((item) => item.trim());
+    if (!period || rawValue === undefined || extra.length > 0 || rawValue === '') throw new Error(`指标行格式错误：${line}`);
+    return { [valueKey === 'percent' && period.length === 7 ? 'month' : 'date']: period, [valueKey]: Number(rawValue) };
+  });
+}
+
+function metricsPayload(metrics) {
+  return {
+    initialDeposit: Number(metrics.initialDeposit), netProfit: Number(metrics.netProfit),
+    profitFactor: Number(metrics.profitFactor), sharpeRatio: Number(metrics.sharpeRatio),
+    maxDrawdownPercent: Number(metrics.maxDrawdownPercent), recoveryFactor: Number(metrics.recoveryFactor),
+    winRatePercent: Number(metrics.winRatePercent), totalTrades: Number(metrics.totalTrades),
+    equityCurve: parseMetricRows(metrics.equityCurveText, 'value'),
+    drawdownCurve: parseMetricRows(metrics.drawdownCurveText, 'percent'),
+    monthlyReturns: parseMetricRows(metrics.monthlyReturnsText, 'percent'),
+  };
+}
+
+export default function App({initialRoute='home',initialData={}}) {
+  const { confirmAction, requestInput, showValue } = useInteraction();
+  const router = useRouter();
+  const { lang, toggleLang, t } = useLanguage();
+  const { route, setRoute,search:navigationSearch } = useAppRoute(initialRoute);
+  const design = useDesign();
+  const { toastMsg, showToast } = useToast();
+
+  const tEaType = (zh) => { const dict = { '马丁格尔': 'Martingale', '网格': 'Grid', '套汇': 'Arbitrage', '锁仓': 'Hedging', '超短线': 'Scalping', '新闻': 'News', '趋势': 'Trend', '等级交易': 'Level Trading', '神经网络': 'Neural Net', '多货币': 'Multi-Currency' }; return lang === 'en' ? (dict[zh] || zh) : zh; };
+  const tCat = (zh) => { const dict = { '全部': 'All', 'XAUUSD 策略': 'XAUUSD EAs', 'MQL5 开发': 'MQL5 Dev', 'AI 与深度学习': 'AI & Deep Learning', '官方公告': 'Announcements' }; return lang === 'en' ? (dict[zh] || zh) : zh; };
+
+  const getUserTitle = (postCount, eaCount, role) => {
+    if (role === 'admin') return { title: t('👑 最高统治者', '👑 Supreme Admin'), color: 'text-amber-400 bg-amber-500/10 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]' };
+    if (role === 'user') return { title: t('👤 普通用户', '👤 Standard User'), color: 'text-zinc-400 bg-zinc-800 border-zinc-700' };
+    const score = (postCount * 10) + (eaCount * 50);
+    if (score >= 500) return { title: t('🏆 Lv.MAX 传奇大牛', '🏆 Legendary Guru'), color: 'text-rose-400 bg-rose-500/10 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]' };
+    if (score >= 200) return { title: t('🔮 Lv.4 首席架构师', '🔮 Chief Architect'), color: 'text-purple-400 bg-purple-500/10 border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.2)]' };
+    if (score >= 100) return { title: t('⚡ Lv.3 资深算法师', '⚡ Senior Algo Dev'), color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' };
+    if (score >= 30)  return { title: t('🚀 Lv.2 独立开发者', '🚀 Indie Quant'), color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' };
+    return { title: t('🌱 Lv.1 见习宽客', '🌱 Trainee Quant'), color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' };
+  };
+
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  
+  const [authModal, setAuthModal] = useState(null); 
+  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', code: '' });
+  const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
+  const [sentCode, setSentCode] = useState(null);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  // 找回密码专用状态与函数
+  const [resetForm, setResetForm] = useState({ email: '', code: '', newPassword: '' });
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+  const [isSendingResetCode, setIsSendingResetCode] = useState(false);
+
+  const handleSendResetCode = async () => {
+    if(!resetForm.email || !resetForm.email.includes('@')) return showToast(t('请输入有效的注册邮箱', 'Enter valid email'));
+    setIsSendingResetCode(true);
+    try {
+      const res = await apiFetch('/api/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toEmail: resetForm.email, type: 'reset' }) });
+      const data = await res.json();
+      if(data.success) { showToast(t('如果该邮箱绑定了账户，重置验证码将发送到该邮箱', 'If an account exists, a reset code will be sent')); }
+      else { showToast('❌ ' + data.message); }
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('发送失败', 'Send failed'))}`); }
+    finally { setIsSendingResetCode(false); }
+  };
+
+  const submitResetPassword = async () => {
+    if(!resetForm.email || !resetForm.code || !resetForm.newPassword) {
+      return showToast(t('请填写完整重置信息', 'Fill all fields'));
+    }
+    setIsResetSubmitting(true);
+    try {
+      const res = await apiFetch('/api/auth/register/password', {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(resetForm) 
+      });
+
+      const data = await res.json();
+      if(data.success) {
+        showToast(t('✅ 密码重置成功，请直接登录！', '✅ Password reset! Please login.'));
+        setAuthForm({ ...authForm, email: resetForm.email, password: '' });
+        setAuthModal('login');
+      } else {
+        showToast('❌ ' + (data.message || '重置失败'));
+      }
+    } catch (error) {
+      showToast(`❌ ${apiErrorMessage(error, t('请求失败，请检查网络或重试', 'Request failed'))}`);
+    } finally { setIsResetSubmitting(false); }
+  };
+
+  const [profileModal, setProfileModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({ newUsername: '', password: '', currentPassword: '' });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  
+
+  const [siteSettings, setSiteSettings] = useState(initialData.settings||null);
+  const [products, setProducts] = useState(initialData.products||[]);
+  const [homeProducts,setHomeProducts]=useState(initialData.homeProducts||[]);
+  const skipInitialHomeRead=useRef(Boolean(initialData.homeProducts));
+
+  const [uploadForm, setUploadForm] = useState(emptyUploadForm);
+  const [logoFile, setLogoFile] = useState(null);
+  const [ex4File, setEx4File] = useState(null);
+  const [reusablePrograms, setReusablePrograms] = useState([]);
+  const [reuseFileUrl, setReuseFileUrl] = useState('');
+  const [reuseProgramInfo, setReuseProgramInfo] = useState(null);
+  const submissionLock = useRef(false);
+  const [isReusingProgram, setIsReusingProgram] = useState(false);
+  const [evidenceFiles, setEvidenceFiles] = useState({ settings: null, statistics: null, chart: null, analysis: null });
+  const [reportInfo, setReportInfo] = useState(null);
+  const [isParsingReport, setIsParsingReport] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [versionModal,setVersionModal]=useState(null);
+  const [versionForm,setVersionForm]=useState({version:'',releaseNotes:'',upgradePolicy:'all_existing'});
+  const [versionFile,setVersionFile]=useState(null);
+  const [isVersionSubmitting,setIsVersionSubmitting]=useState(false);
+
+  const [homeForumPosts, setHomeForumPosts] = useState(initialData.homeForum?.posts||[]);
+  const [homeForumTotal, setHomeForumTotal] = useState(initialData.homeForum?.pagination?.total||0);
+  const [forumPosts, setForumPosts] = useState(initialData.forum?.posts||[]);
+  const [forumPagination, setForumPagination] = useState(initialData.forum?.pagination||{ page: 1, pageSize: 12, total: 0, totalPages: 1 });
+  const [forumQuery, setForumQuery] = useState(initialData.forumQuery?.q||'');
+  const [forumLoading, setForumLoading] = useState(false);
+  const [forumError, setForumError] = useState('');
+  const forumRequest = useRef(0);
+  const [forumSort, setForumSort] = useState(initialData.forumQuery?.sort||'latest');
+  const [activeCategory, setActiveCategory] = useState(initialData.forumQuery?.category||'全部');
+  const [forumView, setForumViewInternal] = useState('list');
+  const setForumView=useCallback(value=>{setForumViewInternal(value);if(value!=='detail')writeNavigation('forum',{post:null,compose:value==='create'?'1':null});},[]);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const postDetailRequest = useRef(0);
+  const [newPost, setNewPost] = useState({ title: '', category: '官方公告', content: '', attachments: [] });
+  const [comments, setComments] = useState([]);
+  const [commentInput, setCommentInput] = useState('');
+  const [isCommenting, setIsCommenting] = useState(false);
+  const [myOrders, setMyOrders] = useState([]);
+  const [myLicenses,setMyLicenses]=useState([]);
+  const [mySocial,setMySocial]=useState({favorites:[],follows:[],ratings:[]});
+
+  const dynamicCats = siteSettings?.forumCategories ? siteSettings.forumCategories.split(',').map(c => c.trim()).filter(Boolean) : ['XAUUSD 策略', 'MQL5 开发', 'AI 与深度学习', '官方公告'];
+  const categories = ['全部', ...dynamicCats];
+  const eaTypeOptions = ['马丁格尔', '网格', '套汇', '锁仓', '超短线', '新闻', '趋势', '等级交易', '神经网络', '多货币'];
+
+  const updateUserSession = (newUserData) => { setUser(current => ({ ...current, ...newUserData })); };
+  const handleLogout = async () => {
+    try { await apiFetch('/api/auth/me', { method: 'POST' }); } catch (e) {}
+    setUser(null);
+    setShowUserMenu(false);
+    setRoute('home');
+    showToast(t('已安全退出登录', 'Logged out safely'));
+  };
+  const handleFileUpload = async (file) => { const formData = new FormData(); formData.append('file', file); const res = await apiFetch('/api/upload', { method: 'POST', body: formData }); const data = await res.json(); if (!res.ok || !data.success) throw new Error(data.message || '文件上传失败'); return data.url; };
+  const handleReportUpload = async (file) => {
+    if (!file) return;
+    setIsParsingReport(true);
+    try {
+      const formData = new FormData(); formData.append('file', file);
+      const response = await apiFetch('/api/strategy-report', { method: 'POST', body: formData }); const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || 'MT5 报告解析失败');
+      const m = data.report.metrics;
+      setUploadForm(prev => ({ ...prev, reportId: data.report.id, metrics: {
+        initialDeposit:m.initialDeposit, netProfit:m.netProfit, profitFactor:m.profitFactor, sharpeRatio:m.sharpeRatio,
+        maxDrawdownPercent:m.maxDrawdownPercent, recoveryFactor:m.recoveryFactor, winRatePercent:m.winRatePercent, totalTrades:m.totalTrades,
+        equityCurveText:m.equityCurve.map(p=>`${p.date},${p.value}`).join('\n'), drawdownCurveText:m.drawdownCurve.map(p=>`${p.date},${p.percent}`).join('\n'),
+        monthlyReturnsText:m.monthlyReturns.map(p=>`${p.month},${p.percent}`).join('\n'),
+      }}));
+      setReportInfo(data.report); showToast(data.resumed ? t('✅ 已恢复并重新载入上次解析的报告', '✅ Previous parsed report restored') : t('✅ MT5 报告解析成功，指标和曲线已自动生成', '✅ MT5 report parsed; metrics and curves generated'));
+    } catch (error) { setReportInfo(null); setUploadForm(prev=>({...prev,reportId:null,metrics:emptyMetricsForm()})); showToast('❌ ' + error.message); }
+    finally { setIsParsingReport(false); }
+  };
+
+  const handleSendAuthCode = async () => {
+    if(!authForm.email || !authForm.email.includes('@')) return showToast(t('请输入有效的邮箱地址', 'Invalid email address'));
+    setIsSendingCode(true);
+    try {
+      const res = await apiFetch('/api/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ toEmail: authForm.email }) });
+      const data = await res.json();
+      if(data.success) { setSentCode(true); showToast(t('验证码已发送', 'Verification code sent')); } else showToast(data.message);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('发送异常', 'Send error'))}`); }
+    finally { setIsSendingCode(false); }
+  };
+
+  const submitRegister = async () => {
+    if (!authForm.username || !authForm.email || !authForm.password || !authForm.code) return showToast(t('请填写完整信息', 'Please fill all fields'));
+    setIsAuthSubmitting(true);
+    try {
+      const res = await apiFetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authForm) });
+      const data = await res.json();
+      if (data.success) { updateUserSession(data.user); setAuthModal(null); showToast(t('🎉 注册成功！', '🎉 Registered successfully!')); setAuthForm({ username: '', email: '', password: '', code: '' }); } else showToast(data.message);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('请求失败', 'Request failed'))}`); }
+    finally { setIsAuthSubmitting(false); }
+  };
+
+  const submitLogin = async () => {
+    if (!authForm.email || !authForm.password) return showToast(t('请输入账号密码', 'Enter credentials'));
+    setIsAuthSubmitting(true);
+    try {
+      const res = await apiFetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account: authForm.email, password: authForm.password }) });
+      const data = await res.json();
+      if (data.success) { updateUserSession(data.user); setAuthModal(null); showToast(t(`欢迎回来，${data.user.username}`, `Welcome back, ${data.user.username}`)); } else showToast(data.message);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('登录失败', 'Login failed'))}`); }
+    finally { setIsAuthSubmitting(false); }
+  };
+
+  const submitProfileUpdate = async () => {
+    if(!profileForm.newUsername.trim()) return showToast(t('用户名不能为空', 'Username required'));
+    setIsProfileUpdating(true);
+    try {
+      let avatar_url = user.avatar_url;
+      if (avatarFile) avatar_url = await handleFileUpload(avatarFile);
+      const res = await apiFetch('/api/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ newUsername: profileForm.newUsername.trim(), avatar_url, password: profileForm.password, ...(profileForm.password?{currentPassword:profileForm.currentPassword}:{}) }) });
+      const data = await res.json();
+      if (data.success) { updateUserSession(data.user); setProfileForm({newUsername:data.user.username,password:'',currentPassword:''}); setProfileModal(false); showToast(t('✅ 资料更新成功！', '✅ Profile updated!')); fetchProducts(); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); fetchMyOrders(); } else showToast('❌ ' + data.message);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('资料更新失败', 'Profile update failed'))}`); }
+    finally { setIsProfileUpdating(false); }
+  };
+
+  const fetchProducts = () => { apiFetch(`/api/products`, { cache: 'no-store' }).then(res => res.json()).then(data => { if(data.success) setProducts(data.products); }); };
+  const fetchForumPosts = useCallback(async (cat = '全部', sort = 'latest', page = 1, query = '') => {
+    if(appRoute(window.location.search)==='forum'&&writeNavigation('forum',{category:cat==='全部'?null:cat,sort:sort==='latest'?null:sort,forumPage:page>1?page:null,forumQ:query||null,post:null,compose:null}))return;
+    setActiveCategory(cat);setForumSort(sort);setForumQuery(query);
+    const requestId = ++forumRequest.current; setForumLoading(true); setForumError('');
+    try {
+      const data = await (await apiFetch(`/api/posts?${new URLSearchParams({ category: cat, sort, page: String(page), pageSize: '12', q: query })}`, { cache: 'no-store' })).json();
+      if (requestId !== forumRequest.current) return;
+      if (!data.success) throw new Error(data.message || '读取帖子失败');
+      if (cat === '全部' && sort === 'latest' && page === 1 && !query) { setHomeForumPosts(data.posts); setHomeForumTotal(data.pagination?.total ?? data.posts.length); }
+      setForumPosts(data.posts); setForumPagination(data.pagination || { page: 1, pageSize: 12, total: data.posts.length, totalPages: 1 });
+    } catch (error) { if (requestId === forumRequest.current) { setForumPosts([]); setForumError(apiErrorMessage(error)); } }
+    finally { if (requestId === forumRequest.current) setForumLoading(false); }
+  }, []);
+  const fetchMyOrders = async () => { if (user) { try { const res = await apiFetch(`/api/orders`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setMyOrders(data.orders); } catch (error) { showToast(`❌ ${apiErrorMessage(error)}`); } } };
+  const fetchMyLicenses=async()=>{if(user){try{const response=await apiFetch('/api/licenses',{cache:'no-store'});const data=await response.json();if(data.success)setMyLicenses(data.licenses);}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
+  const fetchMySocial=async()=>{if(user){try{const response=await apiFetch('/api/social',{cache:'no-store'});const data=await response.json();if(data.success)setMySocial({favorites:data.favorites,follows:data.follows,ratings:data.ratings});}catch(error){showToast(`❌ ${apiErrorMessage(error)}`);}}};
+
+  useEffect(() => {
+    apiFetch('/api/auth/me', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => setUser(data.success ? data.user : null))
+      .catch(() => setUser(null))
+      .finally(() => setAuthReady(true));
+    if(!initialData.settings)apiFetch('/api/settings',{cache:'no-store'}).then(res=>res.json()).then(setSiteSettings);
+  }, [initialData.settings]);
+
+  useEffect(()=>{
+    if(route!=='home')return;
+    if(skipInitialHomeRead.current){skipInitialHomeRead.current=false;return;}
+    let active=true;
+    apiFetch('/api/products?home=1',{cache:'no-store'}).then(res=>res.json()).then(data=>{if(active&&data.success){setHomeProducts(data.products);setSiteSettings(current=>({...current,catalogMinimumPoints:data.catalogMinimumPoints,catalogCounts:data.catalogCounts}));}}).catch(error=>{if(active)showToast(`❌ ${apiErrorMessage(error)}`);});
+    if(forumEnabled(initialData.settings?.siteBrand))void fetchForumPosts();
+    return()=>{active=false;};
+  },[route,initialData.settings?.siteBrand,fetchForumPosts,showToast]);
+
+  useEffect(()=>{
+    if(route!=='forum'||navigationSearch===null||!forumEnabled(siteSettings?.siteBrand))return;
+    const state=forumLocation(navigationSearch);
+    if(state.post)return;
+    const timer=setTimeout(()=>{setForumView(state.compose?'create':'list');if(!state.compose)void fetchForumPosts(state.category,state.sort,state.page,state.query);},0);
+    return()=>clearTimeout(timer);
+  },[route,navigationSearch,siteSettings?.siteBrand,fetchForumPosts,setForumView]);
+
+  useEffect(() => {
+    if (!user?.id||!['market','profile','assets'].includes(route)) return;
+    let active=true;
+    Promise.all([
+      apiFetch(`/api/orders`, { cache: 'no-store' }).then(response => response.json()),
+      apiFetch('/api/licenses', { cache: 'no-store' }).then(response => response.json()),
+      apiFetch('/api/social', { cache: 'no-store' }).then(response => response.json()),
+    ]).then(([orders, licenses, social]) => {
+      if(!active)return;
+      if (orders.success) setMyOrders(orders.orders);
+      if (licenses.success) setMyLicenses(licenses.licenses);
+      if (social.success) setMySocial({ favorites: social.favorites, follows: social.follows, ratings: social.ratings });
+    }).catch(error => {if(active)showToast(`❌ ${apiErrorMessage(error)}`);});
+    return()=>{active=false;};
+  }, [user?.id, route, showToast]);
+
+  useEffect(()=>{if(!['market','profile','assets','upload'].includes(route))return;let active=true;apiFetch('/api/products',{cache:'no-store'}).then(res=>res.json()).then(data=>{if(active&&data.success)setProducts(data.products);}).catch(error=>{if(active)showToast(`❌ ${apiErrorMessage(error)}`);});return()=>{active=false;};},[route,user?.id,showToast]);
+
+  const toggleEaType = (type) => { setUploadForm(prev => { const tArr = prev.eaTypes || []; return { ...prev, eaTypes: tArr.includes(type) ? tArr.filter(t => t !== type) : [...tArr, type] }; }); };
+
+  const handleEditEA = (ea) => {
+    const metrics = ea.metrics;
+    setUploadForm({
+      id: ea.id, title: ea.title || '', description: ea.description || '', pointsPrice: ea.points_price ?? '',
+      currentLogoUrl: ea.logo_url || '',
+      winRate: ea.win_rate || '', drawdown: ea.drawdown || '', pairs: ea.pairs || 'XAUUSD',
+      eaTypes: ea.ea_type ? ea.ea_type.split(',') : [],
+      evidenceIds: (ea.evidence || []).map(item => item.id),
+      reportId: ea.report?.id || null,
+      metrics: metrics ? {
+        initialDeposit: metrics.initialDeposit, netProfit: metrics.netProfit,
+        profitFactor: metrics.profitFactor, sharpeRatio: metrics.sharpeRatio,
+        maxDrawdownPercent: metrics.maxDrawdownPercent, recoveryFactor: metrics.recoveryFactor,
+        winRatePercent: metrics.winRatePercent, totalTrades: metrics.totalTrades,
+        equityCurveText: metrics.equityCurve.map(p => `${p.date},${p.value}`).join('\n'),
+        drawdownCurveText: metrics.drawdownCurve.map(p => `${p.date},${p.percent}`).join('\n'),
+        monthlyReturnsText: metrics.monthlyReturns.map(p => `${p.month},${p.percent}`).join('\n'),
+      } : emptyMetricsForm(),
+    });
+    setLogoFile(null); setEx4File(null); setReuseFileUrl(''); setReportInfo(ea.report ? { ...ea.report, metrics } : null); setEvidenceFiles({ settings: null, statistics: null, chart: null, analysis: null }); setRoute('upload');
+  };
+
+  const loadReusablePrograms = async () => {
+    if (user?.role !== 'admin') return setReusablePrograms([]);
+    try { const response = await apiFetch('/api/admin/program-reuse', { cache:'no-store' }); const data = await response.json(); if (!response.ok || !data.success) throw new Error(data.message || '载入可复用版本失败'); setReusablePrograms(data.programs || []); if (!data.programs?.length) showToast(t('暂无可复用的已审核版本', 'No approved versions available for reuse')); } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('载入失败，请重试', 'Loading failed; please retry'))}`); }
+  };
+
+  const reuseApprovedProgram = async (sourceUploadId) => {
+    if (!sourceUploadId || user?.role !== 'admin' || isReusingProgram || submissionLock.current) return;
+    setIsReusingProgram(true);
+    try {
+      const response = await apiFetch('/api/admin/program-reuse', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(sourceUploadId) });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || '复用程序失败');
+      setReuseFileUrl(data.upload.url); setReuseProgramInfo({originalName:data.upload.originalName}); setEx4File(null);
+      showToast(`已复用已审核程序：${data.upload.originalName}（来源：${data.upload.sourceProductTitle}）`);
+    } catch (error) { showToast(`❌ ${apiErrorMessage(error, '复用程序失败')}`); }
+    finally { setIsReusingProgram(false); }
+  };
+
+  const submitEA = async () => {
+    if (submissionLock.current || isParsingReport || isReusingProgram) return;
+    if(!uploadForm.title) return showToast(t('请输入名称', 'Enter title'));
+    submissionLock.current = true;
+    setIsSubmitting(true);
+    try {
+      let logo_url = '', file_url = '';
+      if (logoFile) logo_url = await handleFileUpload(logoFile);
+      if (reuseFileUrl) file_url = reuseFileUrl; else if (ex4File) file_url = await handleFileUpload(ex4File);
+      const evidenceIds = [...(uploadForm.evidenceIds || [])];
+      for (const [evidenceType, file] of Object.entries(evidenceFiles)) {
+        if (!file) continue;
+        const formData = new FormData(); formData.append('file', file); formData.append('evidenceType', evidenceType);
+        const evidenceResponse = await apiFetch('/api/evidence', { method: 'POST', body: formData });
+        const evidenceData = await evidenceResponse.json();
+        if (!evidenceResponse.ok || !evidenceData.success) throw new Error(evidenceData.message || '回测证据上传失败');
+        const previous = (uploadForm.id && (uploadForm.evidenceIds || []).find(id => (products.find(p=>p.id===uploadForm.id)?.evidence || []).find(item=>item.id===id)?.type === evidenceType));
+        if (previous) evidenceIds.splice(evidenceIds.indexOf(previous), 1);
+        evidenceIds.push(evidenceData.evidence.id);
+      }
+      const formPayload = {...uploadForm};
+      delete formPayload.currentLogoUrl;
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice) };
+      // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
+      if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
+      else delete payload.metrics;
+      const res = await apiFetch('/api/products', { method: uploadForm.id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || '策略保存失败');
+      showToast(uploadForm.id ? t('🎉 EA 修改成功！已重新进入审核队列。', '🎉 EA Updated! In review.') : t('🎉 EA 发布成功！已进入审核队列。', '🎉 EA Published! In review.'));
+      setUploadForm(emptyUploadForm());
+      setLogoFile(null); setEx4File(null); setReuseFileUrl(''); setReuseProgramInfo(null);
+      setEvidenceFiles({ settings: null, statistics: null, chart: null, analysis: null });
+      setReportInfo(null);
+      setRoute('profile'); fetchProducts();
+    } catch (error) {
+      showToast('❌ ' + (error.message || t('上传失败', 'Upload failed')));
+    } finally {
+      submissionLock.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const savePointsPrice = async () => {
+    if (!uploadForm.id) return;
+    const value = String(uploadForm.pointsPrice ?? '').trim();
+    if (value && (!/^[1-9]\d*$/.test(value) || Number(value) > 1000000)) return showToast(t('积分价格须为 1–1,000,000 的整数', 'Points price must be an integer from 1 to 1,000,000'));
+    try {
+      const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null})});
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.message || '积分价格保存失败');
+      await fetchProducts();
+      showToast(t('积分价格已保存，策略上架状态不变', 'Points price saved without changing listing status'));
+    } catch (error) { showToast(`❌ ${error.message}`); }
+  };
+
+  const handlePurchaseProcess = async (product) => {
+    if (!user) return setAuthModal('login');
+    if (product.price === 0) {
+      try {
+        const res = await apiFetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product.id }) });
+        const data = await res.json();
+        if (data.success) { showToast(t('🎉 免费获取成功！已放入您的资产库。', '🎉 Got it for free! Added to your assets.')); await fetchMyOrders(); setRoute('profile'); } else showToast('❌ ' + (data.message || 'Error'));
+      } catch (e) { showToast(t('❌ 后端无响应', 'Backend error')); }
+    } else {
+      showToast(t('付费购买暂未开放，请勿向页面展示的钱包地址转账', 'Paid checkout is unavailable. Do not send funds to displayed wallet addresses.'));
+    }
+  };
+  const handlePointsRedeem=async(product)=>{
+    if(!user)return setAuthModal('login');
+    if(!await confirmAction({title:t('积分兑换策略','Redeem strategy with points'),description:`${product.title} · ${product.points_price} ${t('积分','points')}`,noticeTitle:t('兑换后可在个人中心下载','Download after redemption'),notice:t('积分扣除后不能自动退回。请确认策略名称和所需积分。','Points are deducted after redemption. Confirm the strategy and amount.'),confirmLabel:t('确认兑换','Redeem')}))return;
+    try{const response=await apiFetch('/api/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'redeem',productId:product.id,expectedPointsPrice:product.points_price})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'兑换失败');await Promise.all([fetchMyOrders(),fetchMyLicenses()]);showToast(t('✅ 积分兑换成功，策略已加入资产库','✅ Redeemed and added to your assets'));setRoute('profile');}
+    catch(error){showToast(`❌ ${error.message}`);}
+  };
+  const handleSocialAction=async(body)=>{if(!user){setAuthModal('login');return null;}try{const response=await apiFetch('/api/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'操作失败');showToast(t('✅ 操作已保存','✅ Saved'));await Promise.all([fetchProducts(),fetchMySocial()]);return data;}catch(error){showToast('❌ '+error.message);return null;}};
+  const handleLicenseBind=async(license,bindingType)=>{const account=bindingType==='trading_account';const value=await requestInput({title:account?t('绑定交易账户','Bind trading account'):t('绑定设备指纹','Bind device fingerprint'),description:t(`许可证：${license.product_title||license.product?.title||'#'+license.id}`,'License binding'),label:account?t('MT4 / MT5 数字账号','MT4 / MT5 numeric account'):t('EA 客户端设备指纹','EA client device fingerprint'),hint:account?t('请输入 4–32 位数字交易账号。绑定更新后旧令牌会立即失效。','Enter a 4–32 digit account. Existing tokens are revoked after updates.'):t('输入 EA 客户端生成的设备指纹，至少 16 个字符。','Enter the fingerprint generated by the EA client, at least 16 characters.'),required:true,minLength:account?4:16,maxLength:account?32:200,inputType:'text',validate:account?(input=>/^\d{4,32}$/.test(input)?'':t('交易账号只能包含 4–32 位数字','Account must contain 4–32 digits')):undefined,confirmLabel:t('确认绑定','Bind')});if(!value)return;const response=await apiFetch('/api/licenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'bind',licenseId:license.id,bindingType,value})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'绑定失败'));showToast(data.replayed?t('ℹ️ 绑定未变化','Binding unchanged'):t('✅ 绑定已更新，旧令牌已失效','Binding updated; old tokens invalidated'));fetchMyLicenses();};
+  const handleLicenseToken=async(license)=>{const tradingAccount=await requestInput({title:t('签发临时授权令牌','Issue temporary license token'),description:t('第一步：验证已绑定的交易账户','Step 1: verify the bound trading account'),label:t('MT4 / MT5 数字账号','MT4 / MT5 numeric account'),required:true,minLength:4,maxLength:32,validate:input=>/^\d{4,32}$/.test(input)?'':t('交易账号只能包含 4–32 位数字','Account must contain 4–32 digits'),confirmLabel:t('下一步','Continue')});if(!tradingAccount)return;const deviceFingerprint=await requestInput({title:t('签发临时授权令牌','Issue temporary license token'),description:t('第二步：验证已绑定设备；令牌有效期为 15 分钟','Step 2: verify the bound device; token lifetime is 15 minutes'),label:t('设备指纹','Device fingerprint'),required:true,minLength:16,maxLength:200,confirmLabel:t('签发令牌','Issue token')});if(!deviceFingerprint)return;const response=await apiFetch('/api/licenses/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({licenseId:license.id,tradingAccount,deviceFingerprint})});const data=await response.json();if(!response.ok||!data.success)return showToast('❌ '+(data.message||'令牌签发失败'));try{await navigator.clipboard.writeText(data.token);showToast(t('✅ 15 分钟授权令牌已复制','15-minute authorization token copied'));}catch{await showValue({title:t('授权令牌已签发','License token issued'),description:t('浏览器未允许自动复制，请手动复制。令牌将在 15 分钟后失效。','Automatic copy was unavailable. Copy the token manually; it expires in 15 minutes.'),label:t('授权令牌','License token'),value:data.token});}};
+
+  const submitVersion=async()=>{
+    if(!versionModal||!versionFile||!versionForm.version||versionForm.releaseNotes.trim().length<3)return showToast(t('请填写版本号、更新日志并选择程序文件','Enter a version, release notes, and program file'));
+    setIsVersionSubmitting(true);
+    try{const fileUrl=await handleFileUpload(versionFile);const response=await apiFetch('/api/versions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId:versionModal.id,fileUrl,...versionForm})});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.message||'版本提交失败');showToast(t('✅ 新版本已提交管理员审核','✅ Version submitted for review'));setVersionModal(null);setVersionFile(null);setVersionForm({version:'',releaseNotes:'',upgradePolicy:'all_existing'});fetchProducts();}catch(error){showToast('❌ '+error.message);}finally{setIsVersionSubmitting(false);}
+  };
+
+  const handleSecureDownload = async (productId, title, versionId = null) => {
+    if (!user) return showToast(t('❌ 身份已过期', 'Session expired'));
+    showToast(t('🔒 正在发起防盗版鉴权...', '🔒 Authenticating...'));
+    try {
+      const res = await apiFetch(`/api/download?productId=${productId}${versionId?`&versionId=${versionId}`:''}`);
+      if (!res.ok) { const text = await res.text(); showToast(`❌ ${t('拦截', 'Blocked')}: ${text}`); return; }
+      const disposition = res.headers.get('Content-Disposition');
+      let ext = '.ex5'; 
+      if (disposition && disposition.match(/filename="?([^"]+)"?/)) ext = '.' + disposition.match(/filename="?([^"]+)"?/)[1].split('.').pop(); 
+      const blob = await res.blob(); const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${title.replace(/\s+/g, '_')}_NexusSaaS${ext}`; 
+      document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+      showToast(t('🎉 下载完毕！', '🎉 Downloaded!'));
+    } catch (e) { showToast(t('❌ 网络失败', 'Network error')); }
+  };
+
+  const handleDeleteMyEA = async (id, title) => {
+    if (!await confirmAction({title:t('删除策略','Delete strategy'),description:title,noticeTitle:t('此操作不可撤销','This action cannot be undone'),notice:t('策略将从市场和个人策略列表中删除；受外键保护的历史资产不会被错误转移。','The strategy will be removed from the market and your list. Protected historical assets remain isolated.'),confirmLabel:t('永久删除','Delete permanently')})) return;
+    try { await apiFetch(`/api/products?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 删除成功', '✅ Deleted')); fetchProducts(); await fetchMyOrders(); } catch (error) { showToast(`❌ ${apiErrorMessage(error, t('删除失败', 'Delete failed'))}`); }
+  };
+
+  const submitPost = async () => {
+    if(!newPost.title.trim() || !newPost.content.trim()) { showToast(t('标题和内容不能为空', 'Required')); return false; }
+    try {
+      const response = await apiFetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newPost, attachments: (newPost.attachments || []).map(file => file.id), category: newPost.category || categories[1] }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) { showToast(result.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
+      showToast(t('帖子发布成功！', 'Posted!')); setForumView('list'); fetchForumPosts(activeCategory, forumSort, 1, forumQuery); setNewPost({ title: '', category: categories[1], content: '', attachments: [] }); return true;
+    } catch (error) { showToast(error?.message || t('帖子发布失败，请重试。', 'Post could not be published. Please try again.')); return false; }
+  };
+
+  const openPostDetail = useCallback(async (post) => {
+    const request = ++postDetailRequest.current;
+    if(writeNavigation('forum',{post:post.id,compose:null}))return; setSelectedPost(post.title ? post : null); setForumView('detail'); setComments([]);
+    try {
+      const responses = await Promise.all([apiFetch(`/api/posts?viewId=${post.id}`, { cache: 'no-store' }), apiFetch(`/api/comments?postId=${post.id}`, { cache: 'no-store' })]);
+      const [detail, replies] = await Promise.all(responses.map(response => response.json()));
+      if (request !== postDetailRequest.current) return;
+      if (detail.success && detail.post && forumLocation(window.location.search).post===Number(post.id)) { setSelectedPost(detail.post); setForumView('detail'); }
+      if (replies.success) setComments(replies.comments);
+    } catch (error) { if (request === postDetailRequest.current) showToast(apiErrorMessage(error)); }
+  }, [setForumView, showToast]);
+  useTopicEntry({ route, forumPosts, openPostDetail, setAuthModal, authReady, user, setRoute });
+
+  const submitComment = async () => {
+    if (!user) return setAuthModal('login');
+    if (isCommenting || !commentInput.trim() || !selectedPost) return;
+    setIsCommenting(true);
+    try {
+      const response = await apiFetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: selectedPost.id, content: commentInput.trim() }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || t('回复提交失败，请重试', 'Reply failed. Please retry.'));
+      showToast(t('回复成功！', 'Replied!'));
+      setCommentInput('');
+      try {
+        const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error('COMMENT_REFRESH_FAILED');
+        setComments(data.comments);
+      } catch { showToast(t('回复已保存，列表刷新失败，请重新打开帖子查看', 'Reply saved. Reopen the post to refresh the list.')); }
+    } catch (error) { showToast(error.message || t('回复提交失败，请重试', 'Reply failed. Please retry.')); }
+    finally { setIsCommenting(false); }
+  };
+
+  const handleDeletePost = async (id, e) => { if(e) e.stopPropagation(); if(!await confirmAction({title:t('永久删除帖子','Delete post permanently'),noticeTitle:t('帖子和关联讨论将受到影响','The post and related discussion will be affected'),notice:t('删除后普通用户将无法继续查看该帖子。','Users will no longer be able to view this post after deletion.'),confirmLabel:t('删除帖子','Delete post')})) return; await apiFetch(`/api/posts?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已抹除', '✅ Eradicated')); if(forumView === 'detail') setForumView('list'); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); };
+  const handleDeleteComment = async (id) => { if(!await confirmAction({title:t('删除评论','Delete comment'),noticeTitle:t('确认管理操作','Confirm moderation action'),notice:t('这条评论将从当前讨论中移除。','This comment will be removed from the discussion.'),confirmLabel:t('删除评论','Delete comment')})) return; await apiFetch(`/api/comments?id=${id}`, { method: 'DELETE' }); showToast(t('✅ 已摘除', '✅ Removed')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handlePinPost = async (id, is_pinned, e) => { if(e) e.stopPropagation(); await apiFetch('/api/posts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); fetchForumPosts(activeCategory, forumSort, forumPagination.page, forumQuery); };
+  const handlePinComment = async (id, is_pinned) => { await apiFetch('/api/comments', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_pinned }) }); showToast(t('✅ 置顶状态已更新', '✅ Pin updated')); const res = await apiFetch(`/api/comments?postId=${selectedPost.id}`, { cache: 'no-store' }); const data = await res.json(); if(data.success) setComments(data.comments); };
+  const handleReport = async (targetType, targetId) => {
+    if (!user) return setAuthModal('login');
+    const reason = await requestInput({title:t('举报内容','Report content'),description:t('请选择最符合的举报原因。恶意举报也会进入审计记录。','Choose the most appropriate reason. Abusive reports are audited.'),label:t('举报原因','Reason'),initialValue:'other',options:[['spam',t('垃圾信息','Spam')],['fraud',t('欺诈','Fraud')],['abuse',t('辱骂或骚扰','Abuse or harassment')],['copyright',t('版权问题','Copyright')],['dangerous',t('危险内容','Dangerous content')],['other',t('其他','Other')]].map(([value,label])=>({value,label})),required:true,confirmLabel:t('下一步','Continue')});
+    if (!reason) return;
+    const details = await requestInput({title:t('补充举报说明','Add report details'),label:t('说明','Details'),hint:t('可选，最多 1000 个字符。请描述具体问题，不要提交密码或密钥。','Optional, up to 1000 characters. Describe the issue without including passwords or secrets.'),multiline:true,rows:6,maxLength:1000,confirmLabel:t('提交举报','Submit report')});
+    if (details === null) return;
+    const response = await apiFetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetType, targetId, reason: reason.trim().toLowerCase(), details }) });
+    const data = await response.json();
+    showToast(response.ok && data.success ? (data.report?.replayed ? t('ℹ️ 该举报正在处理中', 'Report already pending') : t('✅ 举报已提交，等待管理员审核', 'Report submitted for review')) : `❌ ${data.message || t('举报失败', 'Report failed')}`);
+  };
+
+  const myEAs = user ? products.filter(p => p.author_user_id === user.id) : [];
+  const myPostCount = user ? forumPosts.filter(p => p.author_user_id === user.id).length : 0;
+  const myBadge = user ? getUserTitle(myPostCount, myEAs.length, user.role) : null;
+
+  return (
+    <div className="editorial-app-shell min-h-screen flex flex-col justify-between bg-zinc-950 pb-14 text-zinc-300 font-sans selection:bg-cyan-500/30 lg:pb-0">
+      
+      <AppHeader {...{ router, siteSettings, setRoute, route, t, user, setAuthModal, toggleLang, lang, showUserMenu, setShowUserMenu, handleLogout, setAuthForm, setForumView }} />
+
+      <main className={`relative w-full flex-grow ${route === 'forum' && forumView === 'create' ? 'z-20' : 'z-10'}`}>
+        {route === 'home' && design === 'editorial' && <EditorialHome {...{ setRoute, siteSettings, products:homeProducts, forumPosts: homeForumPosts, user, setAuthModal, openPostDetail, t }} />}
+        {route === 'home' && design === 'classic' && (<HomeView setRoute={setRoute} setForumView={setForumView} siteSettings={siteSettings} products={homeProducts} forumPosts={homeForumPosts} forumTotal={homeForumTotal} user={user} setAuthModal={setAuthModal} setActiveCategory={setActiveCategory} openPostDetail={openPostDetail} t={t} tEaType={tEaType} />)}
+        {route === 'market' && !catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'market' && catalogEnabled(siteSettings?.siteBrand) && (<MarketView initialCatalog={initialData.market} initialQuery={initialData.marketQuery} products={products.filter(p => p.status === 'active')} myOrders={myOrders} user={user} handlePurchaseProcess={handlePurchaseProcess} handlePointsRedeem={handlePointsRedeem} handleSocialAction={handleSocialAction} handleReport={handleReport} setRoute={setRoute} setAuthModal={setAuthModal} t={t} tEaType={tEaType} />)}
+        {route === 'points' && user && <PointsCenter key={user.id} userId={user.id} t={t} setRoute={setRoute} />}
+        {route === 'points' && !user && <section className="mx-auto my-16 max-w-xl rounded-2xl border border-cyan-400/25 bg-slate-900 p-8 text-center text-white"><h1 className="text-2xl font-bold">{t('积分任务中心','Points & Tasks')}</h1><p className="mt-3 text-sm leading-6 text-slate-300">{t('登录后查看积分余额、每日任务和审核任务。','Sign in to view your points, daily activities and reviewed tasks.')}</p><button onClick={()=>setAuthModal('login')} className="mt-5 rounded-lg bg-cyan-600 px-5 py-3 text-sm font-bold hover:bg-cyan-500">{t('登录 / 注册','Login / Register')}</button></section>}
+        {route === 'inbox' && user && <InboxCenter hasPublications={myEAs.length>0} t={t} user={user} setRoute={setRoute} design={design} onProfileNavigate={value=>{writeNavigation('profile',{tab:value});}} />}
+        {route === 'upload'&&!catalogEnabled(siteSettings?.siteBrand)&&<CatalogUnavailable {...{user,setRoute,t}}/>}{route === 'upload'&&catalogEnabled(siteSettings?.siteBrand) && <UploadView {...{ setRoute, t, user, uploadForm, setUploadForm, eaTypeOptions, toggleEaType, tEaType, setLogoFile, logoFile, setEx4File, ex4File, reusablePrograms, reuseFileUrl, setReuseFileUrl, reuseProgramInfo, loadReusablePrograms, reuseApprovedProgram, isReusingProgram, isParsingReport, handleReportUpload, reportInfo, evidenceFiles, setEvidenceFiles, parseMetricRows, submitEA, savePointsPrice, isSubmitting }} />}
+        {route === 'forum' && !forumEnabled(siteSettings?.siteBrand) && <ForumUnavailable mode={siteSettings?.siteBrand?.forumMode} {...{setRoute,t}} />}
+        {route === 'forum' && forumEnabled(siteSettings?.siteBrand) && <ForumView {...{ design, categories, setActiveCategory, setForumView, fetchForumPosts, forumSort, activeCategory, forumView, tCat, user, setAuthModal, setNewPost, newPost, dynamicCats, setForumSort, forumPosts, forumPagination, forumQuery, setForumQuery, forumLoading, forumError, products:homeProducts, openPostDetail, getUserTitle, handlePinPost, handleDeletePost, handleReport, selectedPost, setRoute, comments, handlePinComment, handleDeleteComment, commentInput, setCommentInput, isCommenting, submitComment, submitPost, t, siteBrand:siteSettings?.siteBrand,communityContent: siteSettings?.communityContent, forumNewsEnabled: siteSettings?.forumNewsEnabled, forumStrategyOverviewEnabled: siteSettings?.forumStrategyOverviewEnabled }} />}
+        {route === 'profile' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} />}
+        {route === 'assets' && user && <ProfileView {...{ design, user, myBadge, setProfileForm, setProfileModal, t, myOrders, handleSecureDownload, handleLicenseBind, handleLicenseToken, showToast, myLicenses, mySocial, setRoute, myEAs, handleEditEA, setVersionModal, setVersionForm, setVersionFile, handleDeleteMyEA }} assetOnly />}
+      </main>
+
+      <Footer siteSettings={siteSettings} setRoute={setRoute} setForumView={setForumView} t={t} />
+
+      <AppOverlays {...{ versionModal, setVersionModal, versionForm, setVersionForm, setVersionFile, submitVersion, isVersionSubmitting, profileModal, setProfileModal, setAvatarFile, setProfileForm, user, profileForm, submitProfileUpdate, isProfileUpdating, authModal, setAuthModal, setSentCode, authForm, setAuthForm, handleSendAuthCode, isSendingCode, sentCode, resetForm, setResetForm, isAuthSubmitting, submitLogin, submitRegister, handleSendResetCode, isSendingResetCode, isResetSubmitting, submitResetPassword, toastMsg, t }} />
+    </div>
+  );
+}

@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { publishedSiteBrand } from '@/lib/site-brand-store';
-import { forumReadable,catalogEnabled } from '@/lib/site-brand.mjs';
+import { forumReadable,forumEnabled,catalogEnabled } from '@/lib/site-brand.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +11,8 @@ export default function sitemap() {
   return [
     ...publishedSiteBrand().pages.filter(page => page.enabled).map(page => ({ url: `${base}/pages/${page.slug}`, changeFrequency: 'monthly', priority: 0.5 })),
     { url: base, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
+    ...(forumEnabled(publishedSiteBrand())?[{url:`${base}/forum`,changeFrequency:'daily',priority:0.9}]:[]),
+    ...(catalogEnabled(publishedSiteBrand())?[{url:`${base}/market`,changeFrequency:'daily',priority:0.9}]:[]),
     { url: `${base}/ea-strategies`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/xauusd-gold-ea`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
     { url: `${base}/help`, changeFrequency: 'monthly', priority: 0.5 },

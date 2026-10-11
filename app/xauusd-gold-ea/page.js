@@ -1,6 +1,6 @@
 import TopicGuide from '../components/TopicGuide';
 import { topicPageData } from '@/lib/topic-pages';
-export const metadata = { title: 'XAUUSD 黄金 EA 策略研究 | MT5 黄金自动交易 | Nexus Quant', description: '研究适用于 XAUUSD 黄金交易的 MT5 EA 策略。查看回测资料、风险披露、最大回撤、验证状态和版本信息。', keywords: ['XAUUSD EA', '黄金EA', '黄金自动交易', 'MT5黄金策略', 'XAUUSD量化交易', '外汇黄金交易'], alternates: { canonical: '/xauusd-gold-ea' } };
+export const metadata = { title: 'XAUUSD 黄金 EA 策略研究 | MT5 黄金自动交易', description: '研究适用于 XAUUSD 黄金交易的 MT5 EA 策略。查看回测资料、风险披露、最大回撤、验证状态和版本信息。', keywords: ['XAUUSD EA', '黄金EA', '黄金自动交易', 'MT5黄金策略', 'XAUUSD量化交易', '外汇黄金交易'], alternates: { canonical: '/xauusd-gold-ea' } };
 const sections = [
   { id: 'execution', title: '报价、点差与交易时段', text: '使用黄金 EA 前，核对经纪商报价、点差、滑点和交易时段是否与回测环境相近。实际执行条件不同，成交与结果也可能不同。' },
   { id: 'reports', title: '报告资料与验证状态', items: ['核对回测数据来源、MT5 终端版本、参数文件与测试区间是否披露。', '查看策略是否有报告验证或实盘观察资料；历史数据不能预测未来结果。'] },

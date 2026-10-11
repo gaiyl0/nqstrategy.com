@@ -19,17 +19,19 @@ const buttonSizes = {
   icon: 'h-11 w-11 p-0',
 };
 
-export function Button({ variant = 'secondary', size = 'md', loading = false, icon: Icon, className = '', children, disabled, ...props }) {
+export function Button({ variant = 'secondary', size = 'md', loading = false, icon: Icon, className = '', children, disabled, href, onClick, ...props }) {
+  const Component=href?'a':'button',unavailable=disabled||loading;
   return (
-    <button
+    <Component
       data-ui="button" data-variant={variant} data-size={size}
       className={join('inline-flex items-center justify-center gap-2 rounded-lg border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-45', buttonVariants[variant], buttonSizes[size], className)}
-      disabled={disabled || loading}
+      disabled={href?undefined:unavailable} href={href&&!unavailable?href:undefined} aria-disabled={href&&unavailable?true:undefined}
       {...props}
+      onClick={event=>{if(unavailable){event.preventDefault();return;}onClick?.(event);}}
     >
       {loading ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin" /> : Icon ? <Icon aria-hidden="true" className="h-4 w-4" /> : null}
       {children}
-    </button>
+    </Component>
   );
 }
 
