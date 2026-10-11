@@ -19,7 +19,7 @@ try {
   const config = { site: 'https://nexus.test', baiduToken: 'test-token-only', bingKey: 'a'.repeat(48) };
   const urls = ['https://nexus.test/forum/1', 'https://nexus.test/forum/2'];
   const result = await submitSearchBatch('baidu', config, urls, async (url, options) => {
-    assert.equal(new URL(url).origin, 'https://data.zz.baidu.com');
+    assert.equal(new URL(url).origin, 'http://data.zz.baidu.com');
     assert.equal(new URL(url).searchParams.get('site'), config.site);
     assert.equal(options.redirect, 'error'); assert.equal(options.body, urls.join('\n'));
     return response(200, { success: 1, remain: 9, not_valid: [urls[1]] });
@@ -66,12 +66,14 @@ try {
   assert.equal(searchConfig(db, env).baiduToken, undefined); assert.equal(searchConfig(db, env).googleCredentials, undefined);
   assert.equal(searchConfig(db, env, true).baiduToken, config.baiduToken);
   assert.match(searchConfig(db, env).bingKey, /^[a-f0-9]{48}$/);
+  db.prepare("INSERT INTO products(title,author,slug,points_price,status,moderation_status) VALUES('Public EA','Test','tianwei-test-ea',200,'active','visible')").run();
   const before = publicSearchPages(db, env);
-  assert.ok(before.every(page => !/\/profile|\/tianwei|\/api\/|\?/.test(page.url)));
+  assert.ok(before.some(page => page.url.endsWith('/market/tianwei-test-ea')), 'a public strategy slug is not an administrator path');
+  assert.ok(before.every(page => !/^\/(?:profile|tianwei|api)(?:\/|$)/.test(new URL(page.url).pathname) && !new URL(page.url).search));
   scanSearchQueue(db, env);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM search_submissions').get().n, before.length * 2 + 1);
   const successMock = async (url, options) => {
-    if (String(url).startsWith('https://data.zz.baidu.com')) return response(200, { success: options.body.split('\n').length, remain: 100 });
+    if (String(url).startsWith('http://data.zz.baidu.com')) return response(200, { success: options.body.split('\n').length, remain: 100 });
     if (url === 'https://oauth2.googleapis.com/token') return response(200, { access_token: 'token' });
     return response(200);
   };

@@ -48,6 +48,7 @@ export default function SearchSubmissionSettings() {
       <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <h3 className="text-base font-bold">百度 · 普通收录 API</h3>
         <p className="text-sm leading-6 text-slate-600">在百度搜索资源平台验证当前站点，将“普通收录 → API 提交”里的 token 填入下方。站点网址固定使用当前正式域名。</p>
+        <p className="text-sm leading-6 text-amber-800">百度官方接口使用 HTTP，推送 token 随请求传输，不受 HTTPS 加密保护。网站将 token 加密保存，只发送到百度固定接口，并禁止重定向。</p>
         <label className="block space-y-2 text-sm"><span>推送密钥：{data.config.baiduTokenConfigured ? '已保存，留空保留' : '未配置'}</span><input type="password" autoComplete="new-password" value={keys.baiduToken} maxLength={200} onChange={event => setKeys(current => ({ ...current, baiduToken: event.target.value }))} className={input} placeholder="填写 token，保存后不回显" /></label>
         {toggle('baiduEnabled', '开启百度自动推送')}
         <div className="flex flex-wrap items-center gap-3"><a href="https://ziyuan.baidu.com/" target="_blank" rel="noreferrer" className="text-sm text-teal-800 underline">百度搜索资源平台 ↗</a>{data.config.baiduTokenConfigured && <button disabled={busy} onClick={() => action('save', { clearBaiduToken: true })} className={button}>清除密钥并关闭</button>}</div>
