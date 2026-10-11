@@ -1,8 +1,8 @@
 # Nexus Quant 最新更新日志与执行顺序
 
-### 2026-10-11：搜狗站点验证文件（部署中）
+### 2026-10-11：搜狗站点验证文件（已上线）
 
-- 按用户提供的原文件，将10字节sogousiteverification.txt原样加入public目录，公开路径为/sogousiteverification.txt；原件与仓库副本SHA256一致CFD5BD3FF74900A39C4A1E3912549ECFADCBFDD5BC682C8E57764B632EDE252D。部署后核验HTTPS响应与原始字节，搜狗平台最终验证由用户点击完成。
+- 按用户提供的原文件，将10字节sogousiteverification.txt原样加入public目录，公开路径为/sogousiteverification.txt；原件与仓库副本SHA256一致CFD5BD3FF74900A39C4A1E3912549ECFADCBFDD5BC682C8E57764B632EDE252D。已发布44741d0db60f，生产构建、数据库16/16与审计/积分账本检查通过；公网HTTPS验证地址返回200，10字节内容与原件SHA256完全一致，使用搜狗爬虫User-Agent亦可访问，www地址跳转到主域名后内容一致。发布备份/var/backups/nexus-quant/predeploy-44741d0db60f。搜狗平台最终验证由用户点击完成。
 
 ### 2026-10-11：搜索引擎自动提交与后台配置（已上线，外部平台授权待完成）
 
