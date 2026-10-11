@@ -60,6 +60,11 @@ run_as_nexus "NEXUS_DB_PATH='$release_dir/.build-data.db' NEXUS_AUTO_MIGRATE=1 D
 rm -f "$release_dir/.build-data.db" "$release_dir/.build-data.db-wal" "$release_dir/.build-data.db-shm"
 run_as_nexus "npm prune --omit=dev"
 
+# Keep the www ownership-verification file readable across future releases.
+if [[ -f "$release_dir/public/baidu_verify_codeva-bKfmaCfDKs.html" ]]; then
+  python3 "$release_dir/scripts/install-baidu-www-verification.py" "$release_dir/public/baidu_verify_codeva-bKfmaCfDKs.html"
+fi
+
 if [[ -d "$runtime_root/public/uploads" ]]; then
   chown -R nexus:nexus "$runtime_root/public/uploads"
   chmod 0700 "$runtime_root/public" "$runtime_root/public/uploads"
