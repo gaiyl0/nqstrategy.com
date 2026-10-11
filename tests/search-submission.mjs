@@ -26,6 +26,8 @@ try {
   });
   assert.deepEqual(result.accepted, [urls[0]]); assert.deepEqual(result.rejected, [urls[1]]);
   await assert.rejects(submitSearchBatch('baidu', config, urls, async () => response(200, { success: 1 })), /AMBIGUOUS/);
+  await assert.rejects(submitSearchBatch('baidu', config, urls, async () => response(400, { error: 400, message: 'site init fail' })), /SITE_NOT_READY/);
+  await assert.rejects(submitSearchBatch('baidu', config, urls, async () => response(400, { error: 400, message: 'over quota' })), /QUOTA_EXHAUSTED/);
   await assert.rejects(submitSearchBatch('baidu', config, urls, async () => { throw new Error('request leaked token test-token-only'); }), /^Error: SEARCH_NETWORK_FAILED$/);
   await assert.rejects(submitSearchBatch('bing', config, ['https://attacker.test/private']), /URLS_INVALID/);
   const pending = await submitSearchBatch('bing', config, urls, async (url, options) => {
@@ -78,6 +80,7 @@ try {
     return response(200);
   };
   await runSearchSubmissions(db, env, successMock);
+  await runSearchSubmissions(db, env, successMock);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM search_submissions WHERE state!='accepted'").get().n, 0);
   assert.ok(searchDashboard(db, env).status.workerCheckedAt);
   assert.equal((await runSearchSubmissions(db, env, () => { throw new Error('unchanged content should not submit'); })).length, 0);
@@ -103,6 +106,22 @@ try {
   updateBrandWorkspace({ action: 'draft', revision: workspace.revision, config: { ...workspace.published, forumMode: 'disabled', catalogEnabled: false } }, null, db);
   updateBrandWorkspace({ action: 'publish', revision: workspace.revision + 1 }, null, db);
   assert.ok(publicSearchPages(db, env).every(page => !/\/forum(?:\/|$)|\/market(?:\/|$)/.test(page.url)));
+  scanSearchQueue(db, env, true);
+  let baiduProbeSize = 0;
+  await runSearchSubmissions(db, env, async (url, options) => {
+    if (String(url).startsWith('http://data.zz.baidu.com')) {
+      baiduProbeSize = options.body.split('\n').length;
+      return response(400, { error: 400, message: 'site init fail' });
+    }
+    return successMock(url, options);
+  });
+  assert.equal(baiduProbeSize, 1, 'unknown Baidu allowance starts with one public URL');
+  assert.ok(searchDashboard(db, env).status.baidu.nextAllowedAt > Date.now() + 20000000);
+  assert.equal((await runSearchSubmissions(db, env, successMock)).length, 0, 'an unready site pauses the provider instead of failing every queued URL');
+  scanSearchQueue(db, env, true);
+  await runSearchSubmissions(db, env, async (url, options) => String(url).startsWith('http://data.zz.baidu.com') ? response(400, { error: 400, message: 'over quota' }) : successMock(url, options));
+  assert.equal(searchDashboard(db, env).status.baidu.error, 'SEARCH_BAIDU_QUOTA_EXHAUSTED');
+  assert.ok(searchDashboard(db, env).status.baidu.nextAllowedAt > Date.now() + 80000000);
   saveSearchConfig({ clearBaiduToken: true, clearGoogleCredentials: true }, db, env);
   assert.equal(searchConfig(db, env).baiduEnabled, false); assert.equal(searchConfig(db, env).googleEnabled, false);
   console.log('Search submission tests passed: official adapters, encrypted configuration, public selection, deduplication, retry and worker leases');
