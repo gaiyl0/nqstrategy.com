@@ -9,7 +9,7 @@ filename = 'baidu_verify_codeva-bKfmaCfDKs.html'
 source = pathlib.Path(sys.argv[1]).resolve(strict=True)
 if source.name != filename or source.stat().st_size != 32:
     raise SystemExit('Unexpected verification file')
-target = pathlib.Path('/var/lib/nexus-quant/site-verification')
+target = pathlib.Path('/var/www/nexus-quant-verification')
 target.mkdir(mode=0o755, exist_ok=True)
 shutil.copyfile(source, target / filename)
 (target / filename).chmod(0o644)
@@ -32,10 +32,15 @@ if marker not in original:
     location / {{
         return 301 https://nqstrategy.com$request_uri;
     }}'''
+    updated = original[:offset] + replacement + original[offset + len(redirect):]
+else:
+    updated = original.replace(f'alias /var/lib/nexus-quant/site-verification/{filename};',
+                               f'alias {target}/{filename};')
+if updated != original:
     backup = config.with_name(config.name + '.before-baidu-verification')
     if not backup.exists():
         shutil.copy2(config, backup)
-    config.write_text(original[:offset] + replacement + original[offset + len(redirect):])
+    config.write_text(updated)
     try:
         subprocess.run(['nginx', '-t'], check=True)
         subprocess.run(['systemctl', 'reload', 'nginx'], check=True)
