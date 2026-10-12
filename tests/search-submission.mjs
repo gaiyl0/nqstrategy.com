@@ -21,6 +21,10 @@ try {
   const result = await submitSearchBatch('baidu', config, urls, async (url, options) => {
     assert.equal(new URL(url).origin, 'http://data.zz.baidu.com');
     assert.equal(new URL(url).searchParams.get('site'), config.site);
+    // Reproduce the live endpoint's rejection of an encoded HTTPS origin.
+    if (!String(url).includes(`?site=${config.site}&token=`)) {
+      return response(400, { error: 400, message: 'site init fail' });
+    }
     assert.equal(options.redirect, 'error'); assert.equal(options.body, urls.join('\n'));
     return response(200, { success: 1, remain: 9, not_valid: [urls[1]] });
   });

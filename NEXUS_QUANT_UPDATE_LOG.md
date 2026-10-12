@@ -1,10 +1,11 @@
 # Nexus Quant 最新更新日志与执行顺序
 
-### 2026-10-13：百度HTML标签验证与API复查（上线验证中）
+### 2026-10-13：百度HTML标签验证与API编码修复（验证已通过，自动提交验收中）
 
-- 按用户提供的最新HTML标签，在根布局显式head中加入baidu-site-verification=codeva-kDPCngIED4，避免动态SEO metadata流式输出到body而导致平台读取不到；旧文件验证保留。用户后续截图确认验证目标为www且收到301，增加www首页精确200例外用于HTML验证，复用主站代理指令及私有可信头，不打印密钥；首页canonical继续指向非www，其他www页面仍301。安装脚本语法检查失败恢复备份。
-- ESLint、部署回归和diff检查通过；计划发布后检查普通请求和Baiduspider请求的原始HTML均在head内包含且仅包含一次验证标签，再用已有服务器私有Token测试百度官方API；标签部署不代表平台已验证或链接已接收。浏览器清单读取返回连接错误，当前无法代用户在已登录百度平台点击验证。
-
+- 按用户提供的新标签，在根布局显式head中加入baidu-site-verification=codeva-kDPCngIED4，避免动态SEO流式输出到body。用户截图确认验证目标为www且旧文件验证301；安装脚本增加www首页精确200例外，复用主站完整代理指令及私有可信头但不输出密钥，首页canonical保持非www，其余www页面301。旧验证文件保留，Nginx备份/语法检查/回滚保留。
+- 94842d26d985已上线，归档SHA256两端一致4f49b90c5d76a1797cc9331a2e11e7debc77044afd8decfa266565b542898111，备份/var/backups/nexus-quant/predeploy-94842d26d985。生产构建、数据库17/17、外键0、审计及资金/积分账本通过，运行依赖0漏洞；公网两个首页普通UA和Baiduspider UA均200，验证标签在head内且只有一次，canonical为主站，www/forum仍301。用户在百度切换HTML标签后明确确认验证通过。
+- 已验证及更新www Token后，原Node请求仍400/site init fail；同一Token按官方curl格式实际www首页提交HTTP200/success1/remain9，找到site参数URLSearchParams百分号编码差异。修正仅site保留已校验origin原文，Token仍编码，固定官方HTTP域名及禁止重定向保留；新增回归模拟编码HTTPS地址被接口拒绝，防止误判平台未验证。
+- 额外真实对照：www参数提交主站/forum返回HTTP200/success0/not_same_site；原文非www参数使用当前www Token返回401/site error。不能用www Token强行推送主站最终链接，也不将www 301别名批量提交。待用户切到已验证https://nqstrategy.com并更新对应Token后，使用修正后的自动队列复测。
 ### 2026-10-13：用户注册/登录时间与EA奖励积分兑换开关（已上线）
 
 - 后台用户与积分的用户与角色列表增加注册时间、最后登录时间，统一北京时间显示并适配后台语言。注册时间沿用真实join_date；017迁移新增last_login_at，仅成功密码登录后记录，历史无记录显示暂无记录，不用注册或修改资料时间伪造最后登录；用户列表仍仅管理员可读。
