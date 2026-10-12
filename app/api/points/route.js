@@ -45,7 +45,7 @@ async function POSTHandler(request){
   }catch(error){
     const known={
       CATALOG_DISABLED:['商城已停用，已有订单与下载仍可在个人中心管理',403],POINT_TASKS_DISABLED:['积分任务已停用',403],
-      INSUFFICIENT_POINTS:['积分不足',409],POINT_PRICE_UNAVAILABLE:['该策略暂未开放积分兑换',409],POINT_PRICE_CHANGED:['策略积分价格已变化，请刷新并重新确认',409],
+      INSUFFICIENT_POINTS:['积分不足',409],INSUFFICIENT_FUNDED_POINTS:['该策略不接受奖励积分，充值积分余额不足，请先充值',409],POINT_PRICE_UNAVAILABLE:['该策略暂未开放积分兑换',409],POINT_PRICE_CHANGED:['策略积分价格已变化，请刷新并重新确认',409],
       PRODUCT_UNAVAILABLE:['策略不存在或已下架',404],VERSION_UNAVAILABLE:['该策略尚无可下载的已发布版本',409],SELF_PURCHASE:['不能兑换自己发布的策略',409],ALREADY_OWNED:['您已拥有该策略',409],
       TASK_UNAVAILABLE:['任务未开放',404],TASK_LINK_UNAVAILABLE:['任务链接尚未配置',409],BROKER_PROOF_REQUIRED:['请填写 TMGM 注册邮箱和客户 ID',400],PROOF_REQUIRED:['请填写任务证明信息',400],CLAIM_EXISTS:['任务已提交或已完成，请勿重复提交',409],
     };

@@ -53,7 +53,7 @@ function publicProducts(currentUser = null) {
   const includeOwned = currentUser && ['developer', 'admin'].includes(currentUser.role);
   const products = db.prepare(`
     SELECT id, slug, title, author, author_user_id, description, logo_url, price, win_rate, drawdown,
-           pairs, ea_type, points_price, status, created_at
+           pairs, ea_type, points_price,allow_bonus_points, status, created_at
     FROM products
     WHERE deleted_at IS NULL AND moderation_status='visible' AND (status = 'active' ${includeOwned ? 'OR author_user_id = ?' : ''})
     ORDER BY created_at DESC
@@ -63,7 +63,7 @@ function publicProducts(currentUser = null) {
 
 function marketProducts(currentUser,query){
   const now=Date.now();
-  const candidates=db.prepare(`SELECT p.id,p.slug,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.points_price,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.status,p.created_at,
+  const candidates=db.prepare(`SELECT p.id,p.slug,p.title,p.author,p.author_user_id,p.description,p.logo_url,p.price,p.points_price,p.allow_bonus_points,p.win_rate,p.drawdown,p.pairs,p.ea_type,p.status,p.created_at,
     m.max_drawdown_percent metric_drawdown,m.reviewed_at metric_reviewed,
     CASE WHEN v.status='active' AND (v.expires_at IS NULL OR v.expires_at>?) THEN v.level ELSE 'unverified' END verification_level
     FROM products p LEFT JOIN strategy_metrics m ON m.product_id=p.id LEFT JOIN strategy_verifications v ON v.product_id=p.id
@@ -142,10 +142,10 @@ async function POSTHandler(request) {
       if (!siteFeatureAccess().catalog && currentUser.role !== 'admin') throw new Error('CATALOG_DISABLED');
       const result = db.prepare(`
         INSERT INTO products
-          (title, author, author_user_id, description, price, points_price, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+          (title, author, author_user_id, description, price, points_price,allow_bonus_points, win_rate, drawdown, pairs, ea_type, logo_url, file_url, trial_enabled, trial_days, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `).run(
-        body.title, currentUser.username, currentUser.id, body.description, body.pointsPrice == null ? 0 : 1, body.pointsPrice ?? null,
+        body.title, currentUser.username, currentUser.id, body.description, body.pointsPrice == null ? 0 : 1, body.pointsPrice ?? null, body.allowBonusPoints === false ? 0 : 1,
         body.metrics ? `${body.metrics.winRatePercent}%` : '未披露', body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),
         body.logo_url || null, body.file_url,0,7,
       );
@@ -246,7 +246,7 @@ async function PATCHHandler(request) {
     }
 
     if ('pointsPrice' in body && !('title' in body)) {
-      db.prepare('UPDATE products SET points_price=?,price=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,body.pointsPrice == null ? 0 : Number(existing.price)>0 ? existing.price : 1,id);
+      db.prepare('UPDATE products SET points_price=?,price=?,allow_bonus_points=? WHERE id=? AND deleted_at IS NULL').run(body.pointsPrice,body.pointsPrice == null ? 0 : Number(existing.price)>0 ? existing.price : 1,body.allowBonusPoints === undefined ? existing.allow_bonus_points : Number(body.allowBonusPoints),id);
       return NextResponse.json({success:true});
     }
     const pointsPrice=body.pointsPrice === undefined ? existing.points_price : body.pointsPrice;
@@ -263,10 +263,10 @@ async function PATCHHandler(request) {
       const replacementExpiry = Date.now() + 24 * 60 * 60 * 1000;
       let query = `
         UPDATE products SET title = ?, description = ?, price = ?, win_rate = ?,
-          drawdown = ?, pairs = ?, ea_type = ?, points_price=?, trial_enabled=?,trial_days=?,status = 'pending'
+          drawdown = ?, pairs = ?, ea_type = ?, points_price=?, allow_bonus_points=?, trial_enabled=?,trial_days=?,status = 'pending'
       `;
       const params = [body.title, body.description, listingPrice, body.metrics ? `${body.metrics.winRatePercent}%` : '未披露',
-        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),pointsPrice,0,7];
+        body.metrics ? `${body.metrics.maxDrawdownPercent}%` : '未披露', body.pairs, body.eaTypes.join(','),pointsPrice,body.allowBonusPoints === undefined ? existing.allow_bonus_points : Number(body.allowBonusPoints),0,7];
       if (body.logo_url) { query += ', logo_url = ?'; params.push(body.logo_url); }
       query += ' WHERE id = ?';
       params.push(id);

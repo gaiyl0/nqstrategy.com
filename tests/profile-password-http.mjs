@@ -36,6 +36,10 @@ try{
     db.prepare("INSERT INTO users(username,email,password,role) VALUES('alice','alice@test.invalid',?,'user')").run(${JSON.stringify(hash('Old-password-123!'))});
     db.prepare("INSERT INTO users(username,email,password,role) VALUES('racer','racer@test.invalid',?,'user')").run(${JSON.stringify(hash('Race-password-123!'))});
     db.prepare("INSERT INTO users(username,email,password,role) VALUES('limited','limited@test.invalid',?,'user')").run(${JSON.stringify(hash('Limited-password-123!'))});
+    db.prepare("INSERT INTO users(username,email,password,role) VALUES('admin','admin@test.invalid',?,'admin')").run(${JSON.stringify(hash('Admin-password-123!'))});
+    db.prepare("INSERT INTO users(username,email,password,role) VALUES('publisher','publisher@test.invalid',?,'developer')").run(${JSON.stringify(hash('Publisher-password-123!'))});
+    db.prepare("INSERT INTO products(title,author,author_user_id,price,points_price,status) VALUES('Policy EA','publisher',5,1,25,'active')").run();
+    db.prepare("INSERT INTO uploads(id,owner_user_id,url,kind,size,stored_name,content_sha256,status,created_at) VALUES(9900,5,'/private/eas/policy.ex5','ea',10,'policy.ex5','policy-hash','content_validated',?)").run(Date.now());
     db.close();
   `],{cwd:root,env,encoding:'utf8'});
   assert.equal(seed.status,0,seed.stderr);
@@ -59,7 +63,31 @@ try{
   const refreshedCookie=changed.setCookie.split(';')[0];
   const refreshed=await request('/api/auth/me',{session:refreshedCookie});assert.equal(refreshed.body.success,true);
   const oldLogin=await request('/api/auth/login',{method:'POST',body:{account:'alice@test.invalid',password:'Old-password-123!'}});assert.equal(oldLogin.status,401);
+  const firstUsers=await request('/api/users',{session:cookie(4)});
+  assert.equal(firstUsers.status,200);
+  assert.equal(firstUsers.body.users.find(u=>u.id===1).last_login_at,null,'failed login and profile edits do not fabricate last login');
   const newLogin=await request('/api/auth/login',{method:'POST',body:{account:'alice@test.invalid',password:'New-password-123!'}});assert.equal(newLogin.status,200);
+  const afterLogin=await request('/api/users',{session:cookie(4)});
+  const tracked=afterLogin.body.users.find(u=>u.id===1);
+  assert.ok(tracked.join_date);
+  assert.ok(Number.isSafeInteger(tracked.last_login_at)&&Math.abs(Date.now()-tracked.last_login_at)<10000,'successful login records current timestamp');
+  assert.equal('password' in tracked,false);
+  assert.equal((await request('/api/users',{session:refreshedCookie})).status,403,'non-admin cannot read user timestamps');
+  await request('/api/auth/login',{method:'POST',body:{account:'alice@test.invalid',password:'Wrong-password-123!'}});
+  assert.equal((await request('/api/users',{session:cookie(4)})).body.users.find(u=>u.id===1).last_login_at,tracked.last_login_at,'failed login cannot overwrite successful login');
+  assert.equal((await request('/api/products',{method:'PATCH',session:refreshedCookie,body:{id:1,pointsPrice:25,allowBonusPoints:false}})).status,403,'unrelated user cannot change reward policy');
+  assert.equal((await request('/api/products',{method:'PATCH',session:cookie(5),body:{id:1,pointsPrice:25,allowBonusPoints:false}})).status,200);
+  let products=await request('/api/products');
+  assert.equal(products.body.products.find(p=>p.id===1).allow_bonus_points,0,'public catalog shows saved reward restriction');
+  assert.equal(products.body.products.find(p=>p.id===1).status,'active','policy-only edit preserves listing status');
+  assert.equal((await request('/api/products',{method:'PATCH',session:cookie(5),body:{id:1,pointsPrice:26}})).status,200);
+  assert.equal((await request('/api/products')).body.products.find(p=>p.id===1).allow_bonus_points,0,'older price-only payload preserves policy');
+  const published=await request('/api/products',{method:'POST',session:cookie(5),body:{title:'New Policy EA',description:'New publication',pairs:'XAUUSD',eaTypes:[],pointsPrice:50,allowBonusPoints:false,file_url:'/private/eas/policy.ex5',version:'1.0.0',releaseNotes:'Initial release',upgradePolicy:'all_existing'}});
+  assert.equal(published.status,201,JSON.stringify(published.body));
+  assert.equal((await request('/api/products?role=admin',{session:cookie(4)})).body.products.find(p=>p.title==='New Policy EA').allow_bonus_points,0,'new publication persists reward restriction');
+  assert.equal((await request('/api/products',{method:'PATCH',session:cookie(5),body:{id:1,title:'Edited Policy EA',description:'Updated description',pairs:'XAUUSD',eaTypes:[],pointsPrice:26,allowBonusPoints:true}})).status,200);
+  products=await request('/api/products?role=admin',{session:cookie(4)});
+  assert.equal(products.body.products.find(p=>p.id===1).allow_bonus_points,1,'full edit saves reward policy');
 
   const raceCookie=cookie(2);
   const race=await Promise.all([
@@ -85,7 +113,7 @@ try{
   const reasons=Object.fromEntries(audits.map(row=>[row.reason_code,row.count]));
   assert.ok(reasons.CURRENT_PASSWORD_INVALID>=1);assert.ok(reasons.PASSWORD_CHANGED>=2);assert.ok((reasons.ACCOUNT_STATE_CONFLICT||0)>=0);
   db.close();
-  console.log(JSON.stringify({success:true,assertions:26,raceStatuses:race.map(result=>result.status),rateLimitStatuses:limitedAttempts.map(result=>result.status),auditReasons:reasons},null,2));
+  console.log(JSON.stringify({success:true,userTimestampAndRewardPolicyChecks:true,raceStatuses:race.map(result=>result.status),rateLimitStatuses:limitedAttempts.map(result=>result.status),auditReasons:reasons},null,2));
 }finally{
   if(server&&server.exitCode===null){server.kill();await Promise.race([new Promise(resolve=>server.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,2000))]);}
   fs.rmSync(tempRoot,{recursive:true,force:true,maxRetries:10,retryDelay:100});

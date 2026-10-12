@@ -84,6 +84,7 @@ async function POSTHandler(request) {
     };
 
     await createSession(safeUser);
+    db.prepare('UPDATE users SET last_login_at=? WHERE id=? AND deleted_at IS NULL').run(Date.now(),user.id);
     return withAudit(context, NextResponse.json({ success: true, user: safeUser }), {
       eventType, outcome: 'success', reasonCode: 'AUTHENTICATED', userId: user.id, actorRole: user.role, targetType: 'user', targetId: user.id,
     });

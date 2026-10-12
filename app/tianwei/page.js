@@ -434,7 +434,7 @@ export default function AdminDashboard() {
            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden shadow-[var(--nq-shadow-panel)] animate-in fade-in duration-300">
               <div className="overflow-x-auto">
                 <table className="w-full text-left whitespace-nowrap">
-                  <thead><tr className="bg-zinc-950/50 text-xs uppercase tracking-widest text-zinc-500 border-b border-zinc-800"><th className="p-5">用户标识</th><th className="p-5">账户余额</th><th className="p-5">系统权限与头衔</th><th className="p-5 text-right">超管操作</th></tr></thead>
+                  <thead><tr className="bg-zinc-950/50 text-xs uppercase tracking-widest text-zinc-500 border-b border-zinc-800"><th className="p-5">用户标识</th><th className="p-5">账户余额</th><th className="p-5">系统权限与头衔</th><th className="p-5">注册时间（北京时间）</th><th className="p-5">最后登录（北京时间）</th><th className="p-5 text-right">超管操作</th></tr></thead>
                   <tbody className="text-sm">
                     {userList.map((u, index) => {
                       const badge = getUserTitle(u.post_count || 0, u.ea_count || 0, u.role);
@@ -457,6 +457,8 @@ export default function AdminDashboard() {
                           </select>
                           <br/><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badge.color}`}>{badge.title}</span>
                         </td>
+                        <td className="p-5 text-xs tabular-nums">{u.join_date?new Date(/[zZ]|[+]\d{2}:?\d{2}$/.test(u.join_date)?u.join_date:u.join_date.replace(' ','T')+'Z').toLocaleString(lang==='en'?'en-GB':'zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'—'}</td>
+                        <td className="p-5 text-xs tabular-nums">{u.last_login_at?new Date(u.last_login_at).toLocaleString(lang==='en'?'en-GB':'zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):(lang==='en'?'No record':'暂无记录')}</td>
                         <td className="p-5 text-right opacity-50 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => setPwdModal({ isOpen: true, userId: u.id, username: u.username, newPwd: '' })} className="px-3 py-2 bg-zinc-800 hover:bg-cyan-600 text-zinc-300 rounded-lg text-xs font-bold mr-2"><Key className="w-3.5 h-3.5 inline" /> 改密</button>
                           <button onClick={() => handleDeleteUser(u.id, u.username)} disabled={u.id === 1} className="px-3 py-2 bg-zinc-800 hover:bg-red-600 text-zinc-300 rounded-lg text-xs font-bold disabled:opacity-30"><Trash2 className="w-3.5 h-3.5 inline" /> 删除</button>

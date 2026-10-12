@@ -120,7 +120,7 @@ equal(ownJourneySummary(null,undefined),null,'anonymous home safely renders befo
 equal(ownJourneySummary({userId:buyer,data:{balance:10}},admin),null,'switching accounts never displays previous user balance');
 const summary=pointJourneyState(buyer);
 equal(summary.balance,pointState(buyer).balance,'journey uses actual funded and reward balance');
-equal(Object.keys(summary).sort(),['balance','brokerClaimStatus'],'home summary does not expose task proof or personal identifiers');
+equal(Object.keys(summary).sort(),['balance','bonusBalance','brokerClaimStatus','fundedBalance'],'own summary exposes balance provenance but no task proof or identifiers');
 const rewardBefore=db.prepare("SELECT reward_points,enabled FROM point_tasks WHERE code='tmgm_deposit'").get();
 db.prepare("UPDATE point_tasks SET reward_points=240,enabled=1 WHERE code='tmgm_deposit'").run();
 equal(publicBrokerReward().rewardPoints,240,'public reward reads administrator amount');
@@ -158,6 +158,26 @@ const newClaim=submitPointClaim(author,pendingTask.id,{contactEmail:'author@exam
 equal(adminPendingCounts().points,pendingBefore.points+1,'new manual task appears in workbench');
 reviewPointClaim(admin,newClaim,false,'test rejected');
 equal(adminPendingCounts().points,pendingBefore.points,'reviewed task leaves the pending queue');
+// A publisher can decline rewards even when a buyer's combined balance is sufficient.
+equal(productPatchSchema.safeParse({id:product,pointsPrice:100,allowBonusPoints:false}).success,true,'owner pricing edit supports declining rewards');
+equal(productPatchSchema.safeParse({id:product,pointsPrice:100,allowBonusPoints:'false'}).success,false,'policy cannot be spoofed with a string');
+const restricted=Number(db.prepare("INSERT INTO products(title,author,author_user_id,price,status,points_price,allow_bonus_points) VALUES('Funded only EA','points-author',?,1,'active',10,0)").run(author).lastInsertRowid);
+db.prepare("INSERT INTO uploads(id,owner_user_id,url,kind,size,stored_name,content_sha256,status,created_at) VALUES(889,?,'private://funded-only','ea',10,'funded-only.ex5','hash-only','attached',?)").run(author,Date.now());
+db.prepare("INSERT INTO product_versions(product_id,version,release_notes,upload_id,file_url,content_sha256,upgrade_policy,status,is_current,submitted_by_user_id,created_at) VALUES(?,'1.0.0','test',889,'private://funded-only','hash-only','all_existing','published',1,?,?)").run(restricted,author,Date.now());
+const restrictedBuyer=Number(addUser.run('restricted-buyer','restricted-buyer@example.com','user').lastInsertRowid);
+applyPointAssetDelta(restrictedBuyer,{funded:500,bonus:2000},'restricted-seed','test');
+const restrictedBefore=pointAssetAccount(restrictedBuyer);
+rejects(()=>redeemWithPoints({id:restrictedBuyer,username:'restricted-buyer'},restricted,10),/INSUFFICIENT_FUNDED_POINTS/);
+equal(pointAssetAccount(restrictedBuyer),restrictedBefore,'failed funded-only purchase leaves every balance unchanged');
+equal(db.prepare('SELECT COUNT(*) n FROM orders WHERE buyer_user_id=? AND product_id=?').get(restrictedBuyer,restricted).n,0,'failed funded-only purchase creates no entitlement');
+applyPointAssetDelta(restrictedBuyer,{funded:500},'restricted-topup','test');
+const creatorBefore=pointAssetAccount(author);
+const restrictedSale=redeemWithPoints({id:restrictedBuyer,username:'restricted-buyer'},restricted,10);
+equal(pointAssetAccount(restrictedBuyer).bonusUnits,2000,'funded-only purchase preserves all reward points');
+equal(pointAssetAccount(restrictedBuyer).fundedUnits,0,'funded-only purchase consumes funded balance');
+equal(db.prepare('SELECT funded_spent_units,bonus_spent_units FROM point_asset_sales WHERE order_id=?').get(restrictedSale.orderId),{funded_spent_units:1000,bonus_spent_units:0},'sale provenance contains no rewards');
+equal(pointAssetAccount(author).withdrawableUnits-creatorBefore.withdrawableUnits,800,'only the funded 80 percent creator share is withdrawable');
+equal(pointAssetAccount(author).bonusUnits,creatorBefore.bonusUnits,'declining rewards cannot create reward income');
 const verified=spawnSync(process.execPath,['scripts/point-asset-maintenance.mjs'],{cwd:process.cwd(),env:process.env,encoding:'utf8'});
 equal(verified.status,0,'point asset maintenance verifies the untampered ledger');
 db.prepare('UPDATE point_asset_accounts SET bonus_units=bonus_units+1 WHERE user_id=?').run(mixedBuyer);

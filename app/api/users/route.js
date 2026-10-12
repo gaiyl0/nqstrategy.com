@@ -19,7 +19,7 @@ async function GETHandler() {
     // 联表统计发帖数、策略数；密码等核心哈希字段坚决不返回
     const users = db.prepare(`
       SELECT 
-        u.id, u.username, u.email, u.role, u.balance, u.avatar_url, u.join_date,
+        u.id, u.username, u.email, u.role, u.balance, u.avatar_url, u.join_date, u.last_login_at,
         (SELECT COUNT(*) FROM posts WHERE author_user_id = u.id) AS post_count,
         (SELECT COUNT(*) FROM products WHERE author_user_id = u.id) AS ea_count
       FROM users u

@@ -47,7 +47,7 @@ const emptyMetricsForm = () => ({
 });
 
 const emptyUploadForm = () => ({
-  title: '', description: '', pointsPrice: '', winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
+  title: '', description: '', pointsPrice: '', allowBonusPoints: true, winRate: '', drawdown: '', pairs: 'XAUUSD', eaTypes: [],
   metrics: emptyMetricsForm(), evidenceIds: [], reportId: null,
   version:'1.0.0',releaseNotes:'初始版本',upgradePolicy:'all_existing',
 });
@@ -340,7 +340,7 @@ export default function App({initialRoute='home',initialData={}}) {
   const handleEditEA = (ea) => {
     const metrics = ea.metrics;
     setUploadForm({
-      id: ea.id, title: ea.title || '', description: ea.description || '', pointsPrice: ea.points_price ?? '',
+      id: ea.id, title: ea.title || '', description: ea.description || '', pointsPrice: ea.points_price ?? '', allowBonusPoints: ea.allow_bonus_points !== 0,
       currentLogoUrl: ea.logo_url || '',
       winRate: ea.win_rate || '', drawdown: ea.drawdown || '', pairs: ea.pairs || 'XAUUSD',
       eaTypes: ea.ea_type ? ea.ea_type.split(',') : [],
@@ -399,7 +399,7 @@ export default function App({initialRoute='home',initialData={}}) {
       }
       const formPayload = {...uploadForm};
       delete formPayload.currentLogoUrl;
-      const payload = { ...formPayload, evidenceIds, logo_url, file_url, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice) };
+      const payload = { ...formPayload, evidenceIds, logo_url, file_url, pointsPrice: uploadForm.pointsPrice === '' ? null : Number(uploadForm.pointsPrice), allowBonusPoints: uploadForm.allowBonusPoints !== false };
       // 没有原始 MT5 报告时不提交手工收益指标，市场会明确显示为未提供验证资料。
       if (uploadForm.reportId) payload.metrics = metricsPayload(uploadForm.metrics);
       else delete payload.metrics;
@@ -425,11 +425,11 @@ export default function App({initialRoute='home',initialData={}}) {
     const value = String(uploadForm.pointsPrice ?? '').trim();
     if (value && (!/^[1-9]\d*$/.test(value) || Number(value) > 1000000)) return showToast(t('积分价格须为 1–1,000,000 的整数', 'Points price must be an integer from 1 to 1,000,000'));
     try {
-      const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null})});
+      const response = await apiFetch('/api/products', {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uploadForm.id,pointsPrice:value ? Number(value) : null,allowBonusPoints:uploadForm.allowBonusPoints !== false})});
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.message || '积分价格保存失败');
       await fetchProducts();
-      showToast(t('积分价格已保存，策略上架状态不变', 'Points price saved without changing listing status'));
+      showToast(t('兑换设置已保存，策略上架状态不变', 'Redemption settings saved without changing listing status'));
     } catch (error) { showToast(`❌ ${error.message}`); }
   };
 
