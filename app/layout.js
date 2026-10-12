@@ -36,6 +36,7 @@ export default async function RootLayout({ children }) {
   const brand = publishedSiteBrand();
   return (
     <html lang="zh-CN">
+      <head><meta name="baidu-site-verification" content="codeva-kDPCngIED4" /></head>
       <body className="bg-zinc-950 text-zinc-300"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'WebSite', name:brand.name, url:siteUrl, inLanguage:'zh-CN', description:brand.seoDescription || brand.description || defaultMetadata.description }).replace(/</g, '\\u003c') }} /><DesignProvider initialDesigns={initialDesigns}><InteractionProvider>{children}</InteractionProvider></DesignProvider></body>
     </html>
   );

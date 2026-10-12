@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Keep this exact Baidu verification URL accessible without removing canonical redirects."""
+"""Keep Baidu file and homepage HTML verification accessible on www."""
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -36,8 +37,22 @@ if marker not in original:
 else:
     updated = original.replace(f'alias /var/lib/nexus-quant/site-verification/{filename};',
                                f'alias {target}/{filename};')
+# HTML verification fetches the www homepage itself and rejects its 301.
+# Reuse the canonical origin's proxy directives, including the private trust
+# header, without writing credentials to source code or command output.
+if 'location = / {' not in updated[updated.index('server_name www.nqstrategy.com;'):]:
+    canonical_start = updated.index('server_name nqstrategy.com;')
+    www_start = updated.index('server_name www.nqstrategy.com;')
+    canonical_proxy = re.search(r'^    location / \{\n(.*?)^    \}',
+                                updated[canonical_start:www_start], re.M | re.S)
+    if not canonical_proxy or 'proxy_pass http://127.0.0.1:3000;' not in canonical_proxy.group(1):
+        raise SystemExit('Expected canonical homepage proxy')
+    homepage = '    location = / {\n' + canonical_proxy.group(1) + '    }\n'
+    position = updated.index(marker, www_start)
+    position = updated.rfind('\n', 0, position) + 1
+    updated = updated[:position] + homepage + updated[position:]
 if updated != original:
-    backup = config.with_name(config.name + '.before-baidu-verification')
+    backup = config.with_name(config.name + '.before-baidu-html-verification')
     if not backup.exists():
         shutil.copy2(config, backup)
     config.write_text(updated)
