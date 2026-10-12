@@ -1,12 +1,15 @@
 # Nexus Quant 最新更新日志与执行顺序
 
-### 2026-10-13：百度HTML标签验证与API编码修复（www验证/推送成功，主站验证进行中）
+### 2026-10-13：百度HTML标签验证与API编码修复（两站验证通过，www推送成功，主站API仍拒绝）
 
 - 按用户提供的新标签，在根布局显式head中加入baidu-site-verification=codeva-kDPCngIED4，避免动态SEO流式输出到body。用户截图确认验证目标为www且旧文件验证301；安装脚本增加www首页精确200例外，复用主站完整代理指令及私有可信头但不输出密钥，首页canonical保持非www，其余www页面301。旧验证文件保留，Nginx备份/语法检查/回滚保留。
 - 94842d26d985已上线，归档SHA256两端一致4f49b90c5d76a1797cc9331a2e11e7debc77044afd8decfa266565b542898111，备份/var/backups/nexus-quant/predeploy-94842d26d985。生产构建、数据库17/17、外键0、审计及资金/积分账本通过，运行依赖0漏洞；公网两个首页普通UA和Baiduspider UA均200，验证标签在head内且只有一次，canonical为主站，www/forum仍301。用户在百度切换HTML标签后明确确认验证通过。
 - 已验证及更新www Token后，原Node请求仍400/site init fail；同一Token按官方curl格式实际www首页提交HTTP200/success1/remain9，找到site参数URLSearchParams百分号编码差异。修正仅site保留已校验origin原文，Token仍编码，固定官方HTTP域名及禁止重定向保留；新增回归模拟编码HTTPS地址被接口拒绝，防止误判平台未验证。
-- 额外真实对照：www参数提交主站/forum返回HTTP200/success0/not_same_site；原文非www参数使用当前www Token返回401/site error。不能用www Token强行推送主站最终链接，也不将www 301别名批量提交。用户确认非www需要另行认证，不能沿用此前已验证的假设。用户提供主站新HTML标签codeva-mT39zDq4dt，根布局按Host区分www旧标签与主站新标签，各输出一次，待部署后用户验证主站并更新对应Token，再跑自动队列。
+- 额外真实对照：www参数提交主站/forum返回HTTP200/success0/not_same_site；原文非www参数使用当前www Token返回401/site error。不能用www Token强行推送主站最终链接，也不将www 301别名批量提交。用户确认非www需要另行认证，不能沿用此前已验证的假设。用户提供主站新HTML标签codeva-mT39zDq4dt，根布局按Host区分www旧标签与主站新标签，各输出一次，主站标签已部署，用户随后明确确认主站HTML验证通过且Token已保存；不把此确认当作API已接收。
 - 编码修复版本b9adc19e8ac0已上线，归档SHA256两端一致5382097284a52439c2023c14786ca1f8c2e4d36932b06f69a691a3199de42a79，备份/var/backups/nexus-quant/predeploy-b9adc19e8ac0；构建、17/17迁移、外键/审计/资金/积分账本及健康通过，运行依赖0漏洞，专项搜索回归及ESLint通过。使用正式新适配器真实www首页HTTP200/success1/remain8，证明代码已能推送；同一Token主站401/site error，主站论坛经www提交not_same_site，未伪造成功队列。两个域名标签检查通过，用户随后提供独立主站标签继续处理。
+- 最终标签版本b4d7baf9f018已上线，归档SHA256两端一致68f777c944b446cdeb3003d58a2ebc8b4ffcecb3f04c8eb833fb8ee9045f1a72，备份/var/backups/nexus-quant/predeploy-b4d7baf9f018；生产构建、数据库17/17、外键0、审计和资金/积分账本及健康通过，运行依赖0漏洞。公网普通UA/Baiduspider UA复核：主站200/head仅mT39zDq4dt，www200/head仅kDPCngIED4，canonical主站，www论坛301。站点及搜索timer active。以上代码及日志已推送feature/ui-redesign。
+- 用户确认非www验证通过，并提供非www官方完整接口地址。通过SSH标准输入核对/加密保存对应Token（不进入文件、仓库、输出或日志），使用签名审计记录配置更新；实测Token与原保存值相同，因此此前把主站错误归因于“www Token不能用于主站”的推断未被证实，不再作为确定原因。已证实的是www site参数不能接收非www页面（not_same_site），两种站点参数的API响应不同。
+- 主站验证后，正式自动队列两次实际提交仍被拒绝，最后官方curl完全按主站接口格式对照也HTTP401/error401/site error；原编码site init fail已解决，现有证据无法确定是否百度平台权限/验证状态同步延迟。没有标记主站成功或已收录。百度队列24条pending、1条retry，平台错误6小时暂停保护保留，定时器约10分钟检查到期继续；www真实适配器此前已HTTP200/success1（同一首页对照，非多条不同页面）。主站API尚未完成成功验收，若持续401需百度平台核查；不强行改主域名或批量提交301别名。
 ### 2026-10-13：用户注册/登录时间与EA奖励积分兑换开关（已上线）
 
 - 后台用户与积分的用户与角色列表增加注册时间、最后登录时间，统一北京时间显示并适配后台语言。注册时间沿用真实join_date；017迁移新增last_login_at，仅成功密码登录后记录，历史无记录显示暂无记录，不用注册或修改资料时间伪造最后登录；用户列表仍仅管理员可读。
