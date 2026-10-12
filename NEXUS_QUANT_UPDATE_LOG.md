@@ -1,5 +1,11 @@
 # Nexus Quant 最新更新日志与执行顺序
 
+### 2026-10-12：Clash规则模式官网访问修复（本机已修复）
+
+- 用户日志显示规则模式将nqstrategy.com解析到127.0.0.2，命中127.0.0.0/8直连并连接本机443失败。检查Windows Hosts无域名覆盖，系统DNS为正确136.85.76.222；通过Mihomo命名管道API实际复现其DNS回答127.0.0.2，确认问题在本机Clash解析链路，尚未逐一定位具体上游的错误来源。阿里DoH实测返回正确公网IP。
+- 备份当前Clash运行配置和当前订阅的增强合并配置，在该订阅mmfpVKMWHjVe.yaml及运行配置增加仅+.nqstrategy.com的nameserver-policy，使用https://dns.alidns.com/dns-query；不覆盖其他域名DNS、节点和路由规则。通过官方配置API重新加载并清理DNS/Fake-IP缓存，仍为rule模式。主域和www实际DNS查询均为136.85.76.222，127.0.0.1:7897代理访问首页200约1.18秒。增强配置保留于当前订阅，订阅更新时可合并；其他订阅未修改。
+- 网站之前优化为应用请求/资源体积等，Cloudflare由用户关闭代理；本次错误发生在本机连接建立前，没有网站响应，不能归因于网站HTTP重定向或页面优化。本次未修改线上网站、DNS记录或支付配置。
+
 ### 2026-10-11：百度www验证文件与重定向修复（已上线，百度平台验证待点击）
 
 - 收到用户重新提供的baidu_verify_codeva-bKfmaCfDKs.html，32字节，原件与public副本SHA256一致39570312D7E8119B75473B2FC724571C5A9909D4FCF9AC71FC7F631AE42493B8。保留不带www站点原验证文件；新增www域名精确验证路径200例外，其他页面继续301到主域名。安装脚本保存Nginx配置备份，语法检查失败自动恢复；发布脚本维护持久验证副本。发布5a20925f9092通过生产构建、数据库16/16、审计和积分账本检查，备份/var/backups/nexus-quant/predeploy-5a20925f9092。首次Nginx文件目录权限导致403，已修正为/var/www/nexus-quant-verification并同步线上安装脚本；Nginx语法检查通过，公网www和不带www验证地址均200，32字节及SHA256匹配原件，Baiduspider可访问，本机公网复核亦200；www首页/论坛/策略详情仍301至主域名。文件修复后再次测试www首页百度API（使用现有密钥），官方返回HTTP400/error400/site init fail，接受0条；需要用户在百度www站点点击验证，并核对www对应API密钥。未更改网站主域名、主站提交队列或推送规则。
