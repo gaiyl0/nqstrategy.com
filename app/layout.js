@@ -3,6 +3,7 @@ import "./reference-desktop.css";
 import db from '@/lib/db';
 import { publishedSiteBrand } from '@/lib/site-brand-store';
 import { connection } from 'next/server';
+import { headers } from 'next/headers';
 import DesignProvider from './components/DesignProvider';
 import { InteractionProvider } from './components/ui/UiKit';
 
@@ -32,11 +33,14 @@ export async function generateMetadata() {
 
 export default async function RootLayout({ children }) {
   await connection();
+  const requestHeaders = await headers();
+  const verificationCode = requestHeaders.get('host')?.toLowerCase().split(':')[0] === 'www.nqstrategy.com'
+    ? 'codeva-kDPCngIED4' : 'codeva-mT39zDq4dt';
   const initialDesigns = Object.fromEntries(db.prepare("SELECT key,value FROM settings WHERE key IN ('frontendDesign','adminDesign')").all().map(row => [row.key, row.value]));
   const brand = publishedSiteBrand();
   return (
     <html lang="zh-CN">
-      <head><meta name="baidu-site-verification" content="codeva-kDPCngIED4" /></head>
+      <head><meta name="baidu-site-verification" content={verificationCode} /></head>
       <body className="bg-zinc-950 text-zinc-300"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context':'https://schema.org', '@type':'WebSite', name:brand.name, url:siteUrl, inLanguage:'zh-CN', description:brand.seoDescription || brand.description || defaultMetadata.description }).replace(/</g, '\\u003c') }} /><DesignProvider initialDesigns={initialDesigns}><InteractionProvider>{children}</InteractionProvider></DesignProvider></body>
     </html>
   );
