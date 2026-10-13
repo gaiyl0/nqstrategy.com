@@ -3,6 +3,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createPostSchema } from '../lib/validation.js';
 import { migrations, verifyMigrations } from '../lib/migrations.js';
+import { postContentBlocks, insertPostImage, clipboardImages, replacePostText } from '../lib/post-content.mjs';
+
+const marker = '![截图](/api/post-attachments?id=7)';
+for (const content of [`说明${marker}继续`, `标题\r\n  ${marker}  \r\n结尾`, `${marker}${marker}`]) {
+  const blocks = postContentBlocks(content);
+  assert.equal(blocks.map(block => content.slice(block.start, block.end)).join(''), content, 'parsing preserves the full article');
+  assert.ok(blocks.some(block => block.kind === 'image' && block.id === 7));
+}
+for (const unsupported of ['![x](https://other.test/x.png)', '![x](data:image/png;base64,abc)', '<img src="x" onerror="alert(1)">', '![x](/api/post-attachments?id=0)']) {
+  assert.ok(postContentBlocks(unsupported).every(block => block.kind === 'text'), 'untrusted image markup remains text');
+}
+const inserted = insertPostImage('前文选中后文', {name:'截图[一]\r\n.png',url:'/api/post-attachments?id=7'}, {start:2,end:4});
+assert.equal(inserted.content, '前文\n![截图一.png](/api/post-attachments?id=7)\n后文');
+assert.equal(inserted.content.slice(inserted.caret), '后文', 'caret moves after the image, before remaining text');
+const second = insertPostImage(inserted.content, {name:'二.png',url:'/api/post-attachments?id=8'}, {start:inserted.caret,end:inserted.caret});
+assert.deepEqual(postContentBlocks(second.content).filter(block=>block.kind==='image').map(block=>block.id), [7,8], 'multiple pasted images keep order');
+assert.throws(()=>insertPostImage('x'.repeat(20_000),{name:'image.png',url:'/api/post-attachments?id=7'},{start:0,end:0}),/TOO_LONG/);
+assert.equal(replacePostText(`前文${marker}后文`, postContentBlocks(`前文${marker}后文`)[2], '新的正文'), `前文${marker}新的正文`);
+assert.equal(replacePostText('x', {start:0,end:1}, 'x'.repeat(20_001)), null);
+const imageFile = {type:'image/png', name:'image.png'};
+assert.deepEqual(clipboardImages({items:[{kind:'string',type:'text/plain'}],files:[]}), [], 'ordinary Ctrl+V text paste is untouched');
+assert.deepEqual(clipboardImages({items:[{kind:'file',type:'image/png',getAsFile:()=>imageFile}],files:[imageFile]}), [imageFile], 'clipboard items and files do not upload the same image twice');
+assert.deepEqual(clipboardImages({files:[imageFile,{type:'text/plain'}]}), [imageFile]);
+assert.deepEqual(clipboardImages({items:[{kind:'file',type:'image/png',getAsFile:()=>null}],files:[imageFile]}), [imageFile]);
 
 const databasePath = path.resolve('.tmp-post-attachments-test.db');
 for (const suffix of ['', '-wal', '-shm']) { try { fs.rmSync(`${databasePath}${suffix}`); } catch {} }
