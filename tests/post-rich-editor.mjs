@@ -85,6 +85,19 @@ assert.equal(draft.content, old);
 assert.equal(draft.savedAt, savedAt);
 assert.deepEqual(draft.attachments, post.attachments);
 assert.throws(() => writePostDraft({ setItem() { throw new Error('QuotaExceededError'); } }, post, source()), /QuotaExceededError/);
+for (const text of ['普通正文', '- 列表正文']) {
+  reset(text);
+  const event = new window.KeyboardEvent('keydown', { key:'Tab', code:'Tab', bubbles:true, cancelable:true });
+  editor.view.dom.dispatchEvent(event);
+  assert.equal(event.defaultPrevented, false, 'Tab must allow moving focus out of the editor');
+}
+for (const type of ['blockquote','bulletList']) {
+  const parts = [{type:'paragraph',content:[{type:'text',text:'前文'}]},{type:'postImage',attrs:{id:25,alt:'插图'}},{type:'paragraph',content:[{type:'text',text:'后文'}]}];
+  const document = {type:'doc',content:[{type,content:type==='bulletList'?[{type:'listItem',content:parts}]:parts}]};
+  const markdown = serializeRichPost(document);
+  assert.ok(markdown.includes('\n![插图](/api/post-attachments?id=25)\n'));
+  assert.equal(serializeRichPost(parseRichPost(markdown)), markdown, 'images in quote/list keep standalone references when restored');
+}
 editor.destroy();
 dom.window.close();
-console.log('Rich editor DOM and draft regressions passed (35 assertions).');
+console.log('Rich editor DOM and draft regressions passed (41 assertions).');
