@@ -29,7 +29,7 @@ try {
   env.UPLOAD_SCAN_URL=`http://127.0.0.1:${scanner.address().port}`;
   const seed=spawnSync(process.execPath,['--input-type=module','-e',"import db from './lib/db.js'; db.prepare(\"INSERT INTO users(username,email,password,role) VALUES('image-author','image-author@test.invalid','hash','user'),('image-other','image-other@test.invalid','hash','user')\").run(); db.close();"],{env,encoding:'utf8',windowsHide:true});
   assert.equal(seed.status,0,seed.stderr);
-  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-p',String(port)],{env,windowsHide:true,stdio:['ignore','pipe','pipe']});
+  server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','-H','127.0.0.1','-p',String(port)],{env,windowsHide:true,stdio:['ignore','pipe','pipe']});
   server.stdout.on('data',bytes=>output+=bytes);server.stderr.on('data',bytes=>output+=bytes);
   let ready=false;
   for(let i=0;i<100;i++){await new Promise(resolve=>setTimeout(resolve,500));try{if((await request('/api/settings')).ok){ready=true;break;}}catch{}}
