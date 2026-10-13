@@ -50,6 +50,10 @@ try {
     const start=formatted.indexOf(fragment);
     formatted=formatPostText(formatted,{start,end:start+fragment.length},kind).content;
   }
+  for(const fragment of ['标题说明','引用说明','列表一']){
+    const start=formatted.indexOf(fragment);
+    formatted=formatPostText(formatted,{start,end:start+fragment.length},'bold').content;
+  }
   const content=`正文前缀![截图](${attachment.url})正文后缀\r\n${formatted}`;
   assert.equal((await request('/api/posts',{id:1,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[]}})).status,400);
   assert.equal((await request('/api/posts',{id:2,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[attachment.id]}})).status,409);
@@ -62,10 +66,12 @@ try {
   assert.ok(body.includes('正文前缀')&&body.includes('正文后缀'));
   assert.ok(!body.includes('![截图]('),'raw image marker is not shown in the article');
   assert.match(body,/id="article-section-1"/,'heading anchors retain original line numbers');
-  assert.ok(body.includes('>标题说明</h2>'),'toolbar heading renders as a heading');
+  assert.ok(body.includes('<strong>标题说明</strong></h2>'),'toolbar heading supports bold original text');
   assert.ok(body.includes('<strong>加粗说明 2*3</strong>'),'selected text including asterisks renders bold');
-  assert.ok(body.includes('<blockquote>引用说明</blockquote>'),'quote preserves the original text');
-  assert.ok(body.includes('• 列表一')&&body.includes('• 列表二'),'all selected list lines render');
+  assert.ok(body.includes('<blockquote><strong>引用说明</strong></blockquote>'),'quote supports bold original text');
+  const listNodes=body.split('<p class="article-list-item">').slice(1).map(part=>part.split('</p>')[0]);
+  assert.deepEqual(listNodes.map(node=>node.replaceAll('<!-- -->','').replaceAll('<strong>','').replaceAll('</strong>','')),['• 列表一','• 列表二'],'compare displayed list text independently of SSR hydration comments');
+  assert.ok(listNodes[0].includes('<strong>列表一</strong>'),'list supports bold original text');
   console.log('Post image HTTP tests passed: clipboard-shaped PNG upload, scanner, draft privacy, ownership, public image bytes and article HTML rendering');
 } finally {
   if(server && server.exitCode===null){const exited=new Promise(resolve=>server.once('exit',resolve));server.kill();await exited;}

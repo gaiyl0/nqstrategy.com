@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { formatPostText, postContentBlocks } from '../lib/post-content.mjs';
+import { articleHeadings } from '../lib/share-content.mjs';
 
 let assertions = 0;
 const equal = (actual, expected, message) => { assert.deepEqual(actual, expected, message); assertions++; };
@@ -9,6 +10,7 @@ const toggle = (result, kind) => apply(result.content, kind, result.selectionSta
 const heading = apply('默认模式什么时候开仓', 'heading');
 equal(heading.content, '## 默认模式什么时候开仓', 'the selected title stays intact');
 equal(heading.content.slice(heading.selectionStart, heading.selectionEnd), '默认模式什么时候开仓');
+equal(articleHeadings('## **默认模式什么时候开仓**'), [{id:'article-section-0',title:'默认模式什么时候开仓'}], 'table of contents shows heading text without formatting markers');
 equal(toggle(heading, 'heading').content, '默认模式什么时候开仓');
 equal(apply('前文\n第二行\n后文', 'heading', 4, 4).content, '前文\n## 第二行\n后文', 'no selection formats the current line');
 equal(apply('第一行\n下一行', 'heading', 0, 4).content, '## 第一行\n下一行', 'trailing newline does not format the next line');
