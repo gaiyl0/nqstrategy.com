@@ -6,6 +6,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import sharp from 'sharp';
+import { formatPostText } from '../lib/post-content.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'nexus-post-image-http-'));
 const port = 3233, origin = 'https://nexus.test';
@@ -44,7 +45,12 @@ try {
   for(const id of [undefined,2])assert.equal((await request(attachment.url,{id})).status,404,'unpublished image is private');
   const draft=await request(attachment.url,{id:1});assert.equal(draft.status,200);assert.equal(draft.headers.get('content-type'),'image/png');
   assert.equal((await sharp(Buffer.from(await draft.arrayBuffer())).metadata()).width,80);
-  const content=`正文前缀![截图](${attachment.url})正文后缀\r\n## 参数说明`;
+  let formatted='标题说明\n加粗说明 2*3\n引用说明\n列表一\n列表二';
+  for(const [kind,fragment] of [['heading','标题说明'],['bold','加粗说明 2*3'],['quote','引用说明'],['list','列表一\n列表二']]){
+    const start=formatted.indexOf(fragment);
+    formatted=formatPostText(formatted,{start,end:start+fragment.length},kind).content;
+  }
+  const content=`正文前缀![截图](${attachment.url})正文后缀\r\n${formatted}`;
   assert.equal((await request('/api/posts',{id:1,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[]}})).status,400);
   assert.equal((await request('/api/posts',{id:2,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[attachment.id]}})).status,409);
   const posted=await request('/api/posts',{id:1,method:'POST',json:{title:'Image display test',category:'MQL5',content,attachments:[attachment.id]}});
@@ -56,6 +62,10 @@ try {
   assert.ok(body.includes('正文前缀')&&body.includes('正文后缀'));
   assert.ok(!body.includes('![截图]('),'raw image marker is not shown in the article');
   assert.match(body,/id="article-section-1"/,'heading anchors retain original line numbers');
+  assert.ok(body.includes('>标题说明</h2>'),'toolbar heading renders as a heading');
+  assert.ok(body.includes('<strong>加粗说明 2*3</strong>'),'selected text including asterisks renders bold');
+  assert.ok(body.includes('<blockquote>引用说明</blockquote>'),'quote preserves the original text');
+  assert.ok(body.includes('• 列表一')&&body.includes('• 列表二'),'all selected list lines render');
   console.log('Post image HTTP tests passed: clipboard-shaped PNG upload, scanner, draft privacy, ownership, public image bytes and article HTML rendering');
 } finally {
   if(server && server.exitCode===null){const exited=new Promise(resolve=>server.once('exit',resolve));server.kill();await exited;}

@@ -11,7 +11,7 @@ export default function ArticleContent({ content, imageIds, t }) {
     if (/^>\s?/.test(line)) return <blockquote key={index}>{line.replace(/^>\s?/, '')}</blockquote>;
     if (/^[-*•]\s/.test(line)) return <p className="article-list-item" key={index}>• {line.replace(/^[-*•]\s/, '')}</p>;
     if (!line.trim()) return <div key={index} className="article-line-space"/>;
-    return <p key={index}>{line.split(/(\*\*[^*]+\*\*)/g).map((part, partIndex) => part.startsWith('**') && part.endsWith('**') ? <strong key={partIndex}>{part.slice(2,-2)}</strong> : part)}</p>;
+    return <p key={index}>{line.split(/(\*\*.+?\*\*)/g).map((part, partIndex) => part.startsWith('**') && part.endsWith('**') ? <strong key={partIndex}>{part.slice(2,-2)}</strong> : part)}</p>;
     })}</div>;
   })}</div>;
 }

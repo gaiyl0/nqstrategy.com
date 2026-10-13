@@ -12,7 +12,7 @@ import { ArrowLeft, BarChart3, Clock, Code2, Eye, Hash, Megaphone, MessageSquare
 import { Badge, Button, EmptyState, Field, Panel, Tabs } from './ui/UiKit';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
 import { apiFetch } from '@/lib/api-client';
-import { clipboardImages, insertPostImage, postContentBlocks } from '@/lib/post-content.mjs';
+import { clipboardImages, formatPostText, insertPostImage, postContentBlocks } from '@/lib/post-content.mjs';
 import PostBodyEditor from './PostBodyEditor';
 import ArticleContent from './ArticleContent';
 
@@ -152,14 +152,17 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
     return () => window.clearTimeout(timer);
   }, [draftReady, newPost]);
 
-  const insert = (template, requestedPosition = null) => {
+  const applyFormatting = kind => {
     const field = editorRef.current;
-    if (!field) return;
-    const start = requestedPosition === null ? field.selectionStart : requestedPosition;
-    const end = requestedPosition === null ? field.selectionEnd : requestedPosition;
-    const insertion = template;
-    setNewPost(current => ({ ...current, content: `${current.content.slice(0, start)}${insertion}${current.content.slice(end)}` }));
-    requestAnimationFrame(() => editorRef.current?.setSelectionRange(start + insertion.length, start + insertion.length));
+    if (!field || fileLock.current || publishLock.current) return;
+    try {
+      const formatted = formatPostText(newPost.content, { start: field.selectionStart, end: field.selectionEnd }, kind);
+      setNewPost(current => ({ ...current, content: formatted.content }));
+      requestAnimationFrame(() => editorRef.current?.setSelectionRange(formatted.selectionStart, formatted.selectionEnd));
+    } catch (error) {
+      setUploadError(true);
+      setUploadMessage(error?.message === 'POST_CONTENT_TOO_LONG' ? t('正文已达到 20,000 字符上限。', 'The article has reached the 20,000 character limit.') : t('请在正文文字中选择要设置格式的内容。', 'Select the text you want to format in the article body.'));
+    }
   };
 
   const uploadFiles = async (files) => {
@@ -264,7 +267,7 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
       <div className="forum-editor-main space-y-5">
         <Panel className="p-5 md:p-7"><div className="mb-5 flex items-start justify-between gap-4"><div><Badge variant="primary">{t('新讨论', 'New discussion')}</Badge><h1 className="mt-3 text-2xl font-black text-white">{t('撰写社区文章', 'Write a community article')}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{t('用清晰结构分享研究、经验和可复现细节。', 'Share research and reproducible experience with a clear structure.')}</p></div><div className="editor-word-counter hidden rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-3 text-right sm:block"><p className="text-[10px] uppercase tracking-wider text-slate-500">{t('正文长度', 'Body length')}</p><p className="mt-1 font-mono text-sm font-bold text-cyan-300">{wordCount} {t('字词', 'words/chars')}</p></div></div>
           <Field label={t('文章标题', 'Article title')} required><input disabled={isPublishing} maxLength={200} value={newPost.title} onChange={event => setNewPost(current => ({ ...current, title: event.target.value }))} placeholder={t('例如：如何验证一个稳健的黄金策略', 'e.g. How to validate a robust gold strategy')} className="text-lg font-semibold" /></Field>
-          <div className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/55"><div className="forum-editor-toolbar" role="toolbar" aria-label={t('文章编辑工具', 'Article editing tools')}><div className="forum-editor-tools">{[[Heading2,'标题','Heading','\n\n## 小标题\n\n'],[Bold,'加粗','Bold',' **重点内容** '],[Quote,'引用','Quote','\n> 引用内容\n'],[List,'列表','List','\n- 列表项目\n']].map(([Icon,label,en,snippet]) => <button key={label} type="button" disabled={preview || isPublishing} onClick={() => insert(snippet)} aria-label={t(`插入${label}`, `Insert ${en}`)}><Icon/><span>{t(label,en)}</span></button>)}{[[ImagePlus,'插入图片',imageInputRef,'image'],[Paperclip,'添加附件',attachmentInputRef,'file']].map(([Icon,label,inputRef,kind]) => <button key={kind} type="button" disabled={busy || preview || (newPost.attachments || []).length >= 10} onClick={() => { insertionPointRef.current = { start: editorRef.current?.selectionStart ?? newPost.content.length, end: editorRef.current?.selectionEnd ?? newPost.content.length }; inputRef.current?.click(); }}><Icon/><span>{t(label, kind === 'image' ? 'Insert image' : 'Add attachment')}</span></button>)}</div><button type="button" disabled={isPublishing} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <PenLine/> : <Eye/>}{preview ? t('继续编辑', 'Edit') : t('预览', 'Preview')}</button></div>
+          <div className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/55"><div className="forum-editor-toolbar" role="toolbar" aria-label={t('文章编辑工具', 'Article editing tools')}><div className="forum-editor-tools">{[[Heading2,'标题','Heading','heading'],[Bold,'加粗','Bold','bold'],[Quote,'引用','Quote','quote'],[List,'列表','List','list']].map(([Icon,label,en,kind]) => <button key={label} type="button" disabled={preview || busy} onMouseDown={event => event.preventDefault()} onClick={() => applyFormatting(kind)} aria-label={t(`设置${label}格式`, `${en} formatting`)}><Icon/><span>{t(label,en)}</span></button>)}{[[ImagePlus,'插入图片',imageInputRef,'image'],[Paperclip,'添加附件',attachmentInputRef,'file']].map(([Icon,label,inputRef,kind]) => <button key={kind} type="button" disabled={busy || preview || (newPost.attachments || []).length >= 10} onClick={() => { insertionPointRef.current = { start: editorRef.current?.selectionStart ?? newPost.content.length, end: editorRef.current?.selectionEnd ?? newPost.content.length }; inputRef.current?.click(); }}><Icon/><span>{t(label, kind === 'image' ? 'Insert image' : 'Add attachment')}</span></button>)}</div><button type="button" disabled={isPublishing} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <PenLine/> : <Eye/>}{preview ? t('继续编辑', 'Edit') : t('预览', 'Preview')}</button></div>
             {preview ? <div className="min-h-[420px] p-5 md:p-7"><h2 className="mb-5 text-xl font-black text-white">{newPost.title || t('文章标题预览', 'Article title preview')}</h2><FormattedContent content={newPost.content || t('正文预览会显示在这里。', 'Your article preview will appear here.')} imageIds={(newPost.attachments || []).filter(file => file.kind === 'image').map(file => file.id)} t={t} /></div> : <PostBodyEditor editorRef={editorRef} content={newPost.content} disabled={busy} onChange={content => setNewPost(current => ({ ...current, content }))} onPaste={pasteImages} onRemoveImage={removeInlineImage} t={t} placeholder={t('开始写作… 可使用工具插入标题、引用、项目符号和重点文本。\n\n推荐结构：\n## 研究背景\n## 方法与参数\n## 验证结果\n## 风险与局限', 'Start writing… Use the toolbar for headings, quotes, bullets and emphasis.\n\nSuggested structure:\n## Research context\n## Method and parameters\n## Validation results\n## Risks and limitations')} />}
             <div className="forum-editor-status border-t border-slate-800 px-4 py-2 text-slate-400"><span>{t('支持标题、引用、列表与加粗；可 Ctrl+V 粘贴图片，不执行 HTML。', 'Headings, quotes, lists and bold; paste images with Ctrl+V. HTML is not executed.')}</span><span>{characterCount.toLocaleString()} / 20,000</span></div>
           </div>

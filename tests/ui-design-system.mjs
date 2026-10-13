@@ -74,7 +74,7 @@ assert.match(forum, /<details[\s\S]*DocumentLibrary/, 'references remain accessi
 assert.match(forum, /DocumentLibrary/, 'documents tab must display its content');
 assert.match(forum, /nexus_forum_post_draft/, 'forum post composer must preserve a local draft through refreshes');
 assert.match(forum, /setPreview\(value => !value\)/, 'forum post composer must provide a live preview toggle');
-assert.match(forum, /insert\(snippet\)/, 'editor formatting toolbar must insert supported content blocks');
+// Selection-preserving toolbar behavior is exercised in post-formatting.mjs.
 assert.match(forum, /FormattedContent/, 'article preview and published detail must render supported formatting safely');
 assert.match(forum, /插入图片/, 'forum composer must provide an inline image action');
 assert.match(forum, /添加附件/, 'forum composer must provide a file attachment action');

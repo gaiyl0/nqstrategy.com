@@ -47,6 +47,7 @@
     "test:site-analytics": "node tests/site-analytics.mjs",
     "test:post-attachments": "node tests/post-attachments.mjs",
     "test:post-attachments:http": "node tests/post-attachments-http.mjs",
+    "test:post-formatting": "node tests/post-formatting.mjs",
     "test:product-slug": "node tests/product-slug.mjs",
     "test:database-migrations": "node tests/database-migrations.mjs",
     "test:relational-integrity": "node tests/relational-integrity.mjs",
