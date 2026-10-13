@@ -2,18 +2,20 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import ShareActions from './ShareActions';
 import {followInternalLink} from '@/lib/app-navigation.mjs';
 import ReferenceForumList from './ReferenceForumList';
 import { editorialArticleCover } from './editorialArticleCover';
 import './forum-polish.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BarChart3, Clock, Code2, Eye, Hash, Megaphone, MessageSquare, PenLine, Search, ShieldCheck, Star, Trash2, TrendingUp, Users, Bold, Heading2, Quote, List, Save, Send, ImagePlus, Paperclip, X, FileText } from 'lucide-react';
 import { Badge, Button, EmptyState, Field, Panel, Tabs } from './ui/UiKit';
 import { DEFAULT_COMMUNITY_CONTENT } from '@/lib/community-content';
 import { apiFetch } from '@/lib/api-client';
-import { clipboardImages, formatPostText, insertPostImage, postContentBlocks } from '@/lib/post-content.mjs';
-import PostBodyEditor from './PostBodyEditor';
+import { clipboardImages, postContentBlocks } from '@/lib/post-content.mjs';
+import { writePostDraft } from '@/lib/post-rich-content.mjs';
+const PostBodyEditor = dynamic(() => import('./PostBodyEditor'), { ssr: false, loading: () => <div role="status" className="forum-body-editor">正在加载编辑器… / Loading editor…</div> });
 import ArticleContent from './ArticleContent';
 
 const categoryIcons = [MessageSquare, TrendingUp, Code2, BarChart3, Megaphone];
@@ -102,7 +104,7 @@ function DetailView(props) {
   return <div className="mx-auto max-w-4xl px-4 py-8 md:px-6"><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><Button variant="ghost" icon={ArrowLeft} onClick={() => setForumView('list')}>{t('返回社区', 'Back to community')}</Button>{user?.role === 'admin' && <div className="flex gap-2"><Button icon={Star} onClick={event => handlePinPost(selectedPost.id, !selectedPost.is_pinned, event)}>{selectedPost.is_pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}</Button><Button variant="danger" icon={Trash2} onClick={event => handleDeletePost(selectedPost.id, event)}>{t('删除', 'Delete')}</Button></div>}</div><Panel className="p-6 md:p-8"><Link href={`/forum/${selectedPost.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-cyan-300">{t('打开文章分享页 →','Open article page →')}</Link><div className="flex gap-2">{selectedPost.is_pinned && <Badge variant="primary">{t('置顶', 'Pinned')}</Badge>}<Badge variant="violet">{tCat(selectedPost.category)}</Badge></div><h1 className="mt-5 text-2xl font-black leading-tight text-white md:text-3xl">{selectedPost.title}</h1><div className="mt-6 flex items-center gap-4 border-b border-slate-800 pb-6"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 font-bold text-cyan-300"><Avatar source={selectedPost.avatar_url} name={selectedPost.author} size={48} /></div><div><div className="flex items-center gap-2"><b className="text-white">{selectedPost.author}</b><Badge>{userBadge(selectedPost.author).title}</Badge></div><p className="mt-1 text-xs text-slate-600">{new Date(selectedPost.created_at).toLocaleString()} · {selectedPost.views || 0} {t('次浏览', 'views')}</p></div></div><div className="mt-5"><ShareActions title={selectedPost.title} path={`/forum/${selectedPost.id}`} t={t}/></div><div className="py-7 text-sm leading-8 md:text-base"><FormattedContent content={selectedPost.content} imageIds={selectedPost.attachments?.filter(file => file.kind === 'image').map(file => file.id)} t={t} /></div>{selectedPost.attachments?.some(item => item.kind === 'file') && <section className="mt-3 border-t border-slate-800 pt-5"><h2 className="text-sm font-bold text-white">{t('文章附件', 'Article attachments')}</h2><div className="mt-3 space-y-2">{selectedPost.attachments.filter(item => item.kind === 'file').map(item => <a key={item.id} href={item.url} className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-sm text-cyan-200 hover:border-cyan-400/30"><FileText className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1 truncate">{item.name}</span><span className="text-xs text-slate-600">{(item.size / 1024).toFixed(0)} KB</span></a>)}</div></section>}{user && user.id !== selectedPost.author_user_id && <Button variant="ghost" size="sm" onClick={() => handleReport('post', selectedPost.id)}>{t('举报此帖', 'Report post')}</Button>}</Panel><Panel className="mt-5 p-6 md:p-8"><h2 className="flex items-center gap-2 text-lg font-bold text-white"><MessageSquare className="h-5 w-5 text-cyan-400" />{t('参与讨论', 'Discussion')} ({comments.length})</h2><div className="my-7 space-y-4">{comments.map(comment => <div key={comment.id} className={`group relative flex gap-3 rounded-xl border p-4 ${comment.is_pinned ? 'border-cyan-400/25 bg-cyan-400/[0.035]' : 'border-slate-800 bg-slate-950/25'}`}><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-bold text-cyan-300"><Avatar source={comment.avatar_url} name={comment.author} size={40} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-sm text-white">{comment.author}</b>{comment.author === selectedPost.author && <Badge variant="primary">OP</Badge>}<span className="ml-auto text-[11px] text-slate-600">{new Date(comment.created_at).toLocaleString()}</span></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">{comment.content}</p>{user && user.id !== comment.author_user_id && <button type="button" onClick={() => handleReport('comment', comment.id)} className="mt-3 text-xs text-amber-400">{t('举报评论', 'Report comment')}</button>}</div>{user?.role === 'admin' && <div className="absolute right-3 top-3 flex gap-1 opacity-0 group-hover:opacity-100"><Button size="sm" variant="ghost" onClick={() => handlePinComment(comment.id, !comment.is_pinned)}>{comment.is_pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}</Button><Button aria-label={t('删除评论', 'Delete comment')} size="icon" variant="danger" onClick={() => handleDeleteComment(comment.id)}><Trash2 className="h-4 w-4" /></Button></div>}</div>)}{comments.length === 0 && <EmptyState icon={MessageSquare} title={t('暂无回复', 'No replies yet')} description={t('成为第一个参与讨论的人。', 'Be the first to join this discussion.')} />}</div><Field label={t('回复内容', 'Your reply')}><textarea rows="5" value={commentInput} onChange={event => setCommentInput(event.target.value)} disabled={!user} placeholder={user ? t('写下你的见解…', 'Share your perspective…') : t('请先登录后回复', 'Sign in to reply')} /></Field><div className="mt-4 flex justify-end">{user ? <Button variant="primary" loading={isCommenting} disabled={!commentInput.trim()} onClick={submitComment}>{t('发表回复', 'Post reply')}</Button> : <Button variant="primary" onClick={() => setAuthModal('login')}>{t('登录参与讨论','Sign in to join')}</Button>}</div></Panel></div>;
 }
 
-function CreateView({ categories, newPost, setNewPost, setForumView, submitPost, t, tCat }) {
+function CreateView({ categories, newPost, setNewPost, setForumView, submitPost, showToast, t, tCat }) {
   const editorRef = useRef(null);
   const imageInputRef = useRef(null);
   const attachmentInputRef = useRef(null);
@@ -110,6 +112,10 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
   const [preview, setPreview] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [draftFeedback, setDraftFeedback] = useState(null);
+  const [activeFormats, setActiveFormats] = useState({});
+  const updateFormats = useCallback(formats => setActiveFormats(previous =>
+    Object.keys(formats).every(key => previous[key] === formats[key]) ? previous : formats), []);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -118,6 +124,10 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
   const busy = isUploading || isPublishing || isRemoving;
   const [uploadMessage, setUploadMessage] = useState('');
   const [uploadError, setUploadError] = useState(false);
+  const reportLimit = useCallback(() => {
+    setUploadError(true);
+    setUploadMessage(t('正文已达到 20,000 字符上限。', 'The article has reached the 20,000 character limit.'));
+  }, [t]);
   const wordCount = (newPost.content.match(/\p{Script=Han}|[\p{L}\p{N}]+/gu) || []).length;
   const characterCount = newPost.content.length;
   const categoryKey = JSON.stringify(categories);
@@ -156,9 +166,7 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
     const field = editorRef.current;
     if (!field || fileLock.current || publishLock.current) return;
     try {
-      const formatted = formatPostText(newPost.content, { start: field.selectionStart, end: field.selectionEnd }, kind);
-      setNewPost(current => ({ ...current, content: formatted.content }));
-      requestAnimationFrame(() => editorRef.current?.setSelectionRange(formatted.selectionStart, formatted.selectionEnd));
+      field.format(kind);
     } catch (error) {
       setUploadError(true);
       setUploadMessage(error?.message === 'POST_CONTENT_TOO_LONG' ? t('正文已达到 20,000 字符上限。', 'The article has reached the 20,000 character limit.') : t('请在正文文字中选择要设置格式的内容。', 'Select the text you want to format in the article body.'));
@@ -180,7 +188,7 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
         const { attachment } = await response.json();
         if (attachment.kind === 'image') {
           try {
-            const inserted = insertPostImage(content, attachment, selection);
+            const inserted = editorRef.current.insertImage(attachment, selection);
             content = inserted.content;
             selection = { start: inserted.caret, end: inserted.caret };
           } catch (error) {
@@ -244,10 +252,17 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
 
   const saveDraft = () => {
     try {
-      const savedAt = new Date().toISOString();
-      localStorage.setItem('nexus_forum_post_draft', JSON.stringify({ ...newPost, savedAt }));
+      const savedAt = writePostDraft(localStorage, newPost, editorRef.current?.getContent() ?? newPost.content);
       setDraftSavedAt(savedAt);
-    } catch { setDraftSavedAt(null); }
+      const message = t('草稿保存成功，已保存在当前浏览器，可稍后继续编辑。', 'Draft saved in this browser. You can continue editing later.');
+      setDraftFeedback({ error: false, message });
+      showToast(message);
+    } catch {
+      setDraftSavedAt(null);
+      const message = t('草稿保存失败，浏览器存储不可用或空间不足。请先复制正文备份。', 'Draft could not be saved: browser storage is unavailable or full. Copy your text to keep a backup.');
+      setDraftFeedback({ error: true, message });
+      showToast(message);
+    }
   };
   const publish = async () => {
     if (publishLock.current || fileLock.current || !newPost.title.trim() || !newPost.content.trim()) return;
@@ -267,20 +282,20 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
       <div className="forum-editor-main space-y-5">
         <Panel className="p-5 md:p-7"><div className="mb-5 flex items-start justify-between gap-4"><div><Badge variant="primary">{t('新讨论', 'New discussion')}</Badge><h1 className="mt-3 text-2xl font-black text-white">{t('撰写社区文章', 'Write a community article')}</h1><p className="mt-2 text-sm leading-6 text-slate-500">{t('用清晰结构分享研究、经验和可复现细节。', 'Share research and reproducible experience with a clear structure.')}</p></div><div className="editor-word-counter hidden rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-3 text-right sm:block"><p className="text-[10px] uppercase tracking-wider text-slate-500">{t('正文长度', 'Body length')}</p><p className="mt-1 font-mono text-sm font-bold text-cyan-300">{wordCount} {t('字词', 'words/chars')}</p></div></div>
           <Field label={t('文章标题', 'Article title')} required><input disabled={isPublishing} maxLength={200} value={newPost.title} onChange={event => setNewPost(current => ({ ...current, title: event.target.value }))} placeholder={t('例如：如何验证一个稳健的黄金策略', 'e.g. How to validate a robust gold strategy')} className="text-lg font-semibold" /></Field>
-          <div className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/55"><div className="forum-editor-toolbar" role="toolbar" aria-label={t('文章编辑工具', 'Article editing tools')}><div className="forum-editor-tools">{[[Heading2,'标题','Heading','heading'],[Bold,'加粗','Bold','bold'],[Quote,'引用','Quote','quote'],[List,'列表','List','list']].map(([Icon,label,en,kind]) => <button key={label} type="button" disabled={preview || busy} onMouseDown={event => event.preventDefault()} onClick={() => applyFormatting(kind)} aria-label={t(`设置${label}格式`, `${en} formatting`)}><Icon/><span>{t(label,en)}</span></button>)}{[[ImagePlus,'插入图片',imageInputRef,'image'],[Paperclip,'添加附件',attachmentInputRef,'file']].map(([Icon,label,inputRef,kind]) => <button key={kind} type="button" disabled={busy || preview || (newPost.attachments || []).length >= 10} onClick={() => { insertionPointRef.current = { start: editorRef.current?.selectionStart ?? newPost.content.length, end: editorRef.current?.selectionEnd ?? newPost.content.length }; inputRef.current?.click(); }}><Icon/><span>{t(label, kind === 'image' ? 'Insert image' : 'Add attachment')}</span></button>)}</div><button type="button" disabled={isPublishing} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <PenLine/> : <Eye/>}{preview ? t('继续编辑', 'Edit') : t('预览', 'Preview')}</button></div>
-            {preview ? <div className="min-h-[420px] p-5 md:p-7"><h2 className="mb-5 text-xl font-black text-white">{newPost.title || t('文章标题预览', 'Article title preview')}</h2><FormattedContent content={newPost.content || t('正文预览会显示在这里。', 'Your article preview will appear here.')} imageIds={(newPost.attachments || []).filter(file => file.kind === 'image').map(file => file.id)} t={t} /></div> : <PostBodyEditor editorRef={editorRef} content={newPost.content} disabled={busy} onChange={content => setNewPost(current => ({ ...current, content }))} onPaste={pasteImages} onRemoveImage={removeInlineImage} t={t} placeholder={t('开始写作… 可使用工具插入标题、引用、项目符号和重点文本。\n\n推荐结构：\n## 研究背景\n## 方法与参数\n## 验证结果\n## 风险与局限', 'Start writing… Use the toolbar for headings, quotes, bullets and emphasis.\n\nSuggested structure:\n## Research context\n## Method and parameters\n## Validation results\n## Risks and limitations')} />}
+          <div className="mt-5 overflow-hidden rounded-xl border border-slate-800 bg-slate-950/55"><div className="forum-editor-toolbar" role="toolbar" aria-label={t('文章编辑工具', 'Article editing tools')}><div className="forum-editor-tools">{[[Heading2,'标题','Heading','heading'],[Bold,'加粗','Bold','bold'],[Quote,'引用','Quote','quote'],[List,'列表','List','list']].map(([Icon,label,en,kind]) => <button key={label} type="button" disabled={preview || busy} onMouseDown={event => event.preventDefault()} onClick={() => applyFormatting(kind)} aria-pressed={Boolean(activeFormats[kind])} aria-label={t(`设置${label}格式`, `${en} formatting`)}><Icon/><span>{t(label,en)}</span></button>)}{[[ImagePlus,'插入图片',imageInputRef,'image'],[Paperclip,'添加附件',attachmentInputRef,'file']].map(([Icon,label,inputRef,kind]) => <button key={kind} type="button" disabled={busy || preview || (newPost.attachments || []).length >= 10} onClick={() => { insertionPointRef.current = { start: editorRef.current?.selectionStart ?? newPost.content.length, end: editorRef.current?.selectionEnd ?? newPost.content.length }; inputRef.current?.click(); }}><Icon/><span>{t(label, kind === 'image' ? 'Insert image' : 'Add attachment')}</span></button>)}</div><button type="button" disabled={isPublishing} aria-pressed={preview} onClick={() => setPreview(value => !value)}>{preview ? <PenLine/> : <Eye/>}{preview ? t('继续编辑', 'Edit') : t('预览', 'Preview')}</button></div>
+            {preview && <div className="min-h-[420px] p-5 md:p-7"><h2 className="mb-5 text-xl font-black text-white">{newPost.title || t('文章标题预览', 'Article title preview')}</h2><FormattedContent content={newPost.content || t('正文预览会显示在这里。', 'Your article preview will appear here.')} imageIds={(newPost.attachments || []).filter(file => file.kind === 'image').map(file => file.id)} t={t} /></div>}<div hidden={preview}><PostBodyEditor editorRef={editorRef} content={newPost.content} disabled={busy} onChange={content => setNewPost(current => ({ ...current, content }))} onPaste={pasteImages} onRemoveImage={removeInlineImage} onFormats={updateFormats} onLimit={reportLimit} t={t} placeholder={t('开始写作… 可使用工具插入标题、引用、项目符号和重点文本。\n\n推荐结构：\n## 研究背景\n## 方法与参数\n## 验证结果\n## 风险与局限', 'Start writing… Use the toolbar for headings, quotes, bullets and emphasis.\n\nSuggested structure:\n## Research context\n## Method and parameters\n## Validation results\n## Risks and limitations')} /></div>
             <div className="forum-editor-status border-t border-slate-800 px-4 py-2 text-slate-400"><span>{t('支持标题、引用、列表与加粗；可 Ctrl+V 粘贴图片，不执行 HTML。', 'Headings, quotes, lists and bold; paste images with Ctrl+V. HTML is not executed.')}</span><span>{characterCount.toLocaleString()} / 20,000</span></div>
           </div>
         </Panel>
         <Panel className="p-5"><h2 className="font-bold text-white">{t('写作建议（非发布门槛）', 'Writing suggestions (optional)')}</h2><div className="mt-4 grid gap-3 sm:grid-cols-3">{[[newPost.title.trim().length >= 8, '标题清晰', 'Clear title'], [wordCount >= 30, '正文不少于 30 字词', 'At least 30 words or characters'], [newPost.content.includes('##'), '包含分段结构', 'Has sections']].map(([ok, zh, en]) => <div key={zh} className={`rounded-lg border px-3 py-3 text-xs ${ok ? 'border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300' : 'border-slate-800 bg-slate-950/30 text-slate-500'}`}><span className="mr-2">{ok ? '✓' : '○'}</span>{t(zh, en)}</div>)}</div></Panel>
       </div>
       <aside className="forum-editor-sidebar space-y-5">
-        <Panel className="forum-editor-publish p-5"><div className="flex items-center justify-between"><h2 className="font-bold text-white">{t('发布', 'Publish')}</h2><Badge variant="warning">{t('待发布', 'Draft')}</Badge></div><p className="mt-3 text-xs leading-5 text-slate-500">{t('提交后将发布到所选社区版块，其他用户可以阅读和评论。', 'Publishing makes this post visible in the selected community category.')}</p><div className="mt-5 space-y-3"><Button className="w-full" icon={Save} disabled={isPublishing} onClick={saveDraft}>{t('保存本地草稿', 'Save local draft')}</Button><Button variant="primary" className="w-full" icon={Send} loading={isPublishing} disabled={publishDisabled} onClick={publish}>{t('发布讨论', 'Publish post')}</Button></div><p className="mt-3 text-center text-[11px] text-slate-600">{t('未点击发布前不会对其他用户可见。', 'Only you can see it until published.')}</p></Panel>
+        <Panel className="forum-editor-publish p-5"><div className="flex items-center justify-between"><h2 className="font-bold text-white">{t('发布', 'Publish')}</h2><Badge variant="warning">{t('待发布', 'Draft')}</Badge></div><p className="mt-3 text-xs leading-5 text-slate-500">{t('提交后将发布到所选社区版块，其他用户可以阅读和评论。', 'Publishing makes this post visible in the selected community category.')}</p><div className="mt-5 space-y-3"><Button className="w-full" icon={Save} disabled={busy} onClick={saveDraft}>{t('保存本地草稿', 'Save local draft')}</Button><Button variant="primary" className="w-full" icon={Send} loading={isPublishing} disabled={publishDisabled} onClick={publish}>{t('发布讨论', 'Publish post')}</Button></div>{draftFeedback && <p role={draftFeedback.error ? 'alert' : 'status'} className={`forum-draft-feedback ${draftFeedback.error ? 'is-error' : ''}`}>{draftFeedback.message}</p>}<p className="mt-3 text-center text-[11px] text-slate-600">{t('未点击发布前不会对其他用户可见。', 'Only you can see it until published.')}</p></Panel>
         <Panel className="p-5"><h2 className="font-bold text-white">{t('文章设置', 'Post settings')}</h2><div className="mt-4"><Field label={t('社区版块', 'Community category')} required><select disabled={isPublishing} value={newPost.category} onChange={event => setNewPost(current => ({ ...current, category: event.target.value }))}>{categories.filter(category => category !== '全部').map(category => <option key={category} value={category}>{tCat(category)}</option>)}</select></Field></div><div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/35 p-3 text-xs leading-5 text-slate-500"><p className="font-semibold text-slate-300">{t('写作提示', 'Writing tips')}</p><ul className="mt-2 list-disc space-y-1 pl-4"><li>{t('说明市场、周期和测试区间。', 'State market, timeframe and test period.')}</li><li>{t('注明手续费、滑点和样本外验证。', 'Include fees, slippage and out-of-sample checks.')}</li><li>{t('写明策略失效条件与风险。', 'Describe failure conditions and risks.')}</li></ul></div></Panel>
         <Panel className="p-5"><div className="flex items-center justify-between gap-2"><h2 className="font-bold text-white">{t('图片与附件', 'Images & attachments')}</h2><Badge>{(newPost.attachments || []).length}/10</Badge></div><p className="mt-2 text-xs leading-5 text-slate-500">{t('图片最大 2 MB；PDF、CSV、TXT 最大 10 MB。上传内容经过格式检查与安全扫描。', 'Images up to 2 MB; PDF, CSV and TXT up to 10 MB. Files are validated and scanned.')}</p>{uploadMessage && <p role="status" className={`mt-3 text-xs ${uploadError ? 'text-rose-300' : 'text-emerald-300'}`}>{uploadMessage}</p>}{isUploading && <p className="mt-3 animate-pulse text-xs text-cyan-300">{t('安全扫描中…', 'Security scan in progress…')}</p>}<div className="mt-3 space-y-2">{(newPost.attachments || []).map(attachment => <div key={attachment.id} className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/35 p-2">{attachment.kind === 'image' ? <ImagePlus className="h-4 w-4 shrink-0 text-cyan-300" /> : <FileText className="h-4 w-4 shrink-0 text-violet-300" />}<span className="forum-attachment-name min-w-0 flex-1 text-slate-300" title={attachment.name}>{attachment.name}</span><span className="shrink-0 text-[10px] text-slate-600">{(attachment.size / 1024).toFixed(0)} KB</span><button type="button" aria-label={t(`删除附件 ${attachment.name}`, `Remove ${attachment.name}`)} disabled={busy} onClick={() => removeAttachment(attachment)} className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-40"><X className="h-4 w-4" /></button></div>)}</div>{!(newPost.attachments || []).length && <p className="mt-3 text-xs text-slate-600">{t('尚未添加图片或附件。', 'No images or attachments added yet.')}</p>}</Panel>
       </aside>
     </div>
-    <div className="forum-editor-mobile-actions" aria-label={t('保存与发布', 'Save and publish')}><Button icon={Save} disabled={isPublishing} onClick={saveDraft}>{t('保存草稿', 'Save draft')}</Button><Button variant="primary" icon={Send} loading={isPublishing} disabled={publishDisabled} onClick={publish}>{t('发布讨论', 'Publish post')}</Button></div>
+    <div className="forum-editor-mobile-actions" aria-label={t('保存与发布', 'Save and publish')}><Button icon={Save} disabled={busy} onClick={saveDraft}>{t('保存草稿', 'Save draft')}</Button><Button variant="primary" icon={Send} loading={isPublishing} disabled={publishDisabled} onClick={publish}>{t('发布讨论', 'Publish post')}</Button></div>
   </div>;
 }
 

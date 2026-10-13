@@ -1,59 +1,81 @@
 'use client';
 
-import { useImperativeHandle, useLayoutEffect, useMemo, useRef } from 'react';
-import { postContentBlocks, replacePostText } from '@/lib/post-content.mjs';
+import { createContext, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from '@tiptap/react';
+import { clipboardImages } from '@/lib/post-content.mjs';
+import { parseRichPost, serializeRichPost } from '@/lib/post-rich-content.mjs';
+import { formatRichPost, insertRichPostImage, PostImage, postEditorExtensions } from '@/lib/post-editor-extensions.mjs';
 import PostBodyImage from './PostBodyImage';
 
-export default function PostBodyEditor({ content, onChange, editorRef, disabled, onPaste, onRemoveImage, placeholder, t }) {
-  const blocks = useMemo(() => postContentBlocks(content), [content]);
-  const fields = useRef(new Map());
-  const selection = useRef({ start: content.length, end: content.length });
-  const activeIndex = useRef(null);
-  const hasImages = blocks.some(block => block.kind === 'image');
+const ImageActions = createContext(null);
 
-  const remember = (field, block, index) => {
-    activeIndex.current = index;
-    selection.current = { start: block.start + field.selectionStart, end: block.start + field.selectionEnd };
-  };
-  const readSelection = () => {
-    const block = blocks[activeIndex.current];
-    const field = fields.current.get(activeIndex.current);
-    return field && block?.kind === 'text' ? { start: block.start + field.selectionStart, end: block.start + field.selectionEnd } : selection.current;
-  };
-  useImperativeHandle(editorRef, () => ({
-    get selectionStart() { return readSelection().start; },
-    get selectionEnd() { return readSelection().end; },
-    focus() { fields.current.get(blocks.findIndex(block => block.kind === 'text' && block.start <= selection.current.start && block.end >= selection.current.start))?.focus(); },
-    setSelectionRange(start, end) {
-      selection.current = { start, end };
-      const index = blocks.findIndex(block => block.kind === 'text' && block.start <= start && block.end >= start);
-      const field = fields.current.get(index);
-      if (field) { activeIndex.current = index; field.focus(); field.setSelectionRange(start - blocks[index].start, Math.min(end, blocks[index].end) - blocks[index].start); }
-      selection.current = { start, end };
+function InlineImage({ node }) {
+  const { t, onRemoveImage, disabled } = useContext(ImageActions);
+  return <NodeViewWrapper as="figure" className="forum-editor-inline-media" contentEditable={false}>
+    <PostBodyImage url={`/api/post-attachments?id=${node.attrs.id}`} alt={node.attrs.alt} t={t} />
+    <figcaption><button type="button" disabled={disabled} onClick={() => onRemoveImage(node.attrs.id)}>{t('移除图片', 'Remove image')}</button></figcaption>
+  </NodeViewWrapper>;
+}
+
+export default function PostBodyEditor({ content, onChange, editorRef, disabled, onPaste, onRemoveImage, onFormats, onLimit, placeholder, t }) {
+  const emitted = useRef(null);
+  const extensions = useMemo(() => postEditorExtensions(PostImage.extend({
+    addNodeView() { return ReactNodeViewRenderer(InlineImage); },
+  }), onLimit), [onLimit]);
+  const editor = useEditor({
+    extensions, content: parseRichPost(content), immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
+    editorProps: {
+      attributes: { class: 'forum-rich-input', role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('正文内容', 'Article body'), 'data-placeholder': placeholder },
+      handlePaste(_view, event) {
+        if (clipboardImages(event.clipboardData).length) { onPaste(event); return true; }
+        // Plain text paste avoids importing HTML or bypassing image validation.
+        event.preventDefault();
+        const text = event.clipboardData?.getData('text/plain') || '';
+        if (text) editor.commands.insertContent(text.split(/\r?\n/).map(line => ({ type: 'paragraph', content: line ? [{ type: 'text', text: line }] : [] })));
+        return true;
+      },
+      handleDrop() { return true; },
     },
+    onUpdate({ editor: current }) {
+      emitted.current = serializeRichPost(current.state.doc);
+      onChange(emitted.current);
+    },
+    onTransaction({ editor: current }) {
+      onFormats?.({ heading: current.isActive('heading'), bold: current.isActive('bold'), quote: current.isActive('blockquote'), list: current.isActive('bulletList') });
+    },
+  });
+
+  useEffect(() => {
+    if (!editor) return;
+    if (editor.isEditable === Boolean(disabled)) editor.setEditable(!disabled, false);
+    editor.view.dom.setAttribute('aria-disabled', String(Boolean(disabled)));
+  }, [editor, disabled]);
+  useEffect(() => {
+    if (!editor || content === emitted.current) return;
+    let cancelled = false;
+    // React node views flush their initial render. Restore outside the React
+    // effect lifecycle so draft images can mount without nested flushSync.
+    queueMicrotask(() => {
+      if (cancelled || editor.isDestroyed || content === emitted.current) return;
+      editor.chain().setContent(parseRichPost(content), { emitUpdate: false })
+        .command(({ tr }) => { tr.setMeta('addToHistory', false); return true; }).run();
+      const canonical = serializeRichPost(editor.state.doc);
+      emitted.current = canonical;
+      if (canonical !== content) onChange(canonical);
+    });
+    return () => { cancelled = true; };
+  }, [editor, content, onChange]);
+
+  useImperativeHandle(editorRef, () => ({
+    get selectionStart() { return editor?.state.selection.from ?? 0; },
+    get selectionEnd() { return editor?.state.selection.to ?? 0; },
+    getContent() { return editor ? serializeRichPost(editor.state.doc) : content; },
+    format(kind) { if (editor && !disabled) return formatRichPost(editor, kind); },
+    insertImage(attachment, range) { return insertRichPostImage(editor, attachment, range); },
+    focus() { editor?.commands.focus(); },
+    setSelectionRange(start, end) { editor?.chain().setTextSelection({ from: start, to: end }).focus().run(); },
   }));
 
-  useLayoutEffect(() => {
-    for (const field of fields.current.values()) {
-      field.style.height = 'auto';
-      field.style.height = `${Math.max(hasImages ? 72 : 420, field.scrollHeight)}px`;
-    }
-  }, [content, hasImages]);
-
-  return <div className="forum-body-editor" aria-label={t('正文编辑区', 'Article body editor')}>
-    {blocks.map((block, index) => block.kind === 'image' ? <figure key={`image-${index}-${block.id}`} className="forum-editor-inline-media">
-      <PostBodyImage url={block.url} alt={block.alt} t={t} />
-      <figcaption><button type="button" disabled={disabled} onClick={() => onRemoveImage(block.id)}>{t('移除图片', 'Remove image')}</button></figcaption>
-    </figure> : <textarea key={`text-${index}`} ref={field => { if (field) fields.current.set(index, field); else fields.current.delete(index); }}
-      aria-label={index === 0 ? t('正文内容', 'Article body') : t(`图片后的正文 ${index}`, `Text after image ${index}`)}
-      disabled={disabled} rows={hasImages ? 2 : 18} value={block.text}
-      maxLength={20_000 - content.length + block.text.length} placeholder={hasImages ? t('继续输入正文…', 'Continue writing…') : placeholder}
-      onSelect={event => remember(event.currentTarget, block, index)} onFocus={event => remember(event.currentTarget, block, index)} onBlur={event => remember(event.currentTarget, block, index)}
-      onPaste={event => { remember(event.currentTarget, block, index); onPaste(event); }}
-      onChange={event => {
-        remember(event.currentTarget, block, index);
-        const next = replacePostText(content, block, event.target.value);
-        if (next !== null) onChange(next);
-      }} />)}
-  </div>;
+  return <ImageActions.Provider value={{ t, onRemoveImage, disabled }}><div className="forum-body-editor" aria-label={t('正文编辑区', 'Article body editor')}><EditorContent editor={editor} /></div></ImageActions.Provider>;
 }
