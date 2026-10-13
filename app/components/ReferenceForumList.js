@@ -1,4 +1,6 @@
 "use client";
+
+import { articleSummary } from '@/lib/share-content.mjs';
 import {writeNavigation,followInternalLink} from "@/lib/app-navigation.mjs";
 import {useRef,useState} from 'react';
 import Image from 'next/image';
@@ -9,7 +11,7 @@ import {Badge,Button,EmptyState,Panel,Tabs} from './ui/UiKit';
 
 function PostCard({post,user,t,openPostDetail,handlePinPost,handleDeletePost}) {
   const replies=Number(post.comment_count||0);
-  return <article className="reference-forum-row"><a href={`/forum/${post.id}`} className="reference-forum-topic" onClick={event=>followInternalLink(event,()=>openPostDetail(post))}><FileText size={19}/><span><strong>{Boolean(post.is_pinned)&&<Badge variant="primary">{t('置顶','Pinned')}</Badge>}{post.title}</strong><small>{String(post.content||'').replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/[#*]/g,'')}</small></span></a><Badge variant={replies?'primary':'warning'}>{replies?t('已回复','Replied'):t('待回复','Awaiting replies')}</Badge><div className="reference-forum-author"><span className="reference-avatar">{post.avatar_url?<Image src={post.avatar_url} width={28} height={28} alt=""/>:post.author?.slice(0,1)||'?'}</span><span>{post.author}<small>{replies} {t('回复','replies')} · {new Date(post.created_at).toLocaleDateString()}</small></span></div>{user?.role==='admin'&&<div className="reference-row-admin"><Button size="icon" variant="ghost" aria-label={post.is_pinned?t('取消置顶','Unpin'):t('置顶','Pin')} onClick={event=>handlePinPost(post.id,!post.is_pinned,event)}><Star size={15}/></Button><Button size="icon" variant="ghost" aria-label={t('删除帖子','Delete topic')} onClick={event=>handleDeletePost(post.id,event)}><Trash2 size={15}/></Button></div>}</article>;
+  return <article className="reference-forum-row"><a href={`/forum/${post.id}`} className="reference-forum-topic" onClick={event=>followInternalLink(event,()=>openPostDetail(post))}><FileText size={19}/><span><strong>{Boolean(post.is_pinned)&&<Badge variant="primary">{t('置顶','Pinned')}</Badge>}{post.title}</strong><small>{articleSummary(post.content,400)}</small></span></a><Badge variant={replies?'primary':'warning'}>{replies?t('已回复','Replied'):t('待回复','Awaiting replies')}</Badge><div className="reference-forum-author"><span className="reference-avatar">{post.avatar_url?<Image src={post.avatar_url} width={28} height={28} alt=""/>:post.author?.slice(0,1)||'?'}</span><span>{post.author}<small>{replies} {t('回复','replies')} · {new Date(post.created_at).toLocaleDateString()}</small></span></div>{user?.role==='admin'&&<div className="reference-row-admin"><Button size="icon" variant="ghost" aria-label={post.is_pinned?t('取消置顶','Unpin'):t('置顶','Pin')} onClick={event=>handlePinPost(post.id,!post.is_pinned,event)}><Star size={15}/></Button><Button size="icon" variant="ghost" aria-label={t('删除帖子','Delete topic')} onClick={event=>handleDeletePost(post.id,event)}><Trash2 size={15}/></Button></div>}</article>;
 }
 
 function CommunityAside({posts,products,t,openPostDetail,setRoute}) {

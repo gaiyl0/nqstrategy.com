@@ -54,7 +54,7 @@ try {
     const start=formatted.indexOf(fragment);
     formatted=formatPostText(formatted,{start,end:start+fragment.length},'bold').content;
   }
-  const content=`正文前缀![截图](${attachment.url})正文后缀\r\n${formatted}`;
+  const content=`正文前缀![截图](${attachment.url})正文后缀\r\n${formatted}\n[color=#dc2626]**彩色加粗**[/color]\n## [color=#2563eb]彩色标题[/color]\n[color=red;position:fixed]非法颜色[/color]`;
   assert.equal((await request('/api/posts',{id:1,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[]}})).status,400);
   assert.equal((await request('/api/posts',{id:2,method:'POST',json:{title:'Image ownership test',category:'MQL5',content,attachments:[attachment.id]}})).status,409);
   const posted=await request('/api/posts',{id:1,method:'POST',json:{title:'Image display test',category:'MQL5',content,attachments:[attachment.id]}});
@@ -72,6 +72,11 @@ try {
   const listNodes=body.split('<p class="article-list-item">').slice(1).map(part=>part.split('</p>')[0]);
   assert.deepEqual(listNodes.map(node=>node.replaceAll('<!-- -->','').replaceAll('<strong>','').replaceAll('</strong>','')),['• 列表一','• 列表二'],'compare displayed list text independently of SSR hydration comments');
   assert.ok(listNodes[0].includes('<strong>列表一</strong>'),'list supports bold original text');
+  assert.match(body,/<span style="color:#dc2626" data-text-color="#dc2626"><strong>彩色加粗<\/strong><\/span>/);
+  assert.match(body,/<h2[^>]*><span style="color:#2563eb" data-text-color="#2563eb">彩色标题<\/span><\/h2>/);
+  assert.ok(body.includes('[color=red;position:fixed]非法颜色[/color]'));
+  assert.ok(!body.includes('style="color:red;position:fixed"'));
+  assert.ok(!body.includes('[color=#dc2626]'),'valid color markers are rendered, never raw source');
   console.log('Post image HTTP tests passed: clipboard-shaped PNG upload, scanner, draft privacy, ownership, public image bytes and article HTML rendering');
 } finally {
   if(server && server.exitCode===null){const exited=new Promise(resolve=>server.once('exit',resolve));server.kill();await exited;}

@@ -1,8 +1,12 @@
 import { postContentBlocks } from '@/lib/post-content.mjs';
+import { postInlineParts } from '@/lib/post-inline.mjs';
 import PostBodyImage from './PostBodyImage';
 
 function inlineText(text) {
-  return text.split(/(\*\*.+?\*\*)/g).map((part, index) => part.startsWith('**') && part.endsWith('**') ? <strong key={index}>{part.slice(2, -2)}</strong> : part);
+  return postInlineParts(text).map((part, index) => {
+    const value = part.bold ? <strong>{part.text}</strong> : part.text;
+    return part.color ? <span key={index} style={{color:part.color}} data-text-color={part.color}>{value}</span> : <Fragment key={index}>{value}</Fragment>;
+  });
 }
 
 export default function ArticleContent({ content, imageIds, t }) {
@@ -19,3 +23,4 @@ export default function ArticleContent({ content, imageIds, t }) {
     })}</div>;
   })}</div>;
 }
+import { Fragment } from 'react';

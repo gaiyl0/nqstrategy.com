@@ -12,7 +12,7 @@ const market = [
   fs.readFileSync(path.join(root, 'app', 'components', 'MarketFilters.js'), 'utf8'),
 ].join('\n');
 const profile = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
-const forum = ['ForumView.js', 'CommunityResources.js'].map(file => fs.readFileSync(path.join(root, 'app', 'components', file), 'utf8')).join('\n');
+const forum = ['ForumView.js', 'PostEditorToolbar.js', 'CommunityResources.js'].map(file => fs.readFileSync(path.join(root, 'app', 'components', file), 'utf8')).join('\n');
 const communityContent = fs.readFileSync(path.join(root, 'lib', 'community-content.js'), 'utf8');
 const admin = fs.readFileSync(path.join(root, 'app', 'tianwei', 'page.js'), 'utf8') + fs.readFileSync(path.join(root, 'app', 'tianwei', 'AdminWorkbench.js'), 'utf8');
 assert.match(admin, /activeTab\s*===\s*'points'\s*&&\s*<PointsAdmin\b/, 'the points navigation must render its task administration panel');

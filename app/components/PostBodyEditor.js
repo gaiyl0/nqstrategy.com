@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useImperativeHandle, useMemo, use
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor } from '@tiptap/react';
 import { clipboardImages } from '@/lib/post-content.mjs';
 import { parseRichPost, serializeRichPost } from '@/lib/post-rich-content.mjs';
-import { formatRichPost, insertRichPostImage, PostImage, postEditorExtensions } from '@/lib/post-editor-extensions.mjs';
+import { colorRichPost, formatRichPost, insertRichPostImage, PostImage, postEditorExtensions } from '@/lib/post-editor-extensions.mjs';
 import PostBodyImage from './PostBodyImage';
 
 const ImageActions = createContext(null);
@@ -36,13 +36,25 @@ export default function PostBodyEditor({ content, onChange, editorRef, disabled,
         return true;
       },
       handleDrop() { return true; },
+      handleScrollToSelection(view) {
+        if (!view.dom.getClientRects().length) return false;
+        const toolbar = view.dom.closest('.forum-editor-shell')?.querySelector('.forum-editor-toolbar');
+        const header = document.querySelector('.reference-site-header');
+        const top = Math.max(header?.getBoundingClientRect().bottom || 0, toolbar?.getBoundingClientRect().bottom || 0) + 12;
+        const bottom = window.innerHeight - (window.innerWidth < 768 ? 150 : 24);
+        const caret = view.coordsAtPos(view.state.selection.head);
+        if (caret.top < top) window.scrollBy(0, caret.top - top);
+        else if (caret.bottom > bottom) window.scrollBy(0, caret.bottom - bottom);
+        return true;
+      },
     },
     onUpdate({ editor: current }) {
       emitted.current = serializeRichPost(current.state.doc);
       onChange(emitted.current);
     },
     onTransaction({ editor: current }) {
-      onFormats?.({ heading: current.isActive('heading'), bold: current.isActive('bold'), quote: current.isActive('blockquote'), list: current.isActive('bulletList') });
+      const color = current.getAttributes('postColor').color;
+      onFormats?.({ heading: current.isActive('heading'), bold: current.isActive('bold'), quote: current.isActive('blockquote'), list: current.isActive('bulletList'), color:color && current.isActive('postColor',{color}) ? color : null, canUndo:current.can().undo(), canRedo:current.can().redo() });
     },
   });
 
@@ -72,8 +84,9 @@ export default function PostBodyEditor({ content, onChange, editorRef, disabled,
     get selectionEnd() { return editor?.state.selection.to ?? 0; },
     getContent() { return editor ? serializeRichPost(editor.state.doc) : content; },
     format(kind) { if (editor && !disabled) return formatRichPost(editor, kind); },
+    setColor(color, focus) { if (editor && !disabled) return colorRichPost(editor, color, focus); },
     insertImage(attachment, range) { return insertRichPostImage(editor, attachment, range); },
-    focus() { editor?.commands.focus(); },
+    focus() { editor?.commands.focus(undefined, {scrollIntoView:false}); },
     setSelectionRange(start, end) { editor?.chain().setTextSelection({ from: start, to: end }).focus().run(); },
   }));
 
