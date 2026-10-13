@@ -19,6 +19,7 @@ const PostBodyEditor = dynamic(() => import('./PostBodyEditor'), { ssr: false, l
 import ArticleContent from './ArticleContent';
 import PostEditorToolbar from './PostEditorToolbar';
 import { articleSummary } from '@/lib/share-content.mjs';
+import { plainPostInline } from '@/lib/post-inline.mjs';
 
 const categoryIcons = [MessageSquare, TrendingUp, Code2, BarChart3, Megaphone];
 const sorts = t => [
@@ -130,7 +131,7 @@ function CreateView({ categories, newPost, setNewPost, setForumView, submitPost,
     setUploadError(true);
     setUploadMessage(t('正文已达到 20,000 字符上限。', 'The article has reached the 20,000 character limit.'));
   }, [t]);
-  const wordCount = (newPost.content.match(/\p{Script=Han}|[\p{L}\p{N}]+/gu) || []).length;
+  const wordCount = (plainPostInline(newPost.content).match(/\p{Script=Han}|[\p{L}\p{N}]+/gu) || []).length;
   const characterCount = newPost.content.length;
   const categoryKey = JSON.stringify(categories);
 

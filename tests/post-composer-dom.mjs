@@ -55,6 +55,7 @@ try {
   assert.equal(body.textContent,'黄金策略测试');
   assert.equal(document.querySelector('.forum-color-details').open,false);
   assert.equal(latest.content,'[color=#dc2626]**黄金策略**[/color]测试');
+  assert.equal(document.querySelector('.editor-word-counter p:last-child').textContent,'6 字词','formatting markers are not counted as article words');
   await act(async()=>document.querySelector('button[aria-label="撤销"]').click());
   assert.equal(body.querySelector('[data-text-color]'),null);
   await act(async()=>document.querySelector('button[aria-label="重做"]').click());
