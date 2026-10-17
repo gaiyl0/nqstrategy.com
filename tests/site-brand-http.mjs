@@ -111,7 +111,8 @@ try{
   assert.equal((await request('/api/points?view=summary')).status,401);
   const summaryResponse=await request('/api/points?view=summary',{id:2});assert.equal(summaryResponse.status,200);
   const pointSummary=await summaryResponse.json();
-  assert.deepEqual(Object.keys(pointSummary).sort(),['balance','brokerClaimStatus','success']);
+  assert.deepEqual(Object.keys(pointSummary).sort(),['balance','bonusBalance','brokerClaimStatus','fundedBalance','success']);
+  assert.equal(pointSummary.balance,pointSummary.fundedBalance+pointSummary.bonusBalance,'summary only exposes the current user point origin totals');
   assert.ok(summaryResponse.headers.get('cache-control').includes('no-store'));
   const adminSummary=await(await request('/api/points?view=summary',{id:1})).json();
   assert.equal(adminSummary.balance,0,'administrator cannot receive another user balance in summary');

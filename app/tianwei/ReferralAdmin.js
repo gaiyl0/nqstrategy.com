@@ -1,0 +1,18 @@
+'use client';
+import {useCallback,useEffect,useState} from 'react';
+import {apiFetch} from '@/lib/api-client';
+import {Button,Panel,useInteraction} from '../components/ui/UiKit';
+
+const risks={account_unavailable:'账号不可用',email_unverified:'邮箱未验证',device_missing:'缺少设备标识',source_unresolved:'来源未确认',shared_device:'设备重复',shared_network:'网络来源重复',email_alias:'邮箱别名重复',new_inviter:'邀请人注册未满24小时',daily_limit:'超过自动审核每日上限',monthly_limit:'超过自动审核30天上限'};
+export default function ReferralAdmin(){
+  const [data,setData]=useState(null),[page,setPage]=useState(1),[error,setError]=useState(''),[busy,setBusy]=useState(false),[clock,setClock]=useState(()=>Date.now());
+  const {requestInput}=useInteraction();
+  const load=useCallback(async()=>{setBusy(true);try{const response=await apiFetch(`/api/referrals?scope=admin&page=${page}`,{cache:'no-store'}),body=await response.json();if(!response.ok||!body.success)throw Error(body.message||'读取失败');setData(body);setClock(Date.now());setError('');}catch(e){setError(e.message);}finally{setBusy(false);}},[page]);
+  useEffect(()=>{const timer=setTimeout(()=>{void load();},0);return()=>clearTimeout(timer);},[load]);
+  const review=async(id,approve)=>{
+    const note=await requestInput({title:approve?'核验并发放200奖励积分':'驳回邀请奖励',description:'共享网络可能来自同一家庭，风险标记不直接等于作弊。请结合真实注册情况核验。',label:'核验说明',required:true,minLength:3,maxLength:300,multiline:true});
+    if(!note)return;setBusy(true);
+    try{const response=await apiFetch('/api/referrals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,approve,note})}),body=await response.json();if(!response.ok||!body.success)throw Error(body.message||'处理失败');await load();}catch(e){setError(e.message);}finally{setBusy(false);}
+  };
+  return <div className="space-y-4"><Panel className="p-5"><h2 className="font-bold">邀请注册奖励与风险核验</h2><p className="mt-2 text-sm text-slate-400">每位有效受邀新用户奖励邀请人200积分；邮箱验证、24小时冷静期、同设备/来源/邮箱别名检查。自动审核上限每邀请人每日3人、30天10人，超出转人工核验。可疑记录不自动发放，也不直接封禁共享网络用户。</p><Button className="mt-3" onClick={load} loading={busy}>刷新</Button></Panel>{error&&<p role="alert" className="text-red-400">{error}</p>}<Panel className="overflow-x-auto"><table className="w-full min-w-[750px] text-sm"><thead><tr><th className="p-4 text-left">邀请人与新用户</th><th className="p-4 text-left">状态／冷静期结束</th><th className="p-4 text-left">风控标记</th><th className="p-4 text-left">操作</th></tr></thead><tbody>{data?.items.map(row=><tr className="border-t border-slate-700" key={row.id}><td className="p-4">{row.inviterName} → {row.inviteeName}<small className="block">#{row.id} · {new Date(row.created_at).toLocaleString()}</small></td><td className="p-4">{({pending:'待自动核验',review:'待人工核验',rewarded:'已发放',rejected:'已驳回'})[row.status]}<small className="block">{new Date(row.eligible_at).toLocaleString()}</small></td><td className="p-4">{row.riskFlags.map(flag=>risks[flag]||'其他风险').join('、')||'暂未发现异常'}{row.review_note&&<p className="mt-2 text-slate-400">{row.review_note}</p>}</td><td className="p-4">{['pending','review'].includes(row.status)&&<div className="flex gap-2"><Button size="sm" disabled={busy||clock<row.eligible_at} onClick={()=>review(row.id,true)}>通过</Button><Button size="sm" variant="danger" disabled={busy} onClick={()=>review(row.id,false)}>驳回</Button></div>}</td></tr>)}</tbody></table>{data&&!data.items.length&&<p className="p-5">暂无邀请记录</p>}</Panel><div className="flex items-center gap-3"><Button disabled={page===1||busy} onClick={()=>setPage(x=>x-1)}>上一页</Button><span>第 {page} 页 · {data?.total||0} 条</span><Button disabled={!data||page*50>=data.total||busy} onClick={()=>setPage(x=>x+1)}>下一页</Button></div></div>;
+}

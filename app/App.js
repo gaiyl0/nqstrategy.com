@@ -18,6 +18,7 @@ import Footer from './components/Footer';
 
 import { appRoute,forumLocation,writeNavigation } from '@/lib/app-navigation.mjs';
 import AppHeader from './components/AppHeader';
+import useRegistrationInvitation from './hooks/useRegistrationInvitation';
 import ForumUnavailable from './components/ForumUnavailable';
 import CatalogUnavailable from './components/CatalogUnavailable';
 import { forumEnabled,catalogEnabled } from '@/lib/site-brand-runtime.mjs';
@@ -100,6 +101,7 @@ export default function App({initialRoute='home',initialData={}}) {
   
   const [authModal, setAuthModal] = useState(null); 
   const [authForm, setAuthForm] = useState({ username: '', email: '', password: '', code: '' });
+  useRegistrationInvitation({authModal,setAuthModal,setAuthForm,authReady,user});
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [sentCode, setSentCode] = useState(null);
   const [isSendingCode, setIsSendingCode] = useState(false);

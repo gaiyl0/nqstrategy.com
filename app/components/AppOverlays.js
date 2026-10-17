@@ -108,6 +108,7 @@ export default function AppOverlays({ versionModal, setVersionModal, versionForm
             <div>
               <label className="block text-xs font-bold text-zinc-400 mb-1.5">{t('专属用户名', 'Username')}</label>
               <input type="text" value={authForm.username} onChange={e => setAuthForm({...authForm, username: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 focus:outline-none" />
+              <label htmlFor="registration-invitation" className="mb-1.5 mt-4 block text-xs font-bold text-zinc-400">{t('邀请码（选填）','Invitation code (optional)')}</label><input id="registration-invitation" maxLength={16} autoComplete="off" value={authForm.invitationCode||''} onChange={e=>setAuthForm({...authForm,invitationCode:e.target.value.toUpperCase()})} className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white"/><p className="mt-2 text-xs text-zinc-400">{t('注册后不可补填或更换邀请人。奖励在邮箱验证、24小时冷静期及风控核验后发给邀请人。','The inviter cannot be changed after registration. Rewards go to the inviter after email verification, a 24-hour cooling period and abuse checks.')}</p>
             </div>
           )}
           <div>

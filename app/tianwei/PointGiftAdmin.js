@@ -1,0 +1,19 @@
+'use client';
+import {useCallback,useEffect,useRef,useState} from 'react';
+import {apiFetch} from '@/lib/api-client';
+import {Button,Field,Panel,useInteraction} from '../components/ui/UiKit';
+
+export default function PointGiftAdmin(){
+  const [users,setUsers]=useState([]),[items,setItems]=useState([]),[form,setForm]=useState({userId:'',points:'',reason:''}),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
+  const key=useRef(null),{confirmAction}=useInteraction();
+  const load=useCallback(async()=>{const results=await Promise.all([apiFetch('/api/users',{cache:'no-store'}).then(r=>r.json()),apiFetch('/api/points/gifts',{cache:'no-store'}).then(r=>r.json())]);if(!results.every(x=>x.success))throw Error('读取用户或赠分记录失败');setUsers(results[0].users);setItems(results[1].items);},[]);
+  useEffect(()=>{const timer=setTimeout(()=>{void load().catch(e=>setError(e.message));},0);return()=>clearTimeout(timer);},[load]);
+  const change=(field,value)=>{key.current=null;setForm(previous=>({...previous,[field]:value}));};
+  const submit=async event=>{
+    event.preventDefault();setError('');setMessage('');
+    if(!await confirmAction({title:'确认赠送奖励积分',description:`用户：${users.find(x=>x.id===Number(form.userId))?.username||form.userId}；数量：${form.points} 积分。`,notice:'赠分会记入奖励来源，不可提现，也不会形成可提现的开发者分成。',confirmLabel:'确认赠送'}))return;
+    setBusy(true);if(!key.current)key.current=crypto.randomUUID();
+    try{const response=await apiFetch('/api/points/gifts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:Number(form.userId),points:Number(form.points),reason:form.reason,requestKey:key.current})}),body=await response.json();if(!response.ok||!body.success)throw Error(body.message||'赠送失败');setMessage(`已赠送 ${body.points} 奖励积分${body.replayed?'（重复请求已去重）':''}`);setForm({userId:'',points:'',reason:''});key.current=null;await load();}catch(e){setError(e.message);}finally{setBusy(false);}
+  };
+  return <div className="space-y-5"><Panel className="p-5"><h2 className="text-lg font-bold">自定义赠送积分</h2><p className="my-3 text-sm text-slate-400">赠送积分属于奖励来源，不可提现。每次操作保留管理员、接收人、原因及积分流水；重试同一次请求不会重复入账。</p><form onSubmit={submit} className="grid gap-4 md:grid-cols-2"><Field label="接收用户" required><select required value={form.userId} disabled={busy} onChange={e=>change('userId',e.target.value)}><option value="">选择用户</option>{users.filter(x=>x.role!=='banned').map(x=><option key={x.id} value={x.id}>#{x.id} {x.username}</option>)}</select></Field><Field label="赠送积分" required><input required type="number" min="0.01" max="1000000" step="0.01" disabled={busy} value={form.points} onChange={e=>change('points',e.target.value)}/></Field><Field label="赠送原因" required className="md:col-span-2"><textarea required minLength={3} maxLength={300} disabled={busy} value={form.reason} onChange={e=>change('reason',e.target.value)}/></Field><Button type="submit" variant="primary" loading={busy}>确认赠送</Button></form>{message&&<p className="mt-3 text-teal-400" role="status">{message}</p>}{error&&<p className="mt-3 text-red-400" role="alert">{error}</p>}</Panel><Panel className="overflow-x-auto"><h2 className="p-5 font-bold">最近100次赠送</h2><table className="min-w-[650px] w-full text-left text-sm"><thead><tr><th className="p-4">用户</th><th className="p-4">积分</th><th className="p-4">操作人</th><th className="p-4">原因</th><th className="p-4">时间</th></tr></thead><tbody>{items.map(row=><tr key={row.id} className="border-t border-slate-700"><td className="p-4">{row.username}</td><td className="p-4">+{row.points}</td><td className="p-4">{row.adminName}</td><td className="p-4">{row.reason}</td><td className="p-4">{new Date(row.createdAt).toLocaleString()}</td></tr>)}</tbody></table>{!items.length&&<p className="p-5">暂无赠分记录</p>}</Panel></div>;
+}

@@ -1,6 +1,8 @@
 'use client';
 
 const reasons={
+  admin_gift:['管理员赠送奖励积分','Reward points gifted by an administrator'],
+  referral_reward:['邀请注册奖励','Registration invitation reward'],
   legacy_balance_migration:['旧账户余额转入','Previous account balance transferred'],
   recharge_refund_hold:['充值退款申请，积分冻结','Recharge refund requested; points held'],
   recharge_refund_release:['退款申请驳回，积分退回','Recharge refund rejected; points restored'],

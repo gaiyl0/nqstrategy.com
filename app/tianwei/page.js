@@ -18,6 +18,9 @@ import Mt5DownloadSettings from './Mt5DownloadSettings';
 import AdminNavigation from './AdminNavigation';
 import AdminWorkbench from './AdminWorkbench';
 import PointsAdmin from './PointsAdmin';
+import ReferralAdmin from './ReferralAdmin';
+import PointGiftAdmin from './PointGiftAdmin';
+import RuntimeAuthorizationAdmin from './RuntimeAuthorizationAdmin';
 import FinanceAdmin from './FinanceAdmin';
 import PointWithdrawalsAdmin from './PointWithdrawalsAdmin';
 import PointExchangeRateAdmin from './PointExchangeRateAdmin';
@@ -271,6 +274,7 @@ export default function AdminDashboard() {
     ['searchSubmission', '搜索引擎提交', Globe2],
     ['dashboard', '仪表盘', LayoutDashboard], ['users', '用户与角色', Users], ['products', '策略与证据审核', Box],
     ['finance', '人民币与积分流水', BadgeDollarSign], ['orders', '历史订单与支付', BadgeDollarSign], ['paymentSettings', '支付渠道配置', CreditCard], ['points', '积分任务与兑换', Coins], ['pointWithdrawals', '积分提现审核', HandCoins], ['analytics', '访问与广告统计', Activity], ['withdrawals', '历史美元提现', HandCoins], ['licenses', '授权管理', Key],
+    ['runtimeAuthorizations','独立 EA 授权',Key],['referrals','邀请奖励核验',Users],['pointGifts','自定义赠送积分',Coins],
     ['reports', '社区治理', Flag],
     ['communityContent', `社区内容管理 (${settings.communityContent?.news?.length || 0}/6)`, Newspaper],
     ['communityDocs', `文档与资料链接 (${settings.communityContent?.documents?.length || 0}/12)`, BookOpen],
@@ -280,10 +284,10 @@ export default function AdminDashboard() {
 
   const navigationGroups = [
     ['工作台', ['dashboard']],
-    ['EA 管理', ['products','finance','orders','licenses','featured']],
-    ['任务与推广', ['points','advertising','analytics']],
+    ['EA 管理', ['products','finance','orders','licenses','runtimeAuthorizations','featured']],
+    ['任务与推广', ['points','referrals','advertising','analytics']],
     ['论坛运营', ['reports','communityCategories','forumModules','communityDocs']],
-    ['用户与积分', ['users','pointWithdrawals']],
+    ['用户与积分', ['users','pointGifts','pointWithdrawals']],
     ['网站设置', ['brandPages','searchSubmission','appearance','contactLinks','mt5Downloads']],
     ['系统维护', ['settings','paymentSettings','homeModules','communityContent','communityStrategies','walletSettings','withdrawals']],
   ];
@@ -306,6 +310,9 @@ export default function AdminDashboard() {
         {activeTab === 'searchSubmission' && <SearchSubmissionSettings/>}
         {activeTab === 'dashboard' && <AdminWorkbench onSelect={setActiveTab} />}
         {activeTab === 'points' && <PointsAdmin />}
+        {activeTab === 'referrals' && <ReferralAdmin/>}
+        {activeTab === 'pointGifts' && <PointGiftAdmin/>}
+        {activeTab === 'runtimeAuthorizations' && <RuntimeAuthorizationAdmin/>}
         {activeTab === 'finance' && <FinanceAdmin />}
 
         {activeTab === 'analytics' && (

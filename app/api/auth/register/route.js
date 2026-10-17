@@ -5,6 +5,7 @@ import { hashPassword, createSession } from '@/lib/auth';
 import { parseJson, registerSchema } from '@/lib/validation';
 import { createSecurityContext, enforceRateLimits, hashSecurityValue, RATE_LIMITS, withAudit } from '@/lib/security';
 import { consumeVerificationCode } from '@/lib/verification-codes';
+import { recordReferralRegistration,readReferralDevice,attachReferralDevice } from '@/lib/referrals';
 
 async function POSTHandler(request) {
   const context = createSecurityContext(request);
@@ -53,13 +54,16 @@ async function POSTHandler(request) {
             error.code = 'IDENTITY_CONFLICT';
             throw error;
           }
-          return db.prepare(`
+          const inserted = db.prepare(`
             INSERT INTO users (username, email, password, role, email_verified)
             VALUES (?, ?, ?, 'user', 1)
           `).run(trimmedUsername, trimmedEmail, hashedPassword);
+          recordReferralRegistration(Number(inserted.lastInsertRowid),parsed.data.invitationCode,{deviceHash:readReferralDevice(request),sourceHash:context.sourceHash,sourceTrusted:context.sourceTrusted});
+          return inserted;
         },
       });
     } catch (error) {
+      if(error.message==='INVITATION_INVALID')return withAudit(context,NextResponse.json({success:false,message:'邀请码无效或邀请人账号不可用，请检查后重试'},{status:400}),{eventType:'auth.register',outcome:'failure',reasonCode:'INVITATION_INVALID'});
       if (error.code === 'IDENTITY_CONFLICT' || error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
         return withAudit(context, NextResponse.json({ success: false, message: '该用户名或邮箱已被注册' }, { status: 400 }), {
           eventType: 'auth.register', outcome: 'failure', reasonCode: 'IDENTITY_CONFLICT', targetType: 'email', targetId,
@@ -88,10 +92,10 @@ async function POSTHandler(request) {
     // 4. 签发服务器 HttpOnly Session Cookie
     await createSession(newUser);
 
-    return withAudit(context, NextResponse.json({
+    return withAudit(context, attachReferralDevice(NextResponse.json({
       success: true, 
       user: newUser 
-    }), {
+    }),request), {
       eventType: 'auth.register', outcome: 'success', reasonCode: 'REGISTERED', userId: Number(result.lastInsertRowid), actorRole: 'user', targetType: 'user', targetId: result.lastInsertRowid,
     });
   } catch (error) {

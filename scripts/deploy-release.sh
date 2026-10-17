@@ -58,6 +58,9 @@ run_as_nexus "npm ci --include=dev"
 # changes cannot run against the live database before its backup is captured.
 run_as_nexus "NEXUS_DB_PATH='$release_dir/.build-data.db' NEXUS_AUTO_MIGRATE=1 DEPLOYMENT_VERSION='$release_id' npm run build"
 rm -f "$release_dir/.build-data.db" "$release_dir/.build-data.db-wal" "$release_dir/.build-data.db-shm"
+run_as_nexus "npm run test:referrals-runtime-gifts"
+run_as_nexus "NODE_ENV=test npm run test:engagement-ui"
+run_as_nexus "npm run test:engagement-http"
 run_as_nexus "npm prune --omit=dev"
 
 # Keep the www ownership-verification file readable across future releases.

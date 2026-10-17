@@ -44,6 +44,9 @@ async function PATCHHandler(request) {
     const parsed = await parseJson(request, userPatchSchema);
     if (!parsed.success) return parsed.response;
     const body = parsed.data;
+    if(body.id&&db.prepare('SELECT 1 FROM system_owners WHERE user_id=?').get(body.id)&&currentUser.id!==body.id){
+      return NextResponse.json({success:false,message:'总管理员账号仅能由本人维护'},{status:403});
+    }
 
     // -------------------------------------------------------------
     // 行为 A (超管权限)：调整其他用户的系统权限 (newRole)
@@ -53,7 +56,7 @@ async function PATCHHandler(request) {
         return NextResponse.json({ success: false, message: '越权拦截：仅限超管可修改用户角色' }, { status: 403 });
       }
       // 保护机制：系统初始超管 (ID 1) 不允许被降权
-      if (body.id === 1 && body.newRole !== 'admin') {
+      if ((body.id === 1 || db.prepare('SELECT 1 FROM system_owners WHERE user_id=?').get(body.id)) && body.newRole !== 'admin') {
         return NextResponse.json({ success: false, message: '保护系统：禁止降级初始超级管理员' }, { status: 400 });
       }
       const result = db.prepare('UPDATE users SET role = ? WHERE id = ? AND deleted_at IS NULL').run(body.newRole, body.id);
@@ -200,7 +203,7 @@ async function DELETEHandler(request) {
     const parsedId = validate(idSchema, new URL(request.url).searchParams.get('id'));
     if (!parsedId.success) return validationErrorResponse(parsedId.error);
     const id = parsedId.data;
-    if (id === 1) {
+    if (id === 1 || db.prepare('SELECT 1 FROM system_owners WHERE user_id=?').get(id)) {
       return NextResponse.json({ success: false, message: '安全限制：无法注销初始超级管理员' }, { status: 400 });
     }
     if (id === currentUser.id) {
