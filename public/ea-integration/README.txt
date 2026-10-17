@@ -3,12 +3,17 @@ Nexus Quant - EA integration files
 User account reporting:
 1. Extract the archive. Copy the NexusReporter folder into MT5's MQL5/Experts folder.
 2. In MT5 Tools > Options > Expert Advisors, allow WebRequest to https://nqstrategy.com.
-3. Create a read-only connection in Personal center > Account activity on the website.
-4. Attach NexusAccountReporter.ex5 to a spare chart. Enter ProductId, TelemetryToken,
-   and the original EA's magic number. Set ConsentToReporting=true after reviewing consent.
+3. In Personal center > Account activity, choose a redeemed EA, consent to reporting,
+   prepare your MT5 setup, and download your personal .set configuration.
+4. Attach NexusAccountReporter.ex5 to a spare chart. In Inputs, choose Load and select
+   your downloaded .set file. No manual IDs, credentials or magic numbers are needed.
+   Never replace a chart already running your trading EA.
+   The .set file contains a private credential: do not share it. If lost, regenerate
+   from the existing account card; the old configuration stops working.
 5. The reporter never places, closes or modifies trades. It does not replace your trading EA.
 6. The terminal identifier is generated automatically. Do not manually enter a device fingerprint.
-7. Data is terminal-reported, not broker-verified. Reporting requires a connected terminal.
+7. Account-wide data is terminal-reported, not broker-verified. The simplified setup
+   does not attribute returns to an individual EA. Reporting requires a connected terminal.
 
 Developer runtime authorization:
 NexusRuntime.mqh is the shared component. NexusAuthorizationExample.mq5 is a source

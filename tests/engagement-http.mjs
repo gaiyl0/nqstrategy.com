@@ -78,7 +78,7 @@ try {
   eq(registered.status,200);ok(registered.cookie.includes('nexus_token='));
   const invitation=db.prepare('SELECT * FROM referral_invitations WHERE invitee_id=?').get(registered.body.user.id);eq(invitation.status,'pending');
   eq((await request('/api/referrals',{id:1,device:inviterDevice,ip:'198.51.100.1'})).body.rewarded,0);
-  db.prepare('UPDATE referral_invitations SET eligible_at=? WHERE id=?').run(Date.now()-1,invitation.id);
+  db.prepare('UPDATE referral_invitations SET eligible_at=? WHERE id=?').run(Date.now()-60000,invitation.id); // Leave clock-resolution margin between the fixture process and Next workers.
   const settled=await request('/api/referrals',{id:1,device:inviterDevice,ip:'198.51.100.1'});
   eq(settled.body.rewarded,1,JSON.stringify(db.prepare('SELECT status,risk_flags,eligible_at FROM referral_invitations').all()));
   eq(db.prepare('SELECT bonus_units FROM point_asset_accounts WHERE user_id=1').get().bonus_units,20000);
@@ -99,14 +99,30 @@ try {
   eq((await request('/api/ea/runtime',{body:snapshot,native:true})).status,200);
   eq((await request('/api/ea/runtime',{body:snapshot,native:true})).status,409);
   const activity=await request('/api/ea-connections',{id:2});eq(activity.body.items[0].status,'online');eq(activity.body.items[0].equity,1010);ok(!JSON.stringify(activity.body).includes(connection.body.token));ok(!JSON.stringify(activity.body).includes('12345678'));
+  eq((await request('/api/ea-connections',{id:4,body:{action:'reset_setup',id:connection.body.id}})).status,404);
+  eq((await request('/api/ea-connections',{body:{action:'reset_setup',id:connection.body.id}})).status,401);
+  eq((await request('/api/ea-connections',{id:2,body:{action:'reset_setup',id:connection.body.id},headers:{Origin:'https://attacker.test'}})).status,403);
+  const beforeReset=db.prepare('SELECT binding_hash,last_sequence FROM ea_connections WHERE id=?').get(connection.body.id);
+  const reset=await request('/api/ea-connections',{id:2,body:{action:'reset_setup',id:connection.body.id}});
+  eq(reset.status,200);ok(reset.cache.includes('no-store'));ok(reset.body.token!==connection.body.token);eq(reset.body.id,connection.body.id);eq(reset.body.productId,1);
+  eq(db.prepare('SELECT binding_hash,last_sequence FROM ea_connections WHERE id=?').get(connection.body.id),beforeReset);
+  eq(db.prepare('SELECT COUNT(*) n FROM ea_connections WHERE user_id=2').get().n,1);
+  eq((await request('/api/ea/runtime',{body:{...snapshot,sequence:2},native:true})).status,401,'old credential invalidated');
+  eq((await request('/api/ea/runtime',{body:{...snapshot,token:reset.body.token,account:'99999',sequence:2},native:true})).status,401,'rotation cannot switch bound accounts');
+  eq((await request('/api/ea/runtime',{body:{...snapshot,token:reset.body.token},native:true})).status,409,'rotation cannot replay an accepted report');
+  ok(!JSON.stringify((await request('/api/ea-connections',{id:2})).body).includes(reset.body.token));
+  db.prepare('UPDATE ea_connections SET last_seen_at=last_seen_at-30000 WHERE id=?').run(connection.body.id);
+  eq((await request('/api/ea/runtime',{body:{...snapshot,token:reset.body.token,sequence:2},native:true})).status,200,'new setup can report to the original connection');
   eq((await request('/api/ea-connections',{id:4})).body.items.length,0);
   eq((await request('/api/ea-connections',{id:4,body:{action:'revoke',id:connection.body.id}})).status,404);
   eq((await request('/api/ea-connections',{id:2,body:{action:'revoke',id:connection.body.id}})).status,200);
   eq((await request('/api/ea/runtime',{body:{...snapshot,sequence:2},native:true})).status,401);
+  eq((await request('/api/ea-connections',{id:2,body:{action:'reset_setup',id:connection.body.id}})).status,403,'revoked connection cannot regenerate credentials');
+  eq((await request('/api/ea/runtime',{body:{...snapshot,token:reset.body.token,sequence:3},native:true})).status,401,'revocation stops the regenerated credential');
   eq((await request('/api/runtime-authorizations',{id:1,body:{action:'revoke',id:issued.body.authorization.id,note:'HTTP测试撤销'}})).status,200);
   eq((await request('/api/ea/runtime',{body:check,native:true})).status,401);
   const auditText=JSON.stringify(db.prepare("SELECT metadata_json FROM audit_logs WHERE event_type LIKE 'runtime.%' OR event_type LIKE 'ea.%'").all());
-  ok(!auditText.includes(issued.body.code));ok(!auditText.includes(connection.body.token));
+  ok(!auditText.includes(issued.body.code));ok(!auditText.includes(connection.body.token));ok(!auditText.includes(reset.body.token));
   eq(db.pragma('foreign_key_check').length,0);
   console.log(JSON.stringify({success:true,assertions:count,scope:'isolated production HTTP; no real user balances or trading accounts used'}));
 } finally {
