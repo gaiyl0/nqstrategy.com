@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build-ea-integration-package.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "audit:verify": "node scripts/audit-maintenance.mjs verify",

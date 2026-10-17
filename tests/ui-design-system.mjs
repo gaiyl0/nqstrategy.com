@@ -53,7 +53,7 @@ for (const landmark of ['AssetTable', 'Licenses', 'BindingDrawer', 'No trusted r
 assert.doesNotMatch(profile, /ProfileNav|editorial-profile-nav/, 'personal center must not duplicate global navigation');
 assert.match(profile, /Notifications and messages/, 'personal center must expose the inbox');
 assert.match(profile, /Tasks under review/, 'profile statistics must use actual task review status');
-assert.match(profile, /Trading passwords and exchange API secrets are not accepted/, 'profile binding drawer must disclose the credential boundary');
+assert.match(fs.readFileSync(path.join(root,'app/components/LicenseDetailsDrawer.js'),'utf8'), /Trading passwords and exchange API secrets are not accepted/, 'license details must disclose the credential boundary');
 assert.doesNotMatch(profile, /placeholder=["'](?:API Key|API Secret)/, 'profile must not collect exchange API credentials');
 assert.doesNotMatch(profile, /Math\.random/, 'profile must not generate synthetic portfolio data');
 for (const landmark of ['ForumNavigation', 'CommunityHero', 'PostCard', 'CommunityAside', 'This page']) {

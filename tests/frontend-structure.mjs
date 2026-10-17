@@ -30,10 +30,11 @@ assert.doesNotMatch(page, /余额提现申请/, 'modal rendering belongs in AppO
 
 
 const profileView = fs.readFileSync(path.join(root, 'app', 'components', 'ProfileView.js'), 'utf8');
-for (const callback of ['handleSecureDownload', 'handleLicenseBind', 'handleLicenseToken', 'showToast']) {
+for (const callback of ['handleSecureDownload', 'showToast']) {
   assert.match(profileView, new RegExp(`function ProfileView\\([^)]*${callback}`), `ProfileView must declare ${callback}`);
   assert.match(page, new RegExp(`<ProfileView[^\n]*${callback}`), `app/page.js must pass ${callback} to ProfileView`);
 }
+assert.doesNotMatch(page, /handleLicenseBind|handleLicenseToken/, 'legacy manual binding and temporary token dialogs must not be exposed');
 assert.doesNotMatch(page, /\bhandleDownload\b/, 'undefined handleDownload alias must not return');
 
 const forumView = fs.readFileSync(path.join(root, 'app', 'components', 'ForumView.js'), 'utf8');

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import {crc32} from 'node:zlib';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -32,9 +33,28 @@ try {
   server.stdout.on('data',chunk=>output+=chunk);server.stderr.on('data',chunk=>output+=chunk);
   let ready=false;for(let i=0;i<80;i++){await new Promise(resolve=>setTimeout(resolve,500));try{if((await request('/api/referrals?view=identity')).status===200){ready=true;break;}}catch{}}
   ok(ready,output);
-  for(const name of ['NexusRuntime.mqh','NexusAccountReporter.mq5','NexusAccountReporter.ex5','NexusAuthorizationExample.mq5']){
-    const file=await fetch(`http://127.0.0.1:${port}/ea-integration/${name}`);eq(file.status,200);ok((await file.arrayBuffer()).byteLength>500);
+  const names=['NexusRuntime.mqh','NexusAccountReporter.mq5','NexusAccountReporter.ex5','NexusAuthorizationExample.mq5','NexusEaIntegration.zip'];
+  for(const name of names){
+    const expected=fs.readFileSync(path.join('public','ea-integration',name));
+    for(const resource of [`/ea-integration/${name}`,`/ea-integration/download?file=${name}`]){
+      const file=await fetch(`http://127.0.0.1:${port}${resource}`);eq(file.status,200);
+      eq(file.headers.get('content-disposition'),`attachment; filename="${name}"`);
+      eq(file.headers.get('x-content-type-options'),'nosniff');
+      eq(Buffer.from(await file.arrayBuffer()),expected,'download returns the actual file, not HTML');
+    }
   }
+  const head=await fetch(`http://127.0.0.1:${port}/ea-integration/download?file=NexusAccountReporter.ex5`,{method:'HEAD'});eq(head.status,200);eq(Number(head.headers.get('content-length')),fs.statSync('public/ea-integration/NexusAccountReporter.ex5').size);eq((await head.arrayBuffer()).byteLength,0);
+  for(const file of ['../README.md','../../.env','README.txt','nonexistent.ex5','https://attacker.test/file'])eq((await fetch(`http://127.0.0.1:${port}/ea-integration/download?file=${encodeURIComponent(file)}`)).status,404);
+  const archive=fs.readFileSync('public/ea-integration/NexusEaIntegration.zip');let position=0,entries=0;
+  while(archive.readUInt32LE(position)===0x04034b50){
+    const size=archive.readUInt32LE(position+18),nameLength=archive.readUInt16LE(position+26),extraLength=archive.readUInt16LE(position+28),name=archive.subarray(position+30,position+30+nameLength).toString();
+    const start=position+30+nameLength+extraLength,data=archive.subarray(start,start+size);
+    ok(name.startsWith('NexusReporter/'));eq(archive.readUInt16LE(position+8),0);eq(crc32(data),archive.readUInt32LE(position+14));
+    eq(data,fs.readFileSync(path.join('public/ea-integration',path.basename(name))),'package is synchronized with individual downloads');
+    position=start+size;entries++;
+  }
+  eq(entries,5);eq(archive.readUInt32LE(position),0x02014b50);eq(archive.readUInt32LE(archive.length-22),0x06054b50);
+  const guide=await fetch(`http://127.0.0.1:${port}/ea-integration`),guideHtml=await guide.text();eq(guide.status,200);ok(guideHtml.includes('/ea-integration/download?file=NexusEaIntegration.zip'));
   eq((await request('/api/referrals')).status,401);eq((await request('/api/points/gifts')).status,401);
   eq((await request('/api/points/gifts',{id:2})).status,403);
   eq((await request('/api/runtime-authorizations?scope=admin',{id:3})).status,403,'ordinary admin cannot use system-owner authorization workspace');
