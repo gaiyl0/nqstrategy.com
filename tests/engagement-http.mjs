@@ -65,14 +65,14 @@ try {
   const issue={action:'issue',userId:2,productId:1,durationDays:30,note:'HTTP验收'};
   eq((await request('/api/runtime-authorizations',{id:3,body:issue})).status,403);
   eq((await request('/api/runtime-authorizations',{id:1,body:{...issue,durationDays:7}})).status,400);
-  const issued=await request('/api/runtime-authorizations',{id:1,body:issue});eq(issued.status,200);ok(issued.body.code);ok(issued.cache.includes('no-store')); 
+  const issued=await request('/api/runtime-authorizations',{id:1,body:issue});eq(issued.status,200);ok(issued.body.code);ok(issued.cache.includes('no-store'));
   const own=await request('/api/runtime-authorizations',{id:2});eq(own.body.items.length,1);ok(!JSON.stringify(own.body).includes(issued.body.code));
   eq((await request('/api/runtime-authorizations',{id:4})).body.items.length,0);
   const check={action:'authorize',code:issued.body.code,productId:1,account:'12345678',server:'HTTP-Demo',device:'a'.repeat(64)};
   const valid=await request('/api/ea/runtime',{body:check,native:true});eq(valid.status,200);eq(valid.body.valid,true);eq(valid.body.leaseSeconds,60);
   eq((await request('/api/ea/runtime',{body:{...check,device:'b'.repeat(64)},native:true})).status,401);
   eq((await request('/api/ea/runtime',{body:{action:'authorize'},native:true})).status,400);
-  const connection=await request('/api/ea-connections',{id:2,body:{action:'create',licenseId:1,label:'我的模拟账户',consent:true}});eq(connection.status,200);ok(connection.body.token);ok(connection.cache.includes('no-store')); 
+  const connection=await request('/api/ea-connections',{id:2,body:{action:'create',licenseId:1,label:'我的模拟账户',consent:true}});eq(connection.status,200);ok(connection.body.token);ok(connection.cache.includes('no-store'));
   eq((await request('/api/ea-connections',{id:4,body:{action:'create',licenseId:1,label:'他人账户',consent:true}})).status,403);
   eq((await request('/api/ea-connections',{id:2,body:{action:'create',licenseId:1,label:'未同意',consent:false}})).status,400);
   const snapshot={action:'heartbeat',token:connection.body.token,productId:1,account:'12345678',server:'HTTP-Demo',device:'a'.repeat(64),sequence:1,currency:'USD',balance:1000,equity:1010,floatingProfit:10,freeMargin:900,positionsCount:1,eaPositionsCount:1,eaFloatingProfit:10};
